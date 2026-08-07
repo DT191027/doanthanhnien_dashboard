@@ -20,13 +20,18 @@ import {
   SupportModal 
 } from './components/Modals';
 import { INITIAL_BRANCHES } from './lib/supabase';
-import { FileText, Search, Folder, Calendar, BarChart2, Bell, Settings, Users, CheckSquare, FileSpreadsheet } from 'lucide-react';
+import { FileText, Search, Folder, Calendar, BarChart2, Bell, Settings, FileSpreadsheet, CheckSquare } from 'lucide-react';
 
 export default function App() {
-  // Always require Login first on link open for security!
   const [currentUser, setCurrentUser] = useState(null); 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Dynamic Realtime State Lists
+  const [activitiesList, setActivitiesList] = useState([]);
+  const [documentsList, setDocumentsList] = useState([]);
+  const [submissionsList, setSubmissionsList] = useState([]);
+  const [notificationsList, setNotificationsList] = useState([]);
 
   // Modals state
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
@@ -34,80 +39,75 @@ export default function App() {
   const [showSubmitDocModal, setShowSubmitDocModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  // If user is not logged in, always render the secure Login screen first!
+  // Unauthenticated -> Login Screen
   if (!currentUser) {
     return <Login onLoginSuccess={(user) => setCurrentUser(user)} />;
   }
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
-  // Professional Vietnamese titles & descriptions mapping for all secondary views
+  // Handlers for dynamic actions
+  const handleAddActivity = (newAct) => {
+    setActivitiesList([
+      {
+        id: `act-${Date.now()}`,
+        day: newAct.day || '25',
+        month: newAct.month || 'THÁNG 5',
+        title: newAct.title,
+        time: newAct.time || '08:00 - 11:30',
+        location: newAct.location || 'Hội trường UBND xã Xuân Thới Sơn',
+        status: 'Sắp diễn ra',
+        dateIso: '2026-05-25'
+      },
+      ...activitiesList
+    ]);
+  };
+
+  const handleIssueDocument = (newDoc) => {
+    const createdDoc = {
+      id: `doc-${Date.now()}`,
+      doc_number: newDoc.doc_number,
+      title: newDoc.title,
+      summary: `Ban hành ngày ${new Date().toLocaleDateString('vi-VN')}`,
+      sender: 'Đoàn xã Xuân Thới Sơn',
+      recipient_scope: newDoc.recipient_scope,
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      status: 'Chưa đọc',
+      type: 'outgoing',
+      date: new Date().toLocaleDateString('vi-VN'),
+      dateText: 'Hôm nay',
+      isNew: true,
+      file_name: newDoc.file_name || 'Mau_Cong_Van_92_DX.pdf'
+    };
+    setDocumentsList([createdDoc, ...documentsList]);
+  };
+
+  const handleSubmitDocument = (newSub) => {
+    const createdSub = {
+      id: `sub-${Date.now()}`,
+      title: newSub.title,
+      due_date: new Date().toLocaleDateString('vi-VN'),
+      sub_date: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
+      status: 'Đã nộp',
+      file_name: newSub.file_name || 'Bao_Cao_T5_ApBuiMon.pdf'
+    };
+    setSubmissionsList([createdSub, ...submissionsList]);
+  };
+
+  // Views Mapping
   const viewConfig = {
-    incoming_docs: {
-      title: 'Quản lý Văn bản đến',
-      icon: FileText,
-      description: 'Tiếp nhận, xử lý và lưu trữ các công văn, kế hoạch gửi tới Đoàn xã Xuân Thới Sơn.'
-    },
-    outgoing_docs: {
-      title: 'Quản lý Văn bản đi',
-      icon: FileText,
-      description: 'Ban hành, phân phối các công văn, thông báo tới 30 Chi đoàn Ấp trực thuộc.'
-    },
-    doan_xa_docs: {
-      title: 'Văn bản từ Đoàn xã',
-      icon: FileText,
-      description: 'Danh sách văn bản chỉ đạo, kế hoạch do Đoàn xã Xuân Thới Sơn ban hành.'
-    },
-    required_docs: {
-      title: 'Văn bản cần nộp',
-      icon: FileText,
-      description: 'Theo dõi và thực hiện nộp các báo cáo, kế hoạch theo đúng thời hạn quy định.'
-    },
-    todo: {
-      title: 'Quản lý Công việc (Todo List)',
-      icon: CheckSquare,
-      description: 'Theo dõi tiến độ thực hiện nhiệm vụ và công việc được giao.'
-    },
-    branch_tasks: {
-      title: 'Công việc của Chi đoàn',
-      icon: CheckSquare,
-      description: 'Quản lý danh mục nhiệm vụ và công việc nội bộ của Chi đoàn Ấp.'
-    },
-    activities: {
-      title: 'Quản lý Lịch hoạt động',
-      icon: Calendar,
-      description: 'Theo dõi lịch tổ chức các phong trào, chương trình thanh niên cấp xã và ấp.'
-    },
-    reports: {
-      title: 'Báo cáo Thống kê',
-      icon: BarChart2,
-      description: 'Tổng hợp số liệu hoạt động, văn bản và công tác đoàn toàn xã.'
-    },
-    storage: {
-      title: 'Kho Lưu trữ Văn bản',
-      icon: Folder,
-      description: 'Lưu trữ tập trung toàn bộ hệ thống tài liệu, hồ sơ và văn bản số.'
-    },
-    settings: {
-      title: 'Cài đặt Hệ thống',
-      icon: Settings,
-      description: 'Quản lý thông tin cấu hình và phân quyền người dùng.'
-    },
-    notifications: {
-      title: 'Quản lý Thông báo',
-      icon: Bell,
-      description: 'Danh sách thông báo chỉ đạo và tin tức điều hành.'
-    },
-    submission_history: {
-      title: 'Lịch sử Nộp Văn bản',
-      icon: FileSpreadsheet,
-      description: 'Quản lý và tra cứu tệp báo cáo đã nộp lên Đoàn xã.'
-    },
-    contact: {
-      title: 'Liên hệ Đoàn xã',
-      icon: SupportModal,
-      description: 'Thông tin liên hệ Ban Thường vụ Đoàn xã Xuân Thới Sơn.'
-    }
+    incoming_docs: { title: 'Quản lý Văn bản đến', icon: FileText, description: 'Tiếp nhận, xử lý và lưu trữ các công văn, kế hoạch gửi tới Đoàn xã Xuân Thới Sơn.' },
+    outgoing_docs: { title: 'Quản lý Văn bản đi', icon: FileText, description: 'Ban hành, phân phối các công văn, thông báo tới 30 Chi đoàn Ấp trực thuộc.' },
+    doan_xa_docs: { title: 'Văn bản từ Đoàn xã', icon: FileText, description: 'Danh sách văn bản chỉ đạo, kế hoạch do Đoàn xã Xuân Thới Sơn ban hành.' },
+    required_docs: { title: 'Văn bản cần nộp', icon: FileText, description: 'Theo dõi và thực hiện nộp các báo cáo, kế hoạch theo đúng thời hạn quy định.' },
+    todo: { title: 'Quản lý Công việc (Todo List)', icon: CheckSquare, description: 'Theo dõi tiến độ thực hiện nhiệm vụ và công việc được giao.' },
+    branch_tasks: { title: 'Công việc của Chi đoàn', icon: CheckSquare, description: 'Quản lý danh mục nhiệm vụ và công việc nội bộ của Chi đoàn Ấp.' },
+    activities: { title: 'Quản lý Lịch hoạt động', icon: Calendar, description: 'Theo dõi lịch tổ chức các phong trào, chương trình thanh niên cấp xã và ấp.' },
+    reports: { title: 'Báo cáo Thống kê', icon: BarChart2, description: 'Tổng hợp số liệu hoạt động, văn bản và công tác đoàn toàn xã.' },
+    storage: { title: 'Kho Lưu trữ Văn bản', icon: Folder, description: 'Lưu trữ tập trung toàn bộ hệ thống tài liệu, hồ sơ và văn bản số.' },
+    settings: { title: 'Cài đặt Hệ thống', icon: Settings, description: 'Quản lý thông tin cấu hình và phân quyền người dùng.' },
+    notifications: { title: 'Quản lý Thông báo', icon: Bell, description: 'Danh sách thông báo chỉ đạo và tin tức điều hành.' },
+    submission_history: { title: 'Lịch sử Nộp Văn bản', icon: FileSpreadsheet, description: 'Quản lý và tra cứu tệp báo cáo đã nộp lên Đoàn xã.' }
   };
 
   const currentViewMeta = viewConfig[activeTab] || {
@@ -140,6 +140,7 @@ export default function App() {
             setCurrentUser(null);
             setActiveTab('dashboard');
           }}
+          unreadNotiCount={notificationsList.length}
         />
 
         {/* Workspace Body */}
@@ -152,12 +153,15 @@ export default function App() {
                 Kết quả tìm kiếm cho: "{searchQuery}"
               </h3>
               <div className="p-3 bg-light rounded-3">
-                <div className="fw-semibold text-primary mb-2">Văn bản & Hoạt động tìm thấy:</div>
-                <ul className="mb-0 text-dark" style={{ fontSize: '13px' }}>
-                  <li className="mb-2">Kế hoạch số 45-KH/UBND - về phát triển thanh niên năm 2026</li>
-                  <li className="mb-2">Công văn số 87-CV/ĐTN - về công tác đoàn và phong trào TTN</li>
-                  <li className="mb-2">Ra quân Ngày Chủ nhật xanh</li>
-                </ul>
+                <div className="fw-semibold text-primary mb-2">Dữ liệu hệ thống:</div>
+                {activitiesList.length === 0 && documentsList.length === 0 ? (
+                  <div className="text-secondary" style={{ fontSize: '13px' }}>Không tìm thấy văn bản hay hoạt động khớp với từ khóa.</div>
+                ) : (
+                  <ul className="mb-0 text-dark" style={{ fontSize: '13px' }}>
+                    {activitiesList.map(a => <li key={a.id} className="mb-1">{a.title}</li>)}
+                    {documentsList.map(d => <li key={d.id} className="mb-1">{d.title}</li>)}
+                  </ul>
+                )}
               </div>
             </div>
           ) : activeTab === 'dashboard' ? (
@@ -168,6 +172,8 @@ export default function App() {
                 currentRole={currentUser}
                 onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                 onOpenIssueDocument={() => setShowIssueDocModal(true)}
+                activitiesCount={activitiesList.length}
+                docsCount={documentsList.length}
               />
 
               {/* Main Grid: Center Column (8 cols) & Right Column (4 cols) */}
@@ -179,64 +185,75 @@ export default function App() {
                     currentRole={currentUser}
                     onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                     onOpenIssueDocument={() => setShowIssueDocModal(true)}
-                    onOpenSendNotification={() => alert('Mở cửa sổ gửi thông báo hệ thống!')}
+                    onOpenSendNotification={() => alert('Đã khởi tạo hệ thống gửi thông báo!')}
                     onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
                     setActiveTab={setActiveTab}
                   />
 
                   {/* Middle Monthly Stats Cards (ONLY FOR ĐOÀN XÃ) */}
-                  {isDoanXa && <StatsCards />}
+                  {isDoanXa && (
+                    <StatsCards 
+                      activitiesCount={activitiesList.length}
+                      docsCount={documentsList.length}
+                    />
+                  )}
 
                   {/* Two Sub-Columns Split */}
                   {isDoanXa ? (
-                    /* Đoàn Xã Layout: Left Todo List | Right Upcoming Activities */
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
                         <TodoList setActiveTab={setActiveTab} />
                       </div>
                       <div className="col-12 col-md-6">
                         <UpcomingActivities 
+                          activities={activitiesList}
                           setActiveTab={setActiveTab} 
                           onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                         />
                       </div>
                     </div>
                   ) : (
-                    /* Chi Đoàn Ấp Layout: Left Upcoming Activities | Right Docs from Đoàn Xã */
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
-                        <UpcomingActivities setActiveTab={setActiveTab} />
+                        <UpcomingActivities 
+                          activities={activitiesList}
+                          setActiveTab={setActiveTab} 
+                        />
                       </div>
                       <div className="col-12 col-md-6">
-                        <ChiDoanDocsList setActiveTab={setActiveTab} />
+                        <ChiDoanDocsList 
+                          documents={documentsList}
+                          setActiveTab={setActiveTab} 
+                        />
                       </div>
                     </div>
                   )}
 
                   {/* Bottom Row for Chi Đoàn Ấp: Submission History Table */}
                   {!isDoanXa && (
-                    <DocHistoryTable setActiveTab={setActiveTab} />
+                    <DocHistoryTable 
+                      submissions={submissionsList}
+                      setActiveTab={setActiveTab} 
+                    />
                   )}
                 </div>
 
                 {/* RIGHT COLUMN */}
                 <div className="col-12 col-xl-4">
-                  {/* 1. Lịch công tác Mini Calendar */}
                   <CalendarWidget />
 
-                  {/* 2. Pending Documents Card */}
                   <PendingDocs 
                     currentRole={currentUser}
+                    documents={documentsList}
                     setActiveTab={setActiveTab}
                   />
 
-                  {/* 3. Branch Tasks Checklist (ONLY FOR CHI ĐOÀN ẤP) */}
                   {!isDoanXa && (
                     <BranchTasks setActiveTab={setActiveTab} />
                   )}
 
-                  {/* 4. Notifications List */}
                   <NotificationsList 
+                    notifications={notificationsList}
                     currentRole={currentUser}
                     setActiveTab={setActiveTab}
                   />
@@ -244,7 +261,7 @@ export default function App() {
               </div>
             </div>
           ) : activeTab === 'branches' ? (
-            /* 30 CHI ĐOÀN ẤP MANAGEMENT VIEW (NO DIRECT DIRECT SWITCH BUTTON) */
+            /* 30 CHI ĐOÀN ẤP MANAGEMENT VIEW */
             <div className="content-card">
               <div className="d-flex align-items-center justify-content-between mb-4">
                 <div>
@@ -279,7 +296,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            /* CLEAN 100% VIETNAMESE SECONDARY VIEWS */
+            /* SECONDARY VIEWS */
             <div className="content-card">
               <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
                 <div>
@@ -317,16 +334,19 @@ export default function App() {
       <CreateActivityModal 
         show={showCreateActivityModal}
         onClose={() => setShowCreateActivityModal(false)}
+        onSave={handleAddActivity}
       />
 
       <IssueDocumentModal 
         show={showIssueDocModal}
         onClose={() => setShowIssueDocModal(false)}
+        onSave={handleIssueDocument}
       />
 
       <SubmitDocumentModal 
         show={showSubmitDocModal}
         onClose={() => setShowSubmitDocModal(false)}
+        onSave={handleSubmitDocument}
         currentRole={currentUser}
       />
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { X, Upload, Send, Calendar, CheckCircle2, FileText, PhoneCall } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES } from '../lib/supabase';
 
 // 1. Create Activity Modal
 export function CreateActivityModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    title: '',
+    title: 'Ra quân Ngày Chủ nhật xanh năm 2026',
     day: '25',
     month: 'THÁNG 5',
     time: '08:00 - 11:30',
@@ -18,7 +18,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
     onSave && onSave(formData);
     onClose();
   };
@@ -108,15 +108,15 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     doc_number: '92-CV/ĐTN',
     title: 'Công văn v/v triển khai công tác phong trào tháng 6/2026',
     recipient_scope: 'ALL',
-    file: null
+    file_name: 'Mau_Cong_Van_92_DX.pdf'
   });
 
   if (!show) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
-    alert(`Đã ban hành văn bản "${formData.doc_number}" thành công tới ${formData.recipient_scope === 'ALL' ? '30 Chi đoàn Ấp' : formData.recipient_scope}!`);
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    onSave && onSave(formData);
     onClose();
   };
 
@@ -171,20 +171,25 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tải lên tệp văn bản PDF</label>
-                <div className="border border-2 border-dashed rounded-3 p-4 text-center bg-light">
-                  <Upload size={32} className="text-primary mb-2" />
-                  <div className="fw-semibold text-dark" style={{ fontSize: '13px' }}>Kéo thả hoặc nhấp để chọn tệp PDF văn bản</div>
-                  <div className="text-secondary" style={{ fontSize: '11px' }}>Hỗ trợ tệp .pdf, .docx tối đa 25MB</div>
-                  <input type="file" className="d-none" id="pdfUploadInput" onChange={() => alert('Đã đính kèm tệp PDF văn bản thành công!')} />
-                  <label htmlFor="pdfUploadInput" className="btn btn-sm btn-outline-primary mt-2">Chọn tệp tin</label>
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp văn bản PDF mẫu</label>
+                <div className="border border-2 border-dashed rounded-3 p-3 bg-light d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <FileText size={24} className="text-danger" />
+                    <div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{formData.file_name}</div>
+                      <div className="text-muted" style={{ fontSize: '10.5px' }}>Đã sẵn sàng tải lên và gửi tới 30 Ấp</div>
+                    </div>
+                  </div>
+                  <a href="/Mau_Cong_Van_92_DX.pdf" target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                    Xem mẫu PDF
+                  </a>
                 </div>
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
               <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                Ban Hành Văn Bản
+                Ban Hành Văn Bản Ngay
               </button>
             </div>
           </form>
@@ -195,15 +200,18 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
 }
 
 // 3. Submit Document Modal (Nộp văn bản cho Chi đoàn Ấp)
-export function SubmitDocumentModal({ show, onClose, currentRole }) {
-  const [docName, setDocName] = useState('Báo cáo công tác tháng 5/2026');
+export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
+  const [formData, setFormData] = useState({
+    title: 'Báo cáo công tác Tháng 5/2026',
+    file_name: 'Bao_Cao_T5_ApBuiMon.pdf'
+  });
 
   if (!show) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
-    alert(`Đã nộp thành công tệp "${docName}" từ ${currentRole.full_name} lên Đoàn xã Xuân Thới Sơn!`);
+    confetti({ particleCount: 90, spread: 90, origin: { y: 0.6 } });
+    onSave && onSave(formData);
     onClose();
   };
 
@@ -230,25 +238,32 @@ export function SubmitDocumentModal({ show, onClose, currentRole }) {
                 <input 
                   type="text" 
                   className="form-control" 
-                  value={docName}
-                  onChange={(e) => setDocName(e.target.value)}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required 
                 />
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp PDF báo cáo</label>
-                <div className="border border-2 border-dashed rounded-3 p-4 text-center bg-light">
-                  <FileText size={32} className="text-success mb-2" />
-                  <div className="fw-semibold text-dark" style={{ fontSize: '13px' }}>Chọn tệp PDF báo cáo đã ký tên</div>
-                  <input type="file" className="form-control form-control-sm mt-2" required />
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp PDF báo cáo mẫu</label>
+                <div className="border border-2 border-dashed rounded-3 p-3 bg-light d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <FileText size={24} className="text-success" />
+                    <div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{formData.file_name}</div>
+                      <div className="text-muted" style={{ fontSize: '10.5px' }}>Đã ký tên và sẵn sàng nộp</div>
+                    </div>
+                  </div>
+                  <a href="/Bao_Cao_T5_ApBuiMon.pdf" target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-success">
+                    Xem mẫu PDF
+                  </a>
                 </div>
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
               <button type="submit" className="btn btn-success px-4 fw-semibold">
-                Nộp Văn Bản Ngay
+                Nộp Báo Cáo Ngay
               </button>
             </div>
           </form>

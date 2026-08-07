@@ -1,10 +1,7 @@
 import React from 'react';
-import { FileText, FileSpreadsheet } from 'lucide-react';
-import { INITIAL_SUBMISSION_HISTORY } from '../lib/supabase';
+import { FileText, Download, FileSpreadsheet, CheckCircle } from 'lucide-react';
 
-export default function DocHistoryTable({ setActiveTab }) {
-  const submissions = INITIAL_SUBMISSION_HISTORY;
-
+export default function DocHistoryTable({ submissions = [], setActiveTab }) {
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -45,8 +42,24 @@ export default function DocHistoryTable({ setActiveTab }) {
                   <td className="fw-bold text-dark">{row.title}</td>
                   <td className="text-secondary">{row.due_date}</td>
                   <td className="text-secondary">{row.sub_date}</td>
-                  <td><span className="badge bg-success-subtle text-success">{row.status}</span></td>
-                  <td>{row.file_name}</td>
+                  <td>
+                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                      <CheckCircle size={12} className="me-1" /> {row.status}
+                    </span>
+                  </td>
+                  <td>
+                    <a 
+                      href={`/${row.file_name}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="d-inline-flex align-items-center gap-1 text-danger text-decoration-none fw-semibold"
+                      style={{ fontSize: '12px' }}
+                    >
+                      <FileText size={16} />
+                      <span>{row.file_name}</span>
+                      <Download size={14} className="text-secondary ms-1" />
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

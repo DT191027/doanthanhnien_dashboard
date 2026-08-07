@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, FileText, Send, Users, Minus } from 'lucide-react';
 
-export default function StatsCards() {
+export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
   return (
     <div className="row g-3 mb-4">
       {/* Stat Card 1 */}
@@ -16,13 +16,12 @@ export default function StatsCards() {
             </div>
           </div>
           <div className="fw-extrabold text-dark mb-2" style={{ fontSize: '24px' }}>
-            0
+            {activitiesCount}
           </div>
           <div className="d-flex align-items-center gap-1 text-secondary mb-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
             <Minus size={14} />
-            <span>Chưa có dữ liệu</span>
+            <span>{activitiesCount === 0 ? 'Chưa phát sinh dữ liệu' : `${activitiesCount} hoạt động mới`}</span>
           </div>
-          {/* Straight Flat Line */}
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
               d="M 0 12 L 100 12" 
@@ -47,13 +46,12 @@ export default function StatsCards() {
             </div>
           </div>
           <div className="fw-extrabold text-dark mb-2" style={{ fontSize: '24px' }}>
-            0
+            {docsCount}
           </div>
           <div className="d-flex align-items-center gap-1 text-secondary mb-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
             <Minus size={14} />
-            <span>Chưa có dữ liệu</span>
+            <span>{docsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${docsCount} văn bản mới`}</span>
           </div>
-          {/* Straight Flat Line */}
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
               d="M 0 12 L 100 12" 
@@ -78,13 +76,12 @@ export default function StatsCards() {
             </div>
           </div>
           <div className="fw-extrabold text-dark mb-2" style={{ fontSize: '24px' }}>
-            0
+            {docsCount}
           </div>
           <div className="d-flex align-items-center gap-1 text-secondary mb-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
             <Minus size={14} />
-            <span>Chưa có dữ liệu</span>
+            <span>{docsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${docsCount} văn bản đã ban hành`}</span>
           </div>
-          {/* Straight Flat Line */}
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
               d="M 0 12 L 100 12" 
@@ -115,7 +112,6 @@ export default function StatsCards() {
             <Minus size={14} />
             <span>30 Chi đoàn Ấp trực thuộc</span>
           </div>
-          {/* Straight Flat Line */}
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
               d="M 0 12 L 100 12" 

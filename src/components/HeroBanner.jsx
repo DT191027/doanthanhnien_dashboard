@@ -5,7 +5,9 @@ import { getLiveVietnameseDate } from '../lib/supabase';
 export default function HeroBanner({ 
   currentRole, 
   onOpenCreateActivity, 
-  onOpenIssueDocument 
+  onOpenIssueDocument,
+  activitiesCount = 0,
+  docsCount = 0
 }) {
   const isDoanXa = currentRole.role === 'doan_xa';
   const liveDateText = getLiveVietnameseDate();
@@ -47,7 +49,7 @@ export default function HeroBanner({
                   <Calendar size={18} />
                 </div>
                 <div>
-                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>0</div>
+                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>{activitiesCount}</div>
                   <div className="text-muted" style={{ fontSize: '11px' }}>Hoạt động sắp diễn ra</div>
                 </div>
               </div>
@@ -58,7 +60,7 @@ export default function HeroBanner({
                   <FileText size={18} />
                 </div>
                 <div>
-                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>0</div>
+                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>{docsCount}</div>
                   <div className="text-muted" style={{ fontSize: '11px' }}>Văn bản cần xử lý</div>
                 </div>
               </div>
@@ -82,7 +84,7 @@ export default function HeroBanner({
                   <Calendar size={18} />
                 </div>
                 <div>
-                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>0</div>
+                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>{activitiesCount}</div>
                   <div className="text-muted" style={{ fontSize: '11px' }}>Hoạt động sắp diễn ra</div>
                 </div>
               </div>
@@ -93,7 +95,7 @@ export default function HeroBanner({
                   <FileText size={18} />
                 </div>
                 <div>
-                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>0</div>
+                  <div className="fw-extrabold text-dark" style={{ fontSize: '18px', lineHeight: 1 }}>{docsCount}</div>
                   <div className="text-muted" style={{ fontSize: '11px' }}>Văn bản mới từ Đoàn xã</div>
                 </div>
               </div>

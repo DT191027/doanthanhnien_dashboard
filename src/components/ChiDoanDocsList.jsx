@@ -1,10 +1,7 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
-import { INITIAL_DOCUMENTS_CHI_DOAN } from '../lib/supabase';
+import { FileText, Download } from 'lucide-react';
 
-export default function ChiDoanDocsList({ setActiveTab, onSelectDocument }) {
-  const docs = INITIAL_DOCUMENTS_CHI_DOAN;
-
+export default function ChiDoanDocsList({ documents = [], setActiveTab }) {
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -17,7 +14,7 @@ export default function ChiDoanDocsList({ setActiveTab, onSelectDocument }) {
         </span>
       </div>
 
-      {docs.length === 0 ? (
+      {documents.length === 0 ? (
         <div className="p-4 bg-light rounded-3 text-center border">
           <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-2 text-primary">
             <FileText size={28} />
@@ -29,9 +26,27 @@ export default function ChiDoanDocsList({ setActiveTab, onSelectDocument }) {
         </div>
       ) : (
         <div className="d-flex flex-column gap-2 mb-3">
-          {docs.map((doc) => (
-            <div key={doc.id} className="p-3 rounded-3 bg-light border">
-              <div className="fw-bold text-dark">{doc.title}</div>
+          {documents.map((doc) => (
+            <div 
+              key={doc.id} 
+              className="p-3 rounded-3 bg-light border d-flex align-items-center justify-content-between hover-bg-white transition"
+            >
+              <div className="d-flex align-items-start gap-2">
+                <div className="p-2 rounded-2 bg-primary-subtle text-primary mt-1">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-warning text-dark px-1 py-0" style={{ fontSize: '9px', fontWeight: 800 }}>NEW</span>
+                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>{doc.title}</span>
+                  </div>
+                  <div className="text-secondary" style={{ fontSize: '11.5px' }}>{doc.summary}</div>
+                  <div className="text-muted" style={{ fontSize: '10.5px' }}>{doc.sender}</div>
+                </div>
+              </div>
+              <a href={`/${doc.file_name}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+                <Download size={13} /> Tải PDF
+              </a>
             </div>
           ))}
         </div>

@@ -1,10 +1,7 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
-import { INITIAL_NOTIFICATIONS } from '../lib/supabase';
 
-export default function NotificationsList({ currentRole, setActiveTab }) {
-  const notifications = INITIAL_NOTIFICATIONS;
-
+export default function NotificationsList({ notifications = [], currentRole, setActiveTab }) {
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -28,8 +25,15 @@ export default function NotificationsList({ currentRole, setActiveTab }) {
       ) : (
         <div className="d-flex flex-column gap-3">
           {notifications.map((n) => (
-            <div key={n.id} className="p-2 rounded-3 bg-light border">
-              <div className="fw-bold text-dark">{n.title}</div>
+            <div key={n.id} className="p-3 rounded-3 bg-light border d-flex align-items-start gap-2">
+              <div className="p-2 rounded-2 bg-warning-subtle text-warning mt-1">
+                <Bell size={16} />
+              </div>
+              <div>
+                <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>{n.title}</div>
+                {n.content && <div className="text-secondary" style={{ fontSize: '11.5px' }}>{n.content}</div>}
+                {n.time_ago && <div className="text-muted" style={{ fontSize: '10.5px' }}>{n.time_ago}</div>}
+              </div>
             </div>
           ))}
         </div>

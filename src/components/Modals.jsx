@@ -6,12 +6,12 @@ import { INITIAL_BRANCHES } from '../lib/supabase';
 // 1. Create Activity Modal
 export function CreateActivityModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    title: 'Ra quân Ngày Chủ nhật xanh năm 2026',
-    day: '25',
-    month: 'THÁNG 5',
-    time: '08:00 - 11:30',
-    location: 'Hội trường UBND xã Xuân Thới Sơn',
-    description: 'Chương trình phát động thi đua chào mừng ngày thành lập Đoàn.'
+    title: '',
+    day: '',
+    month: '',
+    time: '',
+    location: '',
+    description: ''
   });
 
   if (!show) return null;
@@ -20,6 +20,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     e.preventDefault();
     confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
     onSave && onSave(formData);
+    setFormData({ title: '', day: '', month: '', time: '', location: '', description: '' });
     onClose();
   };
 
@@ -37,10 +38,10 @@ export function CreateActivityModal({ show, onClose, onSave }) {
           <form onSubmit={handleSubmit}>
             <div className="modal-body p-4">
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên hoạt động</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên hoạt động <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
                   placeholder="Ví dụ: Ra quân Ngày Chủ nhật xanh..."
                   required
                   value={formData.title}
@@ -50,30 +51,42 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
               <div className="row g-2 mb-3">
                 <div className="col-6">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian thực hiện</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="08:00 - 11:30"
+                    required
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   />
                 </div>
                 <div className="col-6">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày diễn ra</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    value="25/05/2026"
-                    readOnly
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày tổ chức <span className="text-danger">*</span></label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    required
+                    onChange={(e) => {
+                      const d = new Date(e.target.value);
+                      const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
+                      setFormData({ 
+                        ...formData, 
+                        day: String(d.getDate()).padStart(2, '0'),
+                        month: months[d.getMonth()]
+                      });
+                    }}
                   />
                 </div>
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Địa điểm tổ chức</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Địa điểm tổ chức <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Hội trường UBND xã Xuân Thới Sơn"
+                  required
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
@@ -81,9 +94,10 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
               <div className="mb-2">
                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mô tả chi tiết</label>
-                <textarea 
-                  className="form-control" 
-                  rows="3" 
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  placeholder="Nội dung chương trình, yêu cầu tham gia..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 ></textarea>
@@ -102,21 +116,32 @@ export function CreateActivityModal({ show, onClose, onSave }) {
   );
 }
 
-// 2. Issue Document Modal (Ban hành văn bản cho Đoàn xã)
+// 2. Issue Document Modal
 export function IssueDocumentModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    doc_number: '92-CV/ĐTN',
-    title: 'Công văn v/v triển khai công tác phong trào tháng 6/2026',
+    doc_number: '',
+    title: '',
     recipient_scope: 'ALL',
-    file_name: 'Mau_Cong_Van_92_DX.pdf'
+    file_name: ''
   });
+  const [selectedFile, setSelectedFile] = useState(null);
 
   if (!show) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setFormData({ ...formData, file_name: file.name });
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
-    onSave && onSave(formData);
+    onSave && onSave({ ...formData, file_name: selectedFile ? selectedFile.name : '' });
+    setFormData({ doc_number: '', title: '', recipient_scope: 'ALL', file_name: '' });
+    setSelectedFile(null);
     onClose();
   };
 
@@ -127,7 +152,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
           <div className="modal-header">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
               <Send className="text-primary" size={20} />
-              Ban Hành Văn Bản Mới (Đoàn xã)
+              Ban Hành Văn Bản Mới
             </h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
@@ -135,35 +160,37 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
             <div className="modal-body p-4">
               <div className="row g-3 mb-3">
                 <div className="col-md-4">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Số / Ký hiệu văn bản</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Số / Ký hiệu văn bản <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="92-CV/ĐTN"
+                    required
                     value={formData.doc_number}
                     onChange={(e) => setFormData({ ...formData, doc_number: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="col-md-8">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên / Trích yếu văn bản</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên / Trích yếu văn bản <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Công văn v/v triển khai công tác phong trào..."
+                    required
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
                   />
                 </div>
               </div>
 
               <div className="mb-3">
                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đơn vị nhận văn bản</label>
-                <select 
+                <select
                   className="form-select"
                   value={formData.recipient_scope}
                   onChange={(e) => setFormData({ ...formData, recipient_scope: e.target.value })}
                 >
-                  <option value="ALL">-- Gửi tất cả 30 Chi đoàn Ấp trực thuộc --</option>
+                  <option value="ALL">Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
                   {INITIAL_BRANCHES.map(b => (
                     <option key={b.id} value={b.name}>{b.name}</option>
                   ))}
@@ -171,19 +198,21 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp văn bản PDF mẫu</label>
-                <div className="border border-2 border-dashed rounded-3 p-3 bg-light d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <FileText size={24} className="text-danger" />
-                    <div>
-                      <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{formData.file_name}</div>
-                      <div className="text-muted" style={{ fontSize: '10.5px' }}>Đã sẵn sàng tải lên và gửi tới 30 Ấp</div>
-                    </div>
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp văn bản PDF</label>
+                <input
+                  type="file"
+                  className="form-control"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleFileChange}
+                />
+                {selectedFile && (
+                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center gap-2">
+                    <FileText size={16} className="text-success" />
+                    <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
+                      Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                    </span>
                   </div>
-                  <a href="/Mau_Cong_Van_92_DX.pdf" target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
-                    Xem mẫu PDF
-                  </a>
-                </div>
+                )}
               </div>
             </div>
             <div className="modal-footer">
@@ -199,19 +228,27 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
   );
 }
 
-// 3. Submit Document Modal (Nộp văn bản cho Chi đoàn Ấp)
+// 3. Submit Document Modal
 export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
-  const [formData, setFormData] = useState({
-    title: 'Báo cáo công tác Tháng 5/2026',
-    file_name: 'Bao_Cao_T5_ApBuiMon.pdf'
-  });
+  const [formData, setFormData] = useState({ title: '', file_name: '' });
+  const [selectedFile, setSelectedFile] = useState(null);
 
   if (!show) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setFormData({ ...formData, file_name: file.name });
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 90, spread: 90, origin: { y: 0.6 } });
-    onSave && onSave(formData);
+    onSave && onSave({ ...formData, file_name: selectedFile ? selectedFile.name : formData.title });
+    setFormData({ title: '', file_name: '' });
+    setSelectedFile(null);
     onClose();
   };
 
@@ -222,7 +259,7 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
           <div className="modal-header">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
               <Upload className="text-primary" size={20} />
-              Nộp Báo Cáo / Văn Bản lên Đoàn Xã
+              Nộp Báo Cáo / Văn Bản lên Đoàn xã
             </h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
@@ -230,34 +267,38 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
             <div className="modal-body p-4">
               <div className="mb-3">
                 <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đơn vị nộp</label>
-                <input type="text" className="form-control bg-light" value={currentRole.full_name} readOnly />
+                <input type="text" className="form-control bg-light" value={currentRole?.full_name || ''} readOnly />
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên báo cáo / văn bản</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên báo cáo / văn bản <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Báo cáo công tác Tháng 5/2026..."
+                  required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required 
                 />
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp PDF báo cáo mẫu</label>
-                <div className="border border-2 border-dashed rounded-3 p-3 bg-light d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <FileText size={24} className="text-success" />
-                    <div>
-                      <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{formData.file_name}</div>
-                      <div className="text-muted" style={{ fontSize: '10.5px' }}>Đã ký tên và sẵn sàng nộp</div>
-                    </div>
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đính kèm tệp PDF báo cáo <span className="text-danger">*</span></label>
+                <input
+                  type="file"
+                  className="form-control"
+                  accept=".pdf,.doc,.docx"
+                  required
+                  onChange={handleFileChange}
+                />
+                {selectedFile && (
+                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center gap-2">
+                    <FileText size={16} className="text-success" />
+                    <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
+                      Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                    </span>
                   </div>
-                  <a href="/Bao_Cao_T5_ApBuiMon.pdf" target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-success">
-                    Xem mẫu PDF
-                  </a>
-                </div>
+                )}
               </div>
             </div>
             <div className="modal-footer">
@@ -294,13 +335,12 @@ export function SupportModal({ show, onClose }) {
             </div>
             <h6 className="fw-bold text-dark">Đoàn xã Xuân Thới Sơn</h6>
             <p className="text-secondary" style={{ fontSize: '13px' }}>
-              Bộ phận hỗ trợ kỹ thuật và văn thư Đoàn xã luôn sẵn sàng hỗ trợ 24/7.
+              Bộ phận hỗ trợ kỹ thuật và văn thư Đoàn xã luôn sẵn sàng hỗ trợ.
             </p>
-
             <div className="bg-light p-3 rounded-3 text-start mb-3" style={{ fontSize: '13px' }}>
-              <div className="mb-2"><strong>📞 Hotline Kỹ Thuật:</strong> 0908.123.456</div>
-              <div className="mb-2"><strong>✉️ Email tiếp nhận:</strong> doanxaxuanthoison@tphcm.gov.vn</div>
-              <div><strong>🏢 Văn phòng:</strong> Trụ sở UBND xã Xuân Thới Sơn, Thành phố Hồ Chí Minh</div>
+              <div className="mb-2"><strong>Hotline Kỹ Thuật:</strong> 0908.123.456</div>
+              <div className="mb-2"><strong>Email tiếp nhận:</strong> doanxaxuanthoison@tphcm.gov.vn</div>
+              <div><strong>Văn phòng:</strong> Trụ sở UBND xã Xuân Thới Sơn, TP. Hồ Chí Minh</div>
             </div>
           </div>
           <div className="modal-footer justify-content-center">

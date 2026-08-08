@@ -43,12 +43,13 @@ import {
   syncFetchNotifications,
   syncSaveNotification
 } from './lib/supabase';
-import { Search } from 'lucide-react';
+import { Search, CheckCircle } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null); 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
 
   // Dynamic Realtime & Persistent State Lists
   const [activitiesList, setActivitiesList] = useState([]);
@@ -63,7 +64,15 @@ export default function App() {
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  // Initial Load from Persistent Sync (Supabase + LocalStorage Backup)
+  // Toast notification helper
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage('');
+    }, 4000);
+  };
+
+  // Initial Load from Persistent Sync
   useEffect(() => {
     async function loadInitialData() {
       const [acts, docs, subs, notis] = await Promise.all([
@@ -80,7 +89,7 @@ export default function App() {
 
     loadInitialData();
 
-    // Supabase Realtime Subscription Channel
+    // Supabase Realtime Channel
     if (isSupabaseConfigured && supabase) {
       const channel = supabase
         .channel('public-db-changes')
@@ -102,7 +111,7 @@ export default function App() {
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
-  // Handlers for dynamic actions with Persistent Sync
+  // Handlers for dynamic actions with Persistent Sync & Visual Toast Feedback
   const handleAddActivity = async (newAct) => {
     const activityItem = {
       id: `act-${Date.now()}`,
@@ -116,6 +125,7 @@ export default function App() {
     };
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
+    triggerToast(`Đã tạo thành công hoạt động: "${newAct.title}"!`);
   };
 
   const handleIssueDocument = async (newDoc) => {
@@ -135,6 +145,7 @@ export default function App() {
     };
     const updated = await syncSaveDocument(createdDoc);
     setDocumentsList(updated);
+    triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới các Chi đoàn!`);
   };
 
   const handleSubmitDocument = async (newSub) => {
@@ -149,6 +160,7 @@ export default function App() {
     };
     const updated = await syncSaveSubmission(createdSub);
     setSubmissionsList(updated);
+    triggerToast(`Đã nộp thành công báo cáo: "${newSub.title}"!`);
   };
 
   const handleSendNotification = async (newNoti) => {
@@ -156,14 +168,28 @@ export default function App() {
       id: `noti-${Date.now()}`,
       title: newNoti.title,
       content: newNoti.content,
+      target_scope: newNoti.target_scope || 'Tất cả 30 Chi đoàn Ấp',
       time_ago: 'Vừa xong'
     };
     const updated = await syncSaveNotification(createdNoti);
     setNotificationsList(updated);
+    setActiveTab('notifications'); // Automatically switch tab so user sees the new notification immediately!
+    triggerToast(`Đã phát thông báo chỉ đạo: "${newNoti.title}"!`);
   };
 
   return (
-    <div className="d-flex min-vh-100 bg-main">
+    <div className="d-flex min-vh-100 bg-main position-relative">
+      {/* Toast Feedback Alert Banner */}
+      {toastMessage && (
+        <div 
+          className="position-fixed top-0 start-50 translate-middle-x mt-3 bg-success text-white px-4 py-2.5 rounded-3 shadow-lg d-flex align-items-center gap-2 fw-semibold"
+          style={{ zIndex: 9999, fontSize: '13.5px' }}
+        >
+          <CheckCircle size={18} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* 1. Left Sidebar */}
       <Sidebar 
         currentRole={currentUser}

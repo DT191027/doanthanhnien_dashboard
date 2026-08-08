@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES } from '../lib/supabase';
 
@@ -318,42 +318,61 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
 export function SendMessageModal({ show, onClose, onSave, currentRole }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [targetScope, setTargetScope] = useState('ALL');
 
   if (!show) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
+    
+    const scopeText = targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope;
     onSave && onSave({
       id: `noti-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
+      target_scope: scopeText,
       time_ago: 'Vừa xong'
     });
     setTitle('');
     setContent('');
+    setTargetScope('ALL');
     onClose();
   };
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
       <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
+          <div className="modal-header border-bottom-0 pb-0">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
-              <MessageSquare className="text-primary" size={20} />
-              Gửi Thông Báo / Tin Nhắn Điều Hành
+              <Megaphone className="text-primary" size={22} />
+              Gửi Thông Báo / Chỉ Đạo Điều Hành
             </h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <form onSubmit={handleSubmit}>
             <div className="modal-body p-4">
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tiêu đề thông báo <span className="text-danger">*</span></label>
+                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Đơn vị nhận thông báo</label>
+                <select 
+                  className="form-select"
+                  value={targetScope}
+                  onChange={(e) => setTargetScope(e.target.value)}
+                >
+                  <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
+                  {INITIAL_BRANCHES.map(b => (
+                    <option key={b.id} value={b.name}>📍 {b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Tiêu đề thông báo <span className="text-danger">*</span></label>
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Ví dụ: Thông báo khẩn v/v họp Đoàn xã..."
+                  placeholder="Ví dụ: Thông báo khẩn v/v lịch họp Ban chấp hành..."
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -361,21 +380,22 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
               </div>
 
               <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Nội dung thông báo <span className="text-danger">*</span></label>
+                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Nội dung thông báo <span className="text-danger">*</span></label>
                 <textarea
                   className="form-control"
                   rows="4"
-                  placeholder="Nhập nội dung thông tin cần truyền tải..."
+                  placeholder="Nhập chi tiết thông tin truyền tải tới các Chi đoàn Ấp..."
                   required
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                 ></textarea>
               </div>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
-              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                Gửi Thông Báo Ngay
+            <div className="modal-footer border-top-0 pt-0">
+              <button type="button" className="btn btn-light border px-4 rounded-3" onClick={onClose}>Hủy</button>
+              <button type="submit" className="btn btn-primary px-4 fw-semibold rounded-3 d-flex align-items-center gap-2" style={{ backgroundColor: '#0066FF' }}>
+                <Send size={15} />
+                <span>Gửi Thông Báo Ngay</span>
               </button>
             </div>
           </form>

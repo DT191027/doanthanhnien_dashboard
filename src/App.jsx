@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
@@ -17,17 +17,40 @@ import {
   CreateActivityModal, 
   IssueDocumentModal, 
   SubmitDocumentModal, 
+  SendMessageModal,
   SupportModal 
 } from './components/Modals';
-import { INITIAL_BRANCHES } from './lib/supabase';
-import { FileText, Search, Folder, Calendar, BarChart2, Bell, Settings, FileSpreadsheet, CheckSquare } from 'lucide-react';
+import { 
+  ActivitiesView, 
+  DocumentsView, 
+  SubmissionsView, 
+  NotificationsView, 
+  TasksView, 
+  ReportsView, 
+  StorageArchiveView, 
+  SettingsView 
+} from './components/SecondaryViews';
+import { 
+  INITIAL_BRANCHES, 
+  supabase, 
+  isSupabaseConfigured,
+  syncFetchActivities,
+  syncSaveActivity,
+  syncFetchDocuments,
+  syncSaveDocument,
+  syncFetchSubmissions,
+  syncSaveSubmission,
+  syncFetchNotifications,
+  syncSaveNotification
+} from './lib/supabase';
+import { Search } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null); 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Dynamic Realtime State Lists
+  // Dynamic Realtime & Persistent State Lists
   const [activitiesList, setActivitiesList] = useState([]);
   const [documentsList, setDocumentsList] = useState([]);
   const [submissionsList, setSubmissionsList] = useState([]);
@@ -37,7 +60,40 @@ export default function App() {
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
   const [showIssueDocModal, setShowIssueDocModal] = useState(false);
   const [showSubmitDocModal, setShowSubmitDocModal] = useState(false);
+  const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+
+  // Initial Load from Persistent Sync (Supabase + LocalStorage Backup)
+  useEffect(() => {
+    async function loadInitialData() {
+      const [acts, docs, subs, notis] = await Promise.all([
+        syncFetchActivities(),
+        syncFetchDocuments(),
+        syncFetchSubmissions(),
+        syncFetchNotifications()
+      ]);
+      setActivitiesList(acts);
+      setDocumentsList(docs);
+      setSubmissionsList(subs);
+      setNotificationsList(notis);
+    }
+
+    loadInitialData();
+
+    // Supabase Realtime Subscription Channel
+    if (isSupabaseConfigured && supabase) {
+      const channel = supabase
+        .channel('public-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          loadInitialData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, []);
 
   // Unauthenticated -> Login Screen
   if (!currentUser) {
@@ -46,24 +102,23 @@ export default function App() {
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
-  // Handlers for dynamic actions
-  const handleAddActivity = (newAct) => {
-    setActivitiesList([
-      {
-        id: `act-${Date.now()}`,
-        day: newAct.day || '25',
-        month: newAct.month || 'THÁNG 5',
-        title: newAct.title,
-        time: newAct.time || '08:00 - 11:30',
-        location: newAct.location || 'Hội trường UBND xã Xuân Thới Sơn',
-        status: 'Sắp diễn ra',
-        dateIso: '2026-05-25'
-      },
-      ...activitiesList
-    ]);
+  // Handlers for dynamic actions with Persistent Sync
+  const handleAddActivity = async (newAct) => {
+    const activityItem = {
+      id: `act-${Date.now()}`,
+      day: newAct.day || '25',
+      month: newAct.month || 'THÁNG 5',
+      title: newAct.title,
+      time: newAct.time || '08:00 - 11:30',
+      location: newAct.location || 'Hội trường UBND xã Xuân Thới Sơn',
+      status: 'Sắp diễn ra',
+      dateIso: new Date().toISOString().split('T')[0]
+    };
+    const updated = await syncSaveActivity(activityItem);
+    setActivitiesList(updated);
   };
 
-  const handleIssueDocument = (newDoc) => {
+  const handleIssueDocument = async (newDoc) => {
     const createdDoc = {
       id: `doc-${Date.now()}`,
       doc_number: newDoc.doc_number,
@@ -76,47 +131,36 @@ export default function App() {
       type: 'outgoing',
       date: new Date().toLocaleDateString('vi-VN'),
       dateText: 'Hôm nay',
-      isNew: true,
-      file_name: newDoc.file_name || 'Mau_Cong_Van_92_DX.pdf'
+      file_name: newDoc.file_name || ''
     };
-    setDocumentsList([createdDoc, ...documentsList]);
+    const updated = await syncSaveDocument(createdDoc);
+    setDocumentsList(updated);
   };
 
-  const handleSubmitDocument = (newSub) => {
+  const handleSubmitDocument = async (newSub) => {
     const createdSub = {
       id: `sub-${Date.now()}`,
       title: newSub.title,
+      branch_name: currentUser.full_name || 'Chi đoàn Ấp',
       due_date: new Date().toLocaleDateString('vi-VN'),
       sub_date: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
       status: 'Đã nộp',
-      file_name: newSub.file_name || 'Bao_Cao_T5_ApBuiMon.pdf'
+      file_name: newSub.file_name || ''
     };
-    setSubmissionsList([createdSub, ...submissionsList]);
+    const updated = await syncSaveSubmission(createdSub);
+    setSubmissionsList(updated);
   };
 
-  // Views Mapping
-  const viewConfig = {
-    incoming_docs: { title: 'Quản lý Văn bản đến', icon: FileText, description: 'Tiếp nhận, xử lý và lưu trữ các công văn, kế hoạch gửi tới Đoàn xã Xuân Thới Sơn.' },
-    outgoing_docs: { title: 'Quản lý Văn bản đi', icon: FileText, description: 'Ban hành, phân phối các công văn, thông báo tới 30 Chi đoàn Ấp trực thuộc.' },
-    doan_xa_docs: { title: 'Văn bản từ Đoàn xã', icon: FileText, description: 'Danh sách văn bản chỉ đạo, kế hoạch do Đoàn xã Xuân Thới Sơn ban hành.' },
-    required_docs: { title: 'Văn bản cần nộp', icon: FileText, description: 'Theo dõi và thực hiện nộp các báo cáo, kế hoạch theo đúng thời hạn quy định.' },
-    todo: { title: 'Quản lý Công việc (Todo List)', icon: CheckSquare, description: 'Theo dõi tiến độ thực hiện nhiệm vụ và công việc được giao.' },
-    branch_tasks: { title: 'Công việc của Chi đoàn', icon: CheckSquare, description: 'Quản lý danh mục nhiệm vụ và công việc nội bộ của Chi đoàn Ấp.' },
-    activities: { title: 'Quản lý Lịch hoạt động', icon: Calendar, description: 'Theo dõi lịch tổ chức các phong trào, chương trình thanh niên cấp xã và ấp.' },
-    reports: { title: 'Báo cáo Thống kê', icon: BarChart2, description: 'Tổng hợp số liệu hoạt động, văn bản và công tác đoàn toàn xã.' },
-    storage: { title: 'Kho Lưu trữ Văn bản', icon: Folder, description: 'Lưu trữ tập trung toàn bộ hệ thống tài liệu, hồ sơ và văn bản số.' },
-    settings: { title: 'Cài đặt Hệ thống', icon: Settings, description: 'Quản lý thông tin cấu hình và phân quyền người dùng.' },
-    notifications: { title: 'Quản lý Thông báo', icon: Bell, description: 'Danh sách thông báo chỉ đạo và tin tức điều hành.' },
-    submission_history: { title: 'Lịch sử Nộp Văn bản', icon: FileSpreadsheet, description: 'Quản lý và tra cứu tệp báo cáo đã nộp lên Đoàn xã.' }
+  const handleSendNotification = async (newNoti) => {
+    const createdNoti = {
+      id: `noti-${Date.now()}`,
+      title: newNoti.title,
+      content: newNoti.content,
+      time_ago: 'Vừa xong'
+    };
+    const updated = await syncSaveNotification(createdNoti);
+    setNotificationsList(updated);
   };
-
-  const currentViewMeta = viewConfig[activeTab] || {
-    title: 'Quản lý danh mục',
-    icon: FileText,
-    description: 'Nền tảng quản lý tập trung và phân quyền dữ liệu mượt mà.'
-  };
-
-  const MetaIcon = currentViewMeta.icon;
 
   return (
     <div className="d-flex min-vh-100 bg-main">
@@ -136,11 +180,13 @@ export default function App() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onOpenNotifications={() => setActiveTab('notifications')}
+          onOpenMessages={() => setShowSendMessageModal(true)}
           onLogout={() => {
             setCurrentUser(null);
             setActiveTab('dashboard');
           }}
           unreadNotiCount={notificationsList.length}
+          unreadMsgCount={notificationsList.length > 0 ? 1 : 0}
         />
 
         {/* Workspace Body */}
@@ -185,7 +231,7 @@ export default function App() {
                     currentRole={currentUser}
                     onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                     onOpenIssueDocument={() => setShowIssueDocModal(true)}
-                    onOpenSendNotification={() => alert('Đã khởi tạo hệ thống gửi thông báo!')}
+                    onOpenSendNotification={() => setShowSendMessageModal(true)}
                     onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
                     setActiveTab={setActiveTab}
                   />
@@ -260,6 +306,53 @@ export default function App() {
                 </div>
               </div>
             </div>
+          ) : activeTab === 'activities' ? (
+            /* ACTIVITIES MANAGEMENT VIEW */
+            <ActivitiesView 
+              activities={activitiesList}
+              onOpenCreateActivity={() => setShowCreateActivityModal(true)}
+              isDoanXa={isDoanXa}
+            />
+          ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
+            /* DOCUMENTS MANAGEMENT VIEW */
+            <DocumentsView 
+              documents={documentsList}
+              tabType={activeTab}
+              onOpenIssueDocument={() => setShowIssueDocModal(true)}
+              isDoanXa={isDoanXa}
+            />
+          ) : activeTab === 'submission_history' ? (
+            /* SUBMISSIONS HISTORY VIEW */
+            <SubmissionsView 
+              submissions={submissionsList}
+              onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
+            />
+          ) : activeTab === 'notifications' ? (
+            /* NOTIFICATIONS VIEW */
+            <NotificationsView 
+              notifications={notificationsList}
+              onOpenSendMessage={() => setShowSendMessageModal(true)}
+              isDoanXa={isDoanXa}
+            />
+          ) : activeTab === 'todo' || activeTab === 'branch_tasks' ? (
+            /* TASKS MANAGEMENT VIEW */
+            <TasksView isDoanXa={isDoanXa} />
+          ) : activeTab === 'reports' ? (
+            /* REPORTS & ANALYTICS VIEW */
+            <ReportsView 
+              activitiesCount={activitiesList.length}
+              docsCount={documentsList.length}
+              submissionsCount={submissionsList.length}
+            />
+          ) : activeTab === 'storage' ? (
+            /* STORAGE ARCHIVE VIEW */
+            <StorageArchiveView 
+              documents={documentsList}
+              submissions={submissionsList}
+            />
+          ) : activeTab === 'settings' ? (
+            /* SETTINGS VIEW */
+            <SettingsView currentRole={currentUser} />
           ) : activeTab === 'branches' ? (
             /* 30 CHI ĐOÀN ẤP MANAGEMENT VIEW */
             <div className="content-card">
@@ -296,35 +389,11 @@ export default function App() {
               </div>
             </div>
           ) : (
-            /* SECONDARY VIEWS */
-            <div className="content-card">
-              <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-                <div>
-                  <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
-                    <MetaIcon size={22} className="text-primary" />
-                    {currentViewMeta.title}
-                  </h3>
-                  <div className="text-secondary" style={{ fontSize: '13px' }}>
-                    {currentViewMeta.description}
-                  </div>
-                </div>
-                <button className="btn btn-outline-primary btn-sm fw-semibold" onClick={() => setActiveTab('dashboard')}>
-                  Quay lại Dashboard
-                </button>
-              </div>
-
-              <div className="p-5 bg-light rounded-3 text-center border">
-                <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-3 text-primary">
-                  <MetaIcon size={32} />
-                </div>
-                <h5 className="fw-bold text-dark">{currentViewMeta.title}</h5>
-                <p className="text-secondary" style={{ fontSize: '13px', maxWidth: '480px', margin: '0 auto' }}>
-                  Danh mục này đã được khởi tạo hoàn chỉnh và sẵn sàng ghi nhận dữ liệu trong quá trình điều hành thực tế.
-                </p>
-                <button className="btn btn-primary mt-3 px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={() => setActiveTab('dashboard')}>
-                  Trở về trang chính
-                </button>
-              </div>
+            /* FALLBACK DEFAULT VIEW */
+            <div className="content-card p-5 text-center">
+              <h5 className="fw-bold text-dark">Giao diện điều hành hệ thống</h5>
+              <p className="text-secondary" style={{ fontSize: '13px' }}>Chức năng đã sẵn sàng vận hành.</p>
+              <button className="btn btn-primary" onClick={() => setActiveTab('dashboard')}>Về Dashboard</button>
             </div>
           )}
         </div>
@@ -347,6 +416,13 @@ export default function App() {
         show={showSubmitDocModal}
         onClose={() => setShowSubmitDocModal(false)}
         onSave={handleSubmitDocument}
+        currentRole={currentUser}
+      />
+
+      <SendMessageModal 
+        show={showSendMessageModal}
+        onClose={() => setShowSendMessageModal(false)}
+        onSave={handleSendNotification}
         currentRole={currentUser}
       />
 

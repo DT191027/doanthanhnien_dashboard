@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES } from '../lib/supabase';
 
@@ -314,7 +314,78 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
   );
 }
 
-// 4. Support Contact Modal
+// 4. Send Message / Notification Modal
+export function SendMessageModal({ show, onClose, onSave, currentRole }) {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+
+  if (!show) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    onSave && onSave({
+      id: `noti-${Date.now()}`,
+      title: title.trim(),
+      content: content.trim(),
+      time_ago: 'Vừa xong'
+    });
+    setTitle('');
+    setContent('');
+    onClose();
+  };
+
+  return (
+    <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
+              <MessageSquare className="text-primary" size={20} />
+              Gửi Thông Báo / Tin Nhắn Điều Hành
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body p-4">
+              <div className="mb-3">
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tiêu đề thông báo <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ví dụ: Thông báo khẩn v/v họp Đoàn xã..."
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Nội dung thông báo <span className="text-danger">*</span></label>
+                <textarea
+                  className="form-control"
+                  rows="4"
+                  placeholder="Nhập nội dung thông tin cần truyền tải..."
+                  required
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
+              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
+                Gửi Thông Báo Ngay
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 5. Support Contact Modal
 export function SupportModal({ show, onClose }) {
   if (!show) return null;
 

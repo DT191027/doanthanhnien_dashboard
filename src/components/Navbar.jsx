@@ -6,6 +6,7 @@ export default function Navbar({
   searchQuery, 
   setSearchQuery,
   onOpenNotifications,
+  onOpenMessages,
   onLogout,
   unreadNotiCount = 0,
   unreadMsgCount = 0
@@ -35,7 +36,11 @@ export default function Navbar({
         </div>
 
         {/* Messages */}
-        <div className="icon-button" title="Tin nhắn">
+        <div 
+          className="icon-button" 
+          onClick={onOpenMessages || onOpenNotifications} 
+          title="Tin nhắn / Trao đổi"
+        >
           <MessageSquare size={18} />
           {unreadMsgCount > 0 && <span className="icon-badge">{unreadMsgCount}</span>}
         </div>

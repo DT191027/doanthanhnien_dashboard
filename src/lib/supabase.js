@@ -99,3 +99,172 @@ export function getLiveVietnameseDate() {
 
   return `Hôm nay là ${dayName}, ngày ${day} tháng ${month} năm ${year}`;
 }
+
+// Persistent Storage Helpers (LocalStorage Backup)
+export function getPersistedData(key, fallback = []) {
+  try {
+    const raw = localStorage.getItem(`xts_youth_${key}`);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+export function setPersistedData(key, data) {
+  try {
+    localStorage.setItem(`xts_youth_${key}`, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+}
+
+// Async API helpers for Supabase Sync
+export async function syncFetchActivities() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setPersistedData('activities', data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch activities error, using local storage fallback:', e);
+    }
+  }
+  return getPersistedData('activities', []);
+}
+
+export async function syncSaveActivity(activityItem) {
+  const current = getPersistedData('activities', []);
+  const updated = [activityItem, ...current];
+  setPersistedData('activities', updated);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('activities').insert([{
+        title: activityItem.title,
+        description: activityItem.description || '',
+        start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
+        start_time: activityItem.time ? activityItem.time.split(' - ')[0] : '08:00',
+        end_time: activityItem.time ? activityItem.time.split(' - ')[1] || '11:30' : '11:30',
+        location: activityItem.location,
+        status: activityItem.status || 'Sắp diễn ra',
+        organizer: 'Đoàn xã Xuân Thới Sơn'
+      }]);
+    } catch (e) {
+      console.warn('Supabase save activity error:', e);
+    }
+  }
+  return updated;
+}
+
+export async function syncFetchDocuments() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setPersistedData('documents', data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch documents error, using local storage fallback:', e);
+    }
+  }
+  return getPersistedData('documents', []);
+}
+
+export async function syncSaveDocument(docItem) {
+  const current = getPersistedData('documents', []);
+  const updated = [docItem, ...current];
+  setPersistedData('documents', updated);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('documents').insert([{
+        doc_number: docItem.doc_number,
+        title: docItem.title,
+        type: docItem.type || 'outgoing',
+        sender: docItem.sender || 'Đoàn xã Xuân Thới Sơn',
+        recipient_scope: docItem.recipient_scope || 'ALL',
+        issue_date: new Date().toISOString().split('T')[0],
+        status: docItem.status || 'unread',
+        pdf_url: docItem.file_name || ''
+      }]);
+    } catch (e) {
+      console.warn('Supabase save document error:', e);
+    }
+  }
+  return updated;
+}
+
+export async function syncFetchSubmissions() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('document_submissions').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setPersistedData('submissions', data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch submissions error, using local storage fallback:', e);
+    }
+  }
+  return getPersistedData('submissions', []);
+}
+
+export async function syncSaveSubmission(subItem) {
+  const current = getPersistedData('submissions', []);
+  const updated = [subItem, ...current];
+  setPersistedData('submissions', updated);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('document_submissions').insert([{
+        branch_name: subItem.branch_name || 'Chi đoàn Ấp',
+        doc_title: subItem.title,
+        submission_date: new Date().toISOString(),
+        status: subItem.status || 'Đã nộp',
+        file_name: subItem.file_name || 'Bao_cao.pdf',
+        file_url: subItem.file_name || ''
+      }]);
+    } catch (e) {
+      console.warn('Supabase save submission error:', e);
+    }
+  }
+  return updated;
+}
+
+export async function syncFetchNotifications() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setPersistedData('notifications', data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch notifications error, using local storage fallback:', e);
+    }
+  }
+  return getPersistedData('notifications', []);
+}
+
+export async function syncSaveNotification(notiItem) {
+  const current = getPersistedData('notifications', []);
+  const updated = [notiItem, ...current];
+  setPersistedData('notifications', updated);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('notifications').insert([{
+        title: notiItem.title,
+        content: notiItem.content || '',
+        type: notiItem.type || 'general',
+        time_ago: notiItem.time_ago || 'Vừa xong'
+      }]);
+    } catch (e) {
+      console.warn('Supabase save notification error:', e);
+    }
+  }
+  return updated;
+}

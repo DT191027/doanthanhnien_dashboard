@@ -1,6 +1,6 @@
 -- ============================================================================
 -- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH - ĐOÀN XÃ XUÂN THỚI SƠN
--- Complete Production Database Schema & Ready-to-Run Supabase Cloud SQL Script
+-- Production Database Schema & Ready-to-Run Supabase Cloud SQL Script
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. BẢNG VĂN BẢN
+-- 4. BẢNG VĂN BẢN (BAN HÀNH TỪ ĐOÀN XÃ)
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   doc_number VARCHAR(100) NOT NULL,
@@ -62,11 +62,13 @@ CREATE TABLE IF NOT EXISTS documents (
   due_date DATE,
   status doc_status DEFAULT 'unread',
   pdf_url TEXT,
+  file_url TEXT,
+  storage_provider VARCHAR(50) DEFAULT 'supabase',
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. BẢNG NỘP VĂN BẢN (CHI ĐOÀN ẤP)
+-- 5. BẢNG NỘP VĂN BẢN & BÁO CÁO (CHI ĐOÀN ẤP)
 CREATE TABLE IF NOT EXISTS document_submissions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
@@ -78,10 +80,11 @@ CREATE TABLE IF NOT EXISTS document_submissions (
   status VARCHAR(30) DEFAULT 'Đã nộp',
   file_name VARCHAR(255) NOT NULL,
   file_url TEXT NOT NULL,
+  storage_provider VARCHAR(50) DEFAULT 'supabase',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. BẢNG HOẠT ĐỘNG
+-- 6. BẢNG HOẠT ĐỘNG & PHONG TRÀO
 CREATE TABLE IF NOT EXISTS activities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
@@ -95,7 +98,7 @@ CREATE TABLE IF NOT EXISTS activities (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. BẢNG CÔNG VIỆC (TODO)
+-- 7. BẢNG CÔNG VIỆC (TODO LIST)
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -107,7 +110,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. BẢNG THÔNG BÁO
+-- 8. BẢNG THÔNG BÁO & CHỈ ĐẠO
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
@@ -118,48 +121,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- BẬT PHÂN QUYỀN RLS
-ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE document_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- ============================================================================
+-- GIẢI PHÓNG HÀN NGẠCH BẢO MẬT RLS (MỞ QUYỀN TRUY VẤN VÀ CHÈN DỮ LIỆU TỪ WEB DASHBOARD)
+-- ============================================================================
+ALTER TABLE branches DISABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE documents DISABLE ROW LEVEL SECURITY;
+ALTER TABLE document_submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE activities DISABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
 
--- CÁC QUY TẮC RLS MỞ CHO PHÉP TRUY VẤN VÀ CHÈN DỮ LIỆU TỪ WEB DASHBOARD
-DROP POLICY IF EXISTS "Public select branches" ON branches;
-CREATE POLICY "Public select branches" ON branches FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Public select profiles" ON profiles;
-CREATE POLICY "Public select profiles" ON profiles FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Public select activities" ON activities;
-DROP POLICY IF EXISTS "Public insert activities" ON activities;
-CREATE POLICY "Public select activities" ON activities FOR SELECT USING (true);
-CREATE POLICY "Public insert activities" ON activities FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Public select documents" ON documents;
-DROP POLICY IF EXISTS "Public insert documents" ON documents;
-CREATE POLICY "Public select documents" ON documents FOR SELECT USING (true);
-CREATE POLICY "Public insert documents" ON documents FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Public select document_submissions" ON document_submissions;
-DROP POLICY IF EXISTS "Public insert document_submissions" ON document_submissions;
-CREATE POLICY "Public select document_submissions" ON document_submissions FOR SELECT USING (true);
-CREATE POLICY "Public insert document_submissions" ON document_submissions FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Public select notifications" ON notifications;
-DROP POLICY IF EXISTS "Public insert notifications" ON notifications;
-CREATE POLICY "Public select notifications" ON notifications FOR SELECT USING (true);
-CREATE POLICY "Public insert notifications" ON notifications FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Public select tasks" ON tasks;
-DROP POLICY IF EXISTS "Public insert tasks" ON tasks;
-CREATE POLICY "Public select tasks" ON tasks FOR SELECT USING (true);
-CREATE POLICY "Public insert tasks" ON tasks FOR INSERT WITH CHECK (true);
-
--- SUPABASE STORAGE BUCKET SECURE SETUP
+-- CẤU HÌNH SUPABASE STORAGE BUCKET SECURE SETUP CHO TỆP PDF & GOOGLE DRIVE BACKUP
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;

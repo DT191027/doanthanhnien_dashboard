@@ -41,14 +41,16 @@ import {
   syncFetchSubmissions,
   syncSaveSubmission,
   syncFetchNotifications,
-  syncSaveNotification
+  syncSaveNotification,
+  syncFetchTasks,
+  syncSaveTask
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
 export default function App() {
   // Session Persistence via sessionStorage:
   // - Persists on F5 Page Reload within same tab
-  // - Automatically Wiped when Browser Tab is Closed (protects against unauthorized access)
+  // - Automatically Wiped when Browser Tab is Closed
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = sessionStorage.getItem('xts_current_user');
@@ -67,6 +69,7 @@ export default function App() {
   const [documentsList, setDocumentsList] = useState([]);
   const [submissionsList, setSubmissionsList] = useState([]);
   const [notificationsList, setNotificationsList] = useState([]);
+  const [tasksList, setTasksList] = useState([]);
 
   // Modals state
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
@@ -100,23 +103,25 @@ export default function App() {
 
   // Initial Load & Supabase Realtime Sync
   const loadAllData = async () => {
-    const [acts, docs, subs, notis] = await Promise.all([
+    const [acts, docs, subs, notis, tsks] = await Promise.all([
       syncFetchActivities(),
       syncFetchDocuments(),
       syncFetchSubmissions(),
-      syncFetchNotifications()
+      syncFetchNotifications(),
+      syncFetchTasks()
     ]);
     setActivitiesList(acts);
     setDocumentsList(docs);
     setSubmissionsList(subs);
     setNotificationsList(notis);
+    setTasksList(tsks);
   };
 
   useEffect(() => {
     loadAllData();
 
     // Supabase Realtime Channel Subscription
-    if (isSupabaseConfigured && supabase) {
+    if (supabase) {
       const channel = supabase
         .channel('public-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
@@ -172,7 +177,8 @@ export default function App() {
       date: new Date().toLocaleDateString('vi-VN'),
       dateText: 'Hôm nay',
       file_name: newDoc.file_name || '',
-      file_url: newDoc.file_url || ''
+      file_url: newDoc.file_url || '',
+      storage_provider: newDoc.storage_provider || 'supabase'
     };
     const updated = await syncSaveDocument(createdDoc);
     setDocumentsList(updated);
@@ -188,7 +194,8 @@ export default function App() {
       sub_date: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
       status: 'Đã nộp',
       file_name: newSub.file_name || '',
-      file_url: newSub.file_url || ''
+      file_url: newSub.file_url || '',
+      storage_provider: newSub.storage_provider || 'supabase'
     };
     const updated = await syncSaveSubmission(createdSub);
     setSubmissionsList(updated);

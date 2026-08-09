@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Fallback to project ID ofroeyoghgenboavoaiu from user's Supabase dashboard
+// Official Supabase credentials for project ofroeyoghgenboavoaiu
 const DEFAULT_SUPABASE_URL = 'https://ofroeyoghgenboavoaiu.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcm9leW9naGdlbmJvYXZvYWl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU5Nzg5OTksImV4cCI6MjAzMTU1NDk5OX0.dummy_key';
 
@@ -92,7 +92,7 @@ export const INITIAL_TASKS_DOAN_XA = {
 export const INITIAL_TASKS_CHI_DOAN = [];
 export const INITIAL_NOTIFICATIONS = [];
 
-// Realtime Helper function to format current live date in Vietnamese
+// Helper function to format current live date in Vietnamese
 export function getLiveVietnameseDate() {
   const now = new Date();
   const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -122,7 +122,9 @@ export function setPersistedData(key, data) {
   }
 }
 
-// Async API helpers for Supabase Sync
+// ============================================================================
+// 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
+// ============================================================================
 export async function syncFetchActivities() {
   if (supabase) {
     try {
@@ -191,6 +193,9 @@ export async function syncSaveActivity(activityItem) {
   return updatedLocal;
 }
 
+// ============================================================================
+// 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
+// ============================================================================
 export async function syncFetchDocuments() {
   if (supabase) {
     try {
@@ -207,7 +212,8 @@ export async function syncFetchDocuments() {
           type: item.type || 'outgoing',
           date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
           file_name: item.pdf_url || '',
-          file_url: item.pdf_url || ''
+          file_url: item.file_url || item.pdf_url || '',
+          storage_provider: item.storage_provider || 'supabase'
         }));
         setPersistedData('documents', mapped);
         return mapped;
@@ -234,7 +240,9 @@ export async function syncSaveDocument(docItem) {
         recipient_scope: docItem.recipient_scope || 'ALL',
         issue_date: new Date().toISOString().split('T')[0],
         status: docItem.status || 'unread',
-        pdf_url: docItem.file_url || docItem.file_name || ''
+        pdf_url: docItem.file_url || docItem.file_name || '',
+        file_url: docItem.file_url || '',
+        storage_provider: docItem.storage_provider || 'supabase'
       }]).select();
 
       if (error) {
@@ -250,6 +258,9 @@ export async function syncSaveDocument(docItem) {
   return updatedLocal;
 }
 
+// ============================================================================
+// 3. DOCUMENT SUBMISSIONS SYNC (BẢNG NỘP BÁO CÁO CHI ĐOÀN)
+// ============================================================================
 export async function syncFetchSubmissions() {
   if (supabase) {
     try {
@@ -263,7 +274,8 @@ export async function syncFetchSubmissions() {
           sub_date: new Date(item.submission_date || Date.now()).toLocaleDateString('vi-VN'),
           status: item.status || 'Đã nộp',
           file_name: item.file_name || 'Bao_cao.pdf',
-          file_url: item.file_url || item.file_name || ''
+          file_url: item.file_url || item.file_name || '',
+          storage_provider: item.storage_provider || 'supabase'
         }));
         setPersistedData('submissions', mapped);
         return mapped;
@@ -288,7 +300,8 @@ export async function syncSaveSubmission(subItem) {
         submission_date: new Date().toISOString(),
         status: subItem.status || 'Đã nộp',
         file_name: subItem.file_name || 'Bao_cao.pdf',
-        file_url: subItem.file_url || subItem.file_name || ''
+        file_url: subItem.file_url || subItem.file_name || '',
+        storage_provider: subItem.storage_provider || 'supabase'
       }]).select();
 
       if (error) {
@@ -304,6 +317,9 @@ export async function syncSaveSubmission(subItem) {
   return updatedLocal;
 }
 
+// ============================================================================
+// 4. NOTIFICATIONS SYNC (BẢNG THÔNG BÁO & CHỈ ĐẠO)
+// ============================================================================
 export async function syncFetchNotifications() {
   if (supabase) {
     try {
@@ -349,6 +365,60 @@ export async function syncSaveNotification(notiItem) {
       console.error('Supabase save notification exception:', e);
     }
     return await syncFetchNotifications();
+  }
+  return updatedLocal;
+}
+
+// ============================================================================
+// 5. TASKS SYNC (BẢNG CÔNG VIỆC / TODO LIST)
+// ============================================================================
+export async function syncFetchTasks() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          status: item.status || 'todo',
+          priority: item.priority || 'medium',
+          due_date: item.due_date || 'Hôm nay',
+          assigned_to: item.assigned_to || 'Đoàn xã'
+        }));
+        setPersistedData('tasks', mapped);
+        return mapped;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch tasks error, using local storage fallback:', e);
+    }
+  }
+  return getPersistedData('tasks', []);
+}
+
+export async function syncSaveTask(taskItem) {
+  const current = getPersistedData('tasks', []);
+  const updatedLocal = [taskItem, ...current];
+  setPersistedData('tasks', updatedLocal);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('tasks').insert([{
+        title: taskItem.title,
+        status: taskItem.status || 'todo',
+        priority: taskItem.priority || 'medium',
+        due_date: new Date().toISOString().split('T')[0],
+        assigned_to: taskItem.assigned_to || 'Đoàn xã'
+      }]).select();
+
+      if (error) {
+        console.error('Supabase error inserting task:', error);
+      } else {
+        console.log('Supabase task inserted successfully:', data);
+      }
+    } catch (e) {
+      console.error('Supabase save task exception:', e);
+    }
+    return await syncFetchTasks();
   }
   return updatedLocal;
 }

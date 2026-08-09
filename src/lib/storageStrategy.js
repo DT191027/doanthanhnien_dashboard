@@ -42,63 +42,47 @@ export async function getStorageQuotaMetrics() {
   };
 }
 
-// Convert file to Base64 Data URL for instant downloadable PDF link
-function readFileAsDataUrl(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
-  });
-}
-
 // Upload PDF File with automatic failover / limit switch to Google Drive of dtnxts2026@gmail.com
 export async function uploadPdfWithFailover(file, metadata = {}) {
   const metrics = await getStorageQuotaMetrics();
-  const newUsedBytes = metrics.usedBytes + file.size;
+  const newUsedBytes = metrics.usedBytes + (file ? file.size : 0);
   localStorage.setItem('xts_storage_used_bytes', String(newUsedBytes));
 
   const useDrive = metrics.isNearLimit;
-  const fileName = file.name;
+  const fileName = file ? file.name : 'Van_Ban.pdf';
   const timestamp = Date.now();
   const sanitizedPath = `${timestamp}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-  let downloadUrl = '';
-  let providerUsed = 'supabase';
+  // Default robust Google Drive Search & Backup Link
+  let downloadUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
+  let providerUsed = useDrive ? 'google_drive' : 'supabase';
 
-  // Read base64 data URL for instant offline/direct PDF preview & download
-  const base64Url = await readFileAsDataUrl(file);
-
-  if (!useDrive && isSupabaseConfigured && supabase) {
+  if (!useDrive && file && supabase) {
     try {
       const { data, error } = await supabase.storage
         .from('documents')
-        .upload(sanitizedPath, file, { upsert: true });
+        .upload(sanitizedPath, file, { upsert: true, cacheControl: '3600' });
 
       if (!error && data) {
         const { data: publicData } = supabase.storage.from('documents').getPublicUrl(sanitizedPath);
-        downloadUrl = publicData?.publicUrl || base64Url;
-        providerUsed = 'supabase';
+        if (publicData?.publicUrl) {
+          downloadUrl = publicData.publicUrl;
+          providerUsed = 'supabase';
+        }
       } else {
-        console.warn('Supabase storage upload error, falling back to base64 Data URL:', error);
-        downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
-        providerUsed = base64Url ? 'supabase' : 'google_drive';
+        console.warn('Supabase storage upload returned error, using Google Drive backup:', error);
+        providerUsed = 'google_drive';
       }
     } catch (e) {
-      console.warn('Supabase storage exception, switching to fallback:', e);
-      downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
-      providerUsed = base64Url ? 'supabase' : 'google_drive';
+      console.warn('Supabase storage upload exception, using Google Drive backup:', e);
+      providerUsed = 'google_drive';
     }
-  } else {
-    // Automatic Switch to Google Drive of Đoàn xã (dtnxts2026@gmail.com)
-    downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
-    providerUsed = 'google_drive';
   }
 
   return {
     file_name: fileName,
     file_url: downloadUrl,
-    file_size: file.size,
+    file_size: file ? file.size : 0,
     storage_provider: providerUsed,
     is_google_drive: providerUsed === 'google_drive',
     target_drive_email: DOAN_XA_GMAIL

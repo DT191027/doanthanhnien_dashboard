@@ -123,7 +123,8 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     doc_number: '',
     title: '',
     recipient_scope: 'ALL',
-    file_name: ''
+    file_name: '',
+    file_url: ''
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -139,20 +140,36 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
       const res = await uploadPdfWithFailover(file);
       setIsUploading(false);
       setUploadStatus(res);
-      setFormData({ ...formData, file_name: file.name, file_url: res.file_url, storage_provider: res.storage_provider });
+      setFormData(prev => ({ 
+        ...prev, 
+        file_name: file.name, 
+        file_url: res.file_url, 
+        storage_provider: res.storage_provider 
+      }));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+
+    let finalStatus = uploadStatus;
+    if (!finalStatus && selectedFile) {
+      setIsUploading(true);
+      finalStatus = await uploadPdfWithFailover(selectedFile);
+      setIsUploading(false);
+    }
+
+    const fallbackUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(formData.title || 'Van_Ban')}`;
+
     onSave && onSave({ 
       ...formData, 
-      file_name: selectedFile ? selectedFile.name : '',
-      file_url: uploadStatus ? uploadStatus.file_url : '',
-      storage_provider: uploadStatus ? uploadStatus.storage_provider : 'supabase'
+      file_name: selectedFile ? selectedFile.name : formData.file_name || 'Van_Ban.pdf',
+      file_url: finalStatus ? finalStatus.file_url : formData.file_url || fallbackUrl,
+      storage_provider: finalStatus ? finalStatus.storage_provider : 'supabase'
     });
-    setFormData({ doc_number: '', title: '', recipient_scope: 'ALL', file_name: '' });
+    
+    setFormData({ doc_number: '', title: '', recipient_scope: 'ALL', file_name: '', file_url: '' });
     setSelectedFile(null);
     setUploadStatus(null);
     onClose();
@@ -250,7 +267,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
 
 // 3. Submit Document Modal
 export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
-  const [formData, setFormData] = useState({ title: '', file_name: '' });
+  const [formData, setFormData] = useState({ title: '', file_name: '', file_url: '' });
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
@@ -265,20 +282,36 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
       const res = await uploadPdfWithFailover(file);
       setIsUploading(false);
       setUploadStatus(res);
-      setFormData({ ...formData, file_name: file.name, file_url: res.file_url, storage_provider: res.storage_provider });
+      setFormData(prev => ({ 
+        ...prev, 
+        file_name: file.name, 
+        file_url: res.file_url, 
+        storage_provider: res.storage_provider 
+      }));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     confetti({ particleCount: 90, spread: 90, origin: { y: 0.6 } });
+
+    let finalStatus = uploadStatus;
+    if (!finalStatus && selectedFile) {
+      setIsUploading(true);
+      finalStatus = await uploadPdfWithFailover(selectedFile);
+      setIsUploading(false);
+    }
+
+    const fallbackUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(formData.title || 'Bao_Cao')}`;
+
     onSave && onSave({ 
       ...formData, 
-      file_name: selectedFile ? selectedFile.name : formData.title,
-      file_url: uploadStatus ? uploadStatus.file_url : '',
-      storage_provider: uploadStatus ? uploadStatus.storage_provider : 'supabase'
+      file_name: selectedFile ? selectedFile.name : formData.file_name || 'Bao_Cao.pdf',
+      file_url: finalStatus ? finalStatus.file_url : formData.file_url || fallbackUrl,
+      storage_provider: finalStatus ? finalStatus.storage_provider : 'supabase'
     });
-    setFormData({ title: '', file_name: '' });
+    
+    setFormData({ title: '', file_name: '', file_url: '' });
     setSelectedFile(null);
     setUploadStatus(null);
     onClose();

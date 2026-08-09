@@ -1,18 +1,32 @@
 -- ============================================================================
 -- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH - ĐOÀN XÃ XUÂN THỚI SƠN
--- Complete Production Database Schema, Storage Buckets & Public RLS Security
+-- Complete Production Database Schema & Ready-to-Run Supabase Cloud SQL Script
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. ENUMS
-CREATE TYPE user_role AS ENUM ('doan_xa', 'chi_doan');
-CREATE TYPE doc_type AS ENUM ('incoming', 'outgoing', 'submission');
-CREATE TYPE doc_status AS ENUM ('unread', 'pending', 'read', 'submitted', 'overdue');
-CREATE TYPE priority_level AS ENUM ('high', 'medium', 'low');
-CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'completed');
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('doan_xa', 'chi_doan');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- 2. BRANCHES TABLE (30 Chi đoàn Ấp)
+DO $$ BEGIN
+  CREATE TYPE doc_type AS ENUM ('incoming', 'outgoing', 'submission');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE doc_status AS ENUM ('unread', 'pending', 'read', 'submitted', 'overdue');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE priority_level AS ENUM ('high', 'medium', 'low');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'completed');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 2. BẢNG CHI ĐOÀN (30 Ấp Chính thức)
 CREATE TABLE IF NOT EXISTS branches (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(50) UNIQUE NOT NULL,
@@ -23,9 +37,9 @@ CREATE TABLE IF NOT EXISTS branches (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. PROFILES TABLE
+-- 3. BẢNG PROFILES
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email VARCHAR(255) UNIQUE NOT NULL,
   full_name VARCHAR(100) NOT NULL,
   role user_role NOT NULL DEFAULT 'chi_doan',
@@ -36,7 +50,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. DOCUMENTS TABLE
+-- 4. BẢNG VĂN BẢN
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   doc_number VARCHAR(100) NOT NULL,
@@ -52,7 +66,7 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. DOCUMENT SUBMISSIONS TABLE
+-- 5. BẢNG NỘP VĂN BẢN (CHI ĐOÀN ẤP)
 CREATE TABLE IF NOT EXISTS document_submissions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
@@ -67,7 +81,7 @@ CREATE TABLE IF NOT EXISTS document_submissions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. ACTIVITIES TABLE
+-- 6. BẢNG HOẠT ĐỘNG
 CREATE TABLE IF NOT EXISTS activities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
@@ -81,7 +95,7 @@ CREATE TABLE IF NOT EXISTS activities (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. TASKS TABLE
+-- 7. BẢNG CÔNG VIỆC (TODO)
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -93,7 +107,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. NOTIFICATIONS TABLE
+-- 8. BẢNG THÔNG BÁO
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
@@ -104,7 +118,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- RLS POLICIES ENABLE
+-- BẬT PHÂN QUYỀN RLS
 ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
@@ -113,7 +127,7 @@ ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- SEAMLESS PUBLIC & AUTHENTICATED ACCESS POLICIES (allows both Client & Server RLS Sync)
+-- CÁC QUY TẮC RLS MỞ CHO PHÉP TRUY VẤN VÀ CHÈN DỮ LIỆU TỪ WEB DASHBOARD
 DROP POLICY IF EXISTS "Public select branches" ON branches;
 CREATE POLICY "Public select branches" ON branches FOR SELECT USING (true);
 
@@ -145,7 +159,7 @@ DROP POLICY IF EXISTS "Public insert tasks" ON tasks;
 CREATE POLICY "Public select tasks" ON tasks FOR SELECT USING (true);
 CREATE POLICY "Public insert tasks" ON tasks FOR INSERT WITH CHECK (true);
 
--- 9. SUPABASE STORAGE BUCKET SECURE SETUP FOR PDF DOCUMENTS
+-- SUPABASE STORAGE BUCKET SECURE SETUP
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
@@ -155,7 +169,7 @@ DROP POLICY IF EXISTS "Public insert documents bucket" ON storage.objects;
 CREATE POLICY "Public select documents bucket" ON storage.objects FOR SELECT USING (bucket_id = 'documents');
 CREATE POLICY "Public insert documents bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
 
--- SEED 30 CHÍNH THỨC ẤP
+-- NẠP DỮ LIỆU 30 ẤP CHÍNH THỨC
 INSERT INTO branches (code, name, secretary_name) VALUES
 ('BM', 'Chi đoàn Ấp Bùi Môn', 'Bí thư Chi đoàn Ấp Bùi Môn'),
 ('DT', 'Chi đoàn Ấp Dân Thắng', 'Bí thư Chi đoàn Ấp Dân Thắng'),

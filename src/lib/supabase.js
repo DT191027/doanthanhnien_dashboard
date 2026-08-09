@@ -208,7 +208,7 @@ export async function syncFetchDocuments() {
           summary: `Ban hành ngày ${item.issue_date || new Date().toLocaleDateString('vi-VN')}`,
           sender: item.sender || 'Đoàn xã Xuân Thới Sơn',
           recipient_scope: item.recipient_scope || 'ALL',
-          status: item.status || 'Chưa đọc',
+          status: item.status === 'unread' ? 'Chưa đọc' : item.status === 'read' ? 'Đã đọc' : (item.status || 'Chưa đọc'),
           type: item.type || 'outgoing',
           date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
           file_name: item.pdf_url || '',
@@ -232,14 +232,23 @@ export async function syncSaveDocument(docItem) {
 
   if (supabase) {
     try {
+      // Map Vietnamese status string to Postgres enum value ('unread', 'read', 'pending')
+      let validDocStatus = 'unread';
+      if (docItem.status === 'Đã đọc' || docItem.status === 'read') validDocStatus = 'read';
+      else if (docItem.status === 'Đang xử lý' || docItem.status === 'pending') validDocStatus = 'pending';
+
+      let validDocType = 'outgoing';
+      if (docItem.type === 'incoming') validDocType = 'incoming';
+      else if (docItem.type === 'submission') validDocType = 'submission';
+
       const { data, error } = await supabase.from('documents').insert([{
         doc_number: docItem.doc_number,
         title: docItem.title,
-        type: docItem.type || 'outgoing',
+        type: validDocType,
         sender: docItem.sender || 'Đoàn xã Xuân Thới Sơn',
         recipient_scope: docItem.recipient_scope || 'ALL',
         issue_date: new Date().toISOString().split('T')[0],
-        status: docItem.status || 'unread',
+        status: validDocStatus,
         pdf_url: docItem.file_url || docItem.file_name || '',
         file_url: docItem.file_url || '',
         storage_provider: docItem.storage_provider || 'supabase'

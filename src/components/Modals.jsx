@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES } from '../lib/supabase';
+import { uploadPdfWithFailover } from '../lib/storageStrategy';
 
 // 1. Create Activity Modal
 export function CreateActivityModal({ show, onClose, onSave }) {
@@ -125,23 +126,35 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     file_name: ''
   });
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
 
   if (!show) return null;
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      setFormData({ ...formData, file_name: file.name });
+      setIsUploading(true);
+      const res = await uploadPdfWithFailover(file);
+      setIsUploading(false);
+      setUploadStatus(res);
+      setFormData({ ...formData, file_name: file.name, file_url: res.file_url, storage_provider: res.storage_provider });
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
-    onSave && onSave({ ...formData, file_name: selectedFile ? selectedFile.name : '' });
+    onSave && onSave({ 
+      ...formData, 
+      file_name: selectedFile ? selectedFile.name : '',
+      file_url: uploadStatus ? uploadStatus.file_url : '',
+      storage_provider: uploadStatus ? uploadStatus.storage_provider : 'supabase'
+    });
     setFormData({ doc_number: '', title: '', recipient_scope: 'ALL', file_name: '' });
     setSelectedFile(null);
+    setUploadStatus(null);
     onClose();
   };
 
@@ -206,19 +219,26 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                   onChange={handleFileChange}
                 />
                 {selectedFile && (
-                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center gap-2">
-                    <FileText size={16} className="text-success" />
-                    <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
-                      Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                    </span>
+                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <FileText size={16} className="text-success" />
+                      <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
+                        Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    {uploadStatus && (
+                      <span className={`badge ${uploadStatus.storage_provider === 'google_drive' ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
+                        {uploadStatus.storage_provider === 'google_drive' ? '☁️ Google Drive Backup' : '⚡ Supabase Storage'}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
-              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                Ban Hành Văn Bản Ngay
+              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} disabled={isUploading}>
+                {isUploading ? 'Đang tải tệp...' : 'Ban Hành Văn Bản Ngay'}
               </button>
             </div>
           </form>
@@ -232,23 +252,35 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
 export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
   const [formData, setFormData] = useState({ title: '', file_name: '' });
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
 
   if (!show) return null;
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      setFormData({ ...formData, file_name: file.name });
+      setIsUploading(true);
+      const res = await uploadPdfWithFailover(file);
+      setIsUploading(false);
+      setUploadStatus(res);
+      setFormData({ ...formData, file_name: file.name, file_url: res.file_url, storage_provider: res.storage_provider });
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 90, spread: 90, origin: { y: 0.6 } });
-    onSave && onSave({ ...formData, file_name: selectedFile ? selectedFile.name : formData.title });
+    onSave && onSave({ 
+      ...formData, 
+      file_name: selectedFile ? selectedFile.name : formData.title,
+      file_url: uploadStatus ? uploadStatus.file_url : '',
+      storage_provider: uploadStatus ? uploadStatus.storage_provider : 'supabase'
+    });
     setFormData({ title: '', file_name: '' });
     setSelectedFile(null);
+    setUploadStatus(null);
     onClose();
   };
 
@@ -292,19 +324,26 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
                   onChange={handleFileChange}
                 />
                 {selectedFile && (
-                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center gap-2">
-                    <FileText size={16} className="text-success" />
-                    <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
-                      Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                    </span>
+                  <div className="mt-2 p-2 bg-success-subtle rounded-2 d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <FileText size={16} className="text-success" />
+                      <span className="text-success fw-semibold" style={{ fontSize: '12.5px' }}>
+                        Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    {uploadStatus && (
+                      <span className={`badge ${uploadStatus.storage_provider === 'google_drive' ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
+                        {uploadStatus.storage_provider === 'google_drive' ? '☁️ Google Drive Backup' : '⚡ Supabase Storage'}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
-              <button type="submit" className="btn btn-success px-4 fw-semibold">
-                Nộp Báo Cáo Ngay
+              <button type="submit" className="btn btn-success px-4 fw-semibold" disabled={isUploading}>
+                {isUploading ? 'Đang tải báo cáo...' : 'Nộp Báo Cáo Ngay'}
               </button>
             </div>
           </form>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -21,9 +21,13 @@ import {
   MessageSquare,
   Building,
   FileSpreadsheet,
-  CheckSquare
+  CheckSquare,
+  HardDrive,
+  Cloud,
+  AlertTriangle
 } from 'lucide-react';
 import { INITIAL_BRANCHES, isSupabaseConfigured } from '../lib/supabase';
+import { getStorageQuotaMetrics } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
 export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa }) {
@@ -429,7 +433,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
                 </div>
                 {n.content && <p className="text-secondary mb-0" style={{ fontSize: '12.5px' }}>{n.content}</p>}
                 <div className="mt-2 text-primary fw-semibold" style={{ fontSize: '11px' }}>
-                  📌 Gửi từ: Đoàn xã Xuân Thới Sơn đến 30 Chi đoàn Ấp
+                  📌 Gửi từ: Đoàn xã Xuân Thới Sơn đến {n.target_scope || '30 Chi đoàn Ấp'}
                 </div>
               </div>
             </div>
@@ -717,18 +721,77 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
   );
 }
 
-// 8. Full Settings & Security System View
+// 8. Full Settings & Hybrid Storage System View
 export function SettingsView({ currentRole }) {
+  const [metrics, setMetrics] = useState({
+    usedMb: '0.50',
+    totalQuotaMb: 1024,
+    percentage: 1,
+    isNearLimit: false,
+    activeProvider: 'supabase'
+  });
+
+  useEffect(() => {
+    async function loadMetrics() {
+      const data = await getStorageQuotaMetrics();
+      setMetrics(data);
+    }
+    loadMetrics();
+  }, []);
+
   return (
     <div className="content-card">
       <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
             <Settings className="text-primary" size={24} />
-            Cài đặt & Cấu hình Hệ thống
+            Cài đặt & Cấu hình Lưu trữ Hybrid
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Thông tin tài khoản, cấu hình kết nối Supabase Cloud và bảo mật phân quyền RLS
+            Quản lý tài khoản, giám sát dung lượng Supabase Storage & Tự động chuyển vùng Google Drive Backup
+          </div>
+        </div>
+      </div>
+
+      {/* Auto Switch Storage Quota Monitor Card */}
+      <div className="p-4 bg-light rounded-3 border mb-4">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <HardDrive className="text-primary" size={22} />
+            <h5 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>
+              Giám sát Dung lượng Storage PDF & Tự động Chuyển vùng Google Drive
+            </h5>
+          </div>
+          <span className={`badge px-3 py-1.5 rounded-pill fw-bold ${metrics.isNearLimit ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
+            {metrics.isNearLimit ? '🟡 Google Drive Backup Mode (Đã chuyển vùng)' : '🟢 Supabase Cloud Mode (Đang hoạt động)'}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mb-2">
+          <div className="d-flex justify-content-between text-secondary mb-1" style={{ fontSize: '12px' }}>
+            <span>Đã sử dụng: <strong>{metrics.usedMb} MB / {metrics.totalQuotaMb} MB (Supabase Free)</strong></span>
+            <span>Hạn ngạch cảnh báo: <strong>80% (800 MB)</strong></span>
+          </div>
+          <div className="progress" style={{ height: '10px', borderRadius: '6px' }}>
+            <div 
+              className={`progress-bar ${metrics.percentage > 80 ? 'bg-danger' : metrics.percentage > 60 ? 'bg-warning' : 'bg-primary'}`} 
+              style={{ width: `${Math.max(2, metrics.percentage)}%` }}
+            ></div>
+          </div>
+        </div>
+
+        <div className="mt-3 p-3 bg-white rounded-2 border d-flex align-items-start gap-3">
+          {metrics.isNearLimit ? (
+            <AlertTriangle className="text-warning mt-1" size={20} />
+          ) : (
+            <Cloud className="text-primary mt-1" size={20} />
+          )}
+          <div style={{ fontSize: '12.5px' }}>
+            <div className="fw-bold text-dark">Quy trình Backup tự động:</div>
+            <div className="text-secondary">
+              Tệp PDF khi upload sẽ ưu tiên lưu trên <strong>Supabase Storage</strong>. Khi dung lượng đạt từ <strong>80% (800 MB)</strong> trở lên hoặc khi Supabase báo đầy, hệ thống sẽ <strong>tự động chuyển hướng ghi tệp trực tiếp sang Google Drive của Đoàn xã</strong> (`doanxaxuanthoison@tphcm.gov.vn`) — đảm bảo không bao giờ bị gián đoạn hay mất tệp!
+            </div>
           </div>
         </div>
       </div>
@@ -736,7 +799,7 @@ export function SettingsView({ currentRole }) {
       <div className="row g-4">
         {/* Left Column: Account Profile Info */}
         <div className="col-12 col-md-6">
-          <div className="p-3 bg-light rounded-3 border">
+          <div className="p-3 bg-light rounded-3 border h-100">
             <h5 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
               <UserCheck size={18} className="text-primary" />
               Thông tin Tài khoản Đăng nhập
@@ -763,28 +826,28 @@ export function SettingsView({ currentRole }) {
           </div>
         </div>
 
-        {/* Right Column: Supabase Connection & Security */}
+        {/* Right Column: Google Drive & Supabase Infrastructure */}
         <div className="col-12 col-md-6">
-          <div className="p-3 bg-light rounded-3 border">
+          <div className="p-3 bg-light rounded-3 border h-100">
             <h5 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
               <Database size={18} className="text-primary" />
-              Trạng thái Supabase Cloud Server
+              Hạ tầng Lưu trữ Đa tầng (Hybrid Storage)
             </h5>
 
             <div className="d-flex align-items-center justify-content-between mb-3 p-2.5 bg-white rounded-2 border">
               <div>
-                <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>Database Region: Singapore</div>
-                <div className="text-muted" style={{ fontSize: '11px' }}>ap-southeast-1 (Phản hồi nhanh nhất cho Việt Nam)</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>Supabase PostgreSQL Database</div>
+                <div className="text-muted" style={{ fontSize: '11px' }}>Singapore (ap-southeast-1) — Realtime Metadata Sync</div>
               </div>
-              <span className="badge bg-success text-white">● Connected</span>
+              <span className="badge bg-success text-white">● Active</span>
             </div>
 
             <div className="d-flex align-items-center justify-content-between p-2.5 bg-white rounded-2 border">
               <div>
-                <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>Bảo mật Phân quyền RLS</div>
-                <div className="text-muted" style={{ fontSize: '11px' }}>Row Level Security 2 cấp chính quyền</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>Google Drive Mail Đoàn xã Backup</div>
+                <div className="text-muted" style={{ fontSize: '11px' }}>doanxaxuanthoison@tphcm.gov.vn (Dung lượng cao)</div>
               </div>
-              <span className="badge bg-primary text-white">Active</span>
+              <span className="badge bg-primary text-white">Auto-Switch Ready</span>
             </div>
           </div>
         </div>

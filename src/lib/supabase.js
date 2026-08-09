@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Fallback to project ID ofroeyoghgenboavoaiu from user's Supabase dashboard
+const DEFAULT_SUPABASE_URL = 'https://ofroeyoghgenboavoaiu.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcm9leW9naGdlbmJvYXZvYWl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU5Nzg5OTksImV4cCI6MjAzMTU1NDk5OX0.dummy_key';
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && !supabaseAnonKey.includes('dummy_key'));
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+  : createClient(DEFAULT_SUPABASE_URL, supabaseAnonKey);
 
 // Official 30 Hamlets (Ấp) from Administrator Image
 export const OFFICIAL_HAMLETS = [
@@ -120,7 +124,7 @@ export function setPersistedData(key, data) {
 
 // Async API helpers for Supabase Sync
 export async function syncFetchActivities() {
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
@@ -153,7 +157,7 @@ export async function syncSaveActivity(activityItem) {
   const updatedLocal = [activityItem, ...current];
   setPersistedData('activities', updatedLocal);
 
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       let startTime = '08:00:00';
       let endTime = '11:30:00';
@@ -188,7 +192,7 @@ export async function syncSaveActivity(activityItem) {
 }
 
 export async function syncFetchDocuments() {
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
@@ -202,7 +206,8 @@ export async function syncFetchDocuments() {
           status: item.status || 'Chưa đọc',
           type: item.type || 'outgoing',
           date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
-          file_name: item.pdf_url || ''
+          file_name: item.pdf_url || '',
+          file_url: item.pdf_url || ''
         }));
         setPersistedData('documents', mapped);
         return mapped;
@@ -219,7 +224,7 @@ export async function syncSaveDocument(docItem) {
   const updatedLocal = [docItem, ...current];
   setPersistedData('documents', updatedLocal);
 
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('documents').insert([{
         doc_number: docItem.doc_number,
@@ -229,7 +234,7 @@ export async function syncSaveDocument(docItem) {
         recipient_scope: docItem.recipient_scope || 'ALL',
         issue_date: new Date().toISOString().split('T')[0],
         status: docItem.status || 'unread',
-        pdf_url: docItem.file_name || ''
+        pdf_url: docItem.file_url || docItem.file_name || ''
       }]).select();
 
       if (error) {
@@ -246,7 +251,7 @@ export async function syncSaveDocument(docItem) {
 }
 
 export async function syncFetchSubmissions() {
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('document_submissions').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
@@ -257,7 +262,8 @@ export async function syncFetchSubmissions() {
           due_date: new Date().toLocaleDateString('vi-VN'),
           sub_date: new Date(item.submission_date || Date.now()).toLocaleDateString('vi-VN'),
           status: item.status || 'Đã nộp',
-          file_name: item.file_name || 'Bao_cao.pdf'
+          file_name: item.file_name || 'Bao_cao.pdf',
+          file_url: item.file_url || item.file_name || ''
         }));
         setPersistedData('submissions', mapped);
         return mapped;
@@ -274,7 +280,7 @@ export async function syncSaveSubmission(subItem) {
   const updatedLocal = [subItem, ...current];
   setPersistedData('submissions', updatedLocal);
 
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('document_submissions').insert([{
         branch_name: subItem.branch_name || 'Chi đoàn Ấp',
@@ -282,7 +288,7 @@ export async function syncSaveSubmission(subItem) {
         submission_date: new Date().toISOString(),
         status: subItem.status || 'Đã nộp',
         file_name: subItem.file_name || 'Bao_cao.pdf',
-        file_url: subItem.file_name || ''
+        file_url: subItem.file_url || subItem.file_name || ''
       }]).select();
 
       if (error) {
@@ -299,7 +305,7 @@ export async function syncSaveSubmission(subItem) {
 }
 
 export async function syncFetchNotifications() {
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
@@ -325,7 +331,7 @@ export async function syncSaveNotification(notiItem) {
   const updatedLocal = [notiItem, ...current];
   setPersistedData('notifications', updatedLocal);
 
-  if (isSupabaseConfigured && supabase) {
+  if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').insert([{
         title: notiItem.title,

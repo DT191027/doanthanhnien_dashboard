@@ -9,6 +9,8 @@
 
 Sản phẩm cung cấp hai giao diện quản trị độc lập, được phân quyền chặt chẽ theo vai trò: giao diện dành cho **Đoàn xã** với đầy đủ quyền điều hành toàn bộ hệ thống, và giao diện dành cho từng **Chi đoàn Ấp** với phạm vi truy cập giới hạn trong phạm vi đơn vị mình.
 
+Email tiếp nhận và phục vụ hệ thống chính thức của Đoàn xã: **`dtnxts2026@gmail.com`**.
+
 ---
 
 ## Công nghệ Sử dụng
@@ -18,6 +20,8 @@ Hệ thống được xây dựng trên nền tảng công nghệ hiện đại,
 **Frontend:** React.js, Vite, Bootstrap 5, Lucide React Icons, Canvas Confetti
 
 **Backend & Database:** Supabase — nền tảng Backend-as-a-Service hỗ trợ PostgreSQL, Realtime Subscriptions, Authentication và Storage với phân quyền Row Level Security (RLS) chuẩn enterprise.
+
+**Hybrid Storage Backup:** Tự động giám sát hạn ngạch Supabase Storage và kích hoạt chuyển hướng ghi tệp PDF sang **Google Drive** của Đoàn xã (`dtnxts2026@gmail.com`) khi đạt mốc cảnh báo 80%.
 
 **Deployment:** Vercel — nền tảng hosting tự động CI/CD, tích hợp GitHub, hỗ trợ Edge Network toàn cầu và Security Headers chuẩn quốc tế.
 
@@ -53,9 +57,9 @@ Toàn bộ 30 Chi đoàn Ấp chính thức của xã Xuân Thới Sơn được
 
 Bảo mật được thiết kế theo nhiều lớp đồng thời.
 
-Về phía ứng dụng, mỗi lần truy cập liên kết web đều bắt buộc đăng nhập lại bằng tài khoản được cấp quyền, không có cơ chế lưu phiên tự động. Không có chức năng chuyển đổi tài khoản trực tiếp giữa các vai trò — muốn đổi tài khoản phải đăng xuất hoàn toàn.
+Về phía ứng dụng, phiên làm việc được lưu giữ qua `sessionStorage` giúp người dùng thoải mái thao tác và tải lại trang (F5) trong phiên. Khi đóng Tab trình duyệt, phiên làm việc sẽ tự động xóa để ngăn ngừa việc cầm máy truy cập trái phép.
 
-Về phía cơ sở dữ liệu, toàn bộ bảng dữ liệu được bảo vệ bởi Row Level Security (RLS) trên Supabase. Mỗi người dùng chỉ có thể truy xuất đúng phần dữ liệu phù hợp với vai trò và đơn vị của mình. Tệp văn bản PDF được lưu trữ trong Private Storage Bucket với chính sách phân quyền riêng.
+Về phía cơ sở dữ liệu, toàn bộ bảng dữ liệu được bảo vệ bởi Row Level Security (RLS) trên Supabase. Mỗi người dùng chỉ có thể truy xuất đúng phần dữ liệu phù hợp với vai trò và đơn vị của mình. Tệp văn bản PDF được lưu trữ trong Storage với chính sách phân quyền riêng.
 
 Về phía hạ tầng, Vercel tích hợp sẵn DDoS Protection và Firewall tại Edge. Ứng dụng được cấu hình Security Headers chuẩn gồm X-Frame-Options, X-Content-Type-Options, X-XSS-Protection và Referrer-Policy để chống các dạng tấn công phía trình duyệt phổ biến.
 
@@ -102,10 +106,11 @@ Dự án hỗ trợ triển khai tự động qua Vercel. Sau khi import reposit
 src/
   components/        Toàn bộ các thành phần giao diện React
   lib/supabase.js    Cấu hình Supabase client và dữ liệu khởi tạo
+  lib/storageStrategy.js  Bộ quản lý lưu trữ Hybrid & Google Drive Backup dtnxts2026@gmail.com
   App.jsx            Bộ điều khiển trạng thái và định tuyến giao diện
   index.css          Hệ thống thiết kế và định dạng toàn ứng dụng
 public/              Tài nguyên tĩnh gồm logo và hình ảnh nền
-supabase_schema.sql  Toàn bộ script khởi tạo cơ sở dữ liệu
+supabase_schema.sql  Toàn bộ script khởi tạo cơ sở dữ liệu & RLS policies
 vercel.json          Cấu hình Security Headers và routing cho Vercel
 ```
 
@@ -117,4 +122,4 @@ Hệ thống được thiết kế và phát triển phục vụ nhu cầu quả
 
 ---
 
-Phát triển bởi DT191027. Liên hệ qua GitHub Issues để được hỗ trợ kỹ thuật.
+Phát triển bởi DT191027. Liên hệ qua email `dtnxts2026@gmail.com` để được hỗ trợ kỹ thuật.

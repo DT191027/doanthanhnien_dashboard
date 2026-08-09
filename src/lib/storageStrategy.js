@@ -1,5 +1,8 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
+// Official Gmail of Đoàn xã Xuân Thới Sơn for Google Drive Storage Backup
+export const DOAN_XA_GMAIL = 'dtnxts2026@gmail.com';
+
 // Supabase Free Tier Storage Bucket Limit (1 GB = 1024 * 1024 * 1024 bytes)
 export const SUPABASE_FREE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024; 
 export const AUTO_SWITCH_THRESHOLD_PERCENT = 80; // Auto-switch to Google Drive at 80%
@@ -34,11 +37,12 @@ export async function getStorageQuotaMetrics() {
     totalQuotaMb: 1024,
     percentage,
     isNearLimit,
-    activeProvider: isNearLimit ? 'google_drive' : 'supabase'
+    activeProvider: isNearLimit ? 'google_drive' : 'supabase',
+    targetDriveEmail: DOAN_XA_GMAIL
   };
 }
 
-// Upload PDF File with automatic failover / limit switch to Google Drive
+// Upload PDF File with automatic failover / limit switch to Google Drive of dtnxts2026@gmail.com
 export async function uploadPdfWithFailover(file, metadata = {}) {
   const metrics = await getStorageQuotaMetrics();
   const newUsedBytes = metrics.usedBytes + file.size;
@@ -74,7 +78,7 @@ export async function uploadPdfWithFailover(file, metadata = {}) {
       providerUsed = 'google_drive';
     }
   } else {
-    // Automatic Switch to Google Drive of Đoàn xã
+    // Automatic Switch to Google Drive of Đoàn xã (dtnxts2026@gmail.com)
     downloadUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
     providerUsed = 'google_drive';
   }
@@ -84,6 +88,7 @@ export async function uploadPdfWithFailover(file, metadata = {}) {
     file_url: downloadUrl,
     file_size: file.size,
     storage_provider: providerUsed,
-    is_google_drive: providerUsed === 'google_drive'
+    is_google_drive: providerUsed === 'google_drive',
+    target_drive_email: DOAN_XA_GMAIL
   };
 }

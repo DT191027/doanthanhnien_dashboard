@@ -27,7 +27,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { INITIAL_BRANCHES, isSupabaseConfigured } from '../lib/supabase';
-import { getStorageQuotaMetrics } from '../lib/storageStrategy';
+import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
 export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa }) {
@@ -748,7 +748,7 @@ export function SettingsView({ currentRole }) {
             Cài đặt & Cấu hình Lưu trữ Hybrid
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Quản lý tài khoản, giám sát dung lượng Supabase Storage & Tự động chuyển vùng Google Drive Backup
+            Quản lý tài khoản, giám sát dung lượng Supabase Storage & Tự động chuyển vùng Google Drive Backup ({DOAN_XA_GMAIL})
           </div>
         </div>
       </div>
@@ -790,7 +790,7 @@ export function SettingsView({ currentRole }) {
           <div style={{ fontSize: '12.5px' }}>
             <div className="fw-bold text-dark">Quy trình Backup tự động:</div>
             <div className="text-secondary">
-              Tệp PDF khi upload sẽ ưu tiên lưu trên <strong>Supabase Storage</strong>. Khi dung lượng đạt từ <strong>80% (800 MB)</strong> trở lên hoặc khi Supabase báo đầy, hệ thống sẽ <strong>tự động chuyển hướng ghi tệp trực tiếp sang Google Drive của Đoàn xã</strong> (`doanxaxuanthoison@tphcm.gov.vn`) — đảm bảo không bao giờ bị gián đoạn hay mất tệp!
+              Tệp PDF khi upload sẽ ưu tiên lưu trên <strong>Supabase Storage</strong>. Khi dung lượng đạt từ <strong>80% (800 MB)</strong> trở lên hoặc khi Supabase báo đầy, hệ thống sẽ <strong>tự động chuyển hướng ghi tệp trực tiếp sang Google Drive của Đoàn xã</strong> (`{DOAN_XA_GMAIL}`) — đảm bảo không bao giờ bị gián đoạn hay mất tệp!
             </div>
           </div>
         </div>
@@ -845,7 +845,7 @@ export function SettingsView({ currentRole }) {
             <div className="d-flex align-items-center justify-content-between p-2.5 bg-white rounded-2 border">
               <div>
                 <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>Google Drive Mail Đoàn xã Backup</div>
-                <div className="text-muted" style={{ fontSize: '11px' }}>doanxaxuanthoison@tphcm.gov.vn (Dung lượng cao)</div>
+                <div className="text-muted" style={{ fontSize: '11px' }}>{DOAN_XA_GMAIL} (Dung lượng cao)</div>
               </div>
               <span className="badge bg-primary text-white">Auto-Switch Ready</span>
             </div>

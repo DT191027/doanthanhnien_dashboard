@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES } from '../lib/supabase';
-import { uploadPdfWithFailover } from '../lib/storageStrategy';
+import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Create Activity Modal
 export function CreateActivityModal({ show, onClose, onSave }) {
@@ -469,7 +469,7 @@ export function SupportModal({ show, onClose }) {
             </p>
             <div className="bg-light p-3 rounded-3 text-start mb-3" style={{ fontSize: '13px' }}>
               <div className="mb-2"><strong>Hotline Kỹ Thuật:</strong> 0908.123.456</div>
-              <div className="mb-2"><strong>Email tiếp nhận:</strong> doanxaxuanthoison@tphcm.gov.vn</div>
+              <div className="mb-2"><strong>Email tiếp nhận:</strong> {DOAN_XA_GMAIL}</div>
               <div><strong>Văn phòng:</strong> Trụ sở UBND xã Xuân Thới Sơn, TP. Hồ Chí Minh</div>
             </div>
           </div>

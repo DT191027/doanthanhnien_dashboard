@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { MoreVertical, CheckSquare, Plus } from 'lucide-react';
-import { INITIAL_TASKS_DOAN_XA } from '../lib/supabase';
+import { CheckSquare } from 'lucide-react';
 
-export default function TodoList({ setActiveTab }) {
-  const [tasks, setTasks] = useState(INITIAL_TASKS_DOAN_XA);
-  const [activeTab, setActiveSubTab] = useState('todo'); // 'todo', 'inProgress', 'completed'
+export default function TodoList({ tasks = [], setActiveTab }) {
+  const [activeSubTab, setActiveSubTab] = useState('todo'); // 'todo', 'inProgress', 'completed'
 
-  const currentList = tasks[activeTab] || [];
+  const todoTasks = tasks.filter(t => t.status === 'todo');
+  const inProgressTasks = tasks.filter(t => t.status === 'inProgress' || t.status === 'in_progress');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+
+  const currentList = activeSubTab === 'todo' ? todoTasks :
+                      activeSubTab === 'inProgress' ? inProgressTasks : completedTasks;
 
   return (
     <div className="content-card mb-4">
@@ -24,29 +27,29 @@ export default function TodoList({ setActiveTab }) {
       <div className="row g-2 mb-3">
         <div className="col-4">
           <button 
-            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeTab === 'todo' ? 'btn-primary' : 'bg-light text-dark'}`}
-            style={{ fontSize: '12px', backgroundColor: activeTab === 'todo' ? '#0066FF' : '#F8FAFC' }}
+            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeSubTab === 'todo' ? 'btn-primary text-white' : 'bg-light text-dark'}`}
+            style={{ fontSize: '12px', backgroundColor: activeSubTab === 'todo' ? '#0066FF' : '#F8FAFC' }}
             onClick={() => setActiveSubTab('todo')}
           >
-            To do ({tasks.todo?.length || 0})
+            To do ({todoTasks.length})
           </button>
         </div>
         <div className="col-4">
           <button 
-            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeTab === 'inProgress' ? 'btn-primary' : 'bg-light text-dark'}`}
-            style={{ fontSize: '12px', backgroundColor: activeTab === 'inProgress' ? '#0066FF' : '#F8FAFC' }}
+            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeSubTab === 'inProgress' ? 'btn-primary text-white' : 'bg-light text-dark'}`}
+            style={{ fontSize: '12px', backgroundColor: activeSubTab === 'inProgress' ? '#0066FF' : '#F8FAFC' }}
             onClick={() => setActiveSubTab('inProgress')}
           >
-            Đang thực hiện ({tasks.inProgress?.length || 0})
+            Đang thực hiện ({inProgressTasks.length})
           </button>
         </div>
         <div className="col-4">
           <button 
-            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeTab === 'completed' ? 'btn-primary' : 'bg-light text-dark'}`}
-            style={{ fontSize: '12px', backgroundColor: activeTab === 'completed' ? '#0066FF' : '#F8FAFC' }}
+            className={`btn w-100 py-2 rounded-3 text-start fw-bold ${activeSubTab === 'completed' ? 'btn-primary text-white' : 'bg-light text-dark'}`}
+            style={{ fontSize: '12px', backgroundColor: activeSubTab === 'completed' ? '#0066FF' : '#F8FAFC' }}
             onClick={() => setActiveSubTab('completed')}
           >
-            Hoàn thành ({tasks.completed?.length || 0})
+            Hoàn thành ({completedTasks.length})
           </button>
         </div>
       </div>
@@ -71,12 +74,12 @@ export default function TodoList({ setActiveTab }) {
                   {task.title}
                 </div>
                 <div className="d-flex align-items-center gap-2" style={{ fontSize: '11px' }}>
-                  <span className="text-muted">{task.date}</span>
+                  <span className="text-muted">Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
                 </div>
               </div>
-              <button className="btn btn-sm btn-link text-secondary p-0">
-                <MoreVertical size={16} />
-              </button>
+              <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`}>
+                {task.status === 'completed' ? 'Done' : 'In Progress'}
+              </span>
             </div>
           ))}
         </div>

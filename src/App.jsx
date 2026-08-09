@@ -43,7 +43,8 @@ import {
   syncFetchNotifications,
   syncSaveNotification,
   syncFetchTasks,
-  syncSaveTask
+  syncSaveTask,
+  syncToggleTaskStatus
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -154,7 +155,7 @@ export default function App() {
       month: newAct.month || 'THÁNG 5',
       title: newAct.title,
       time: newAct.time || '08:00 - 11:30',
-      location: newAct.location || 'Hội trường UBND xã Xuân Thới Sơn',
+      location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam',
       status: 'Sắp diễn ra',
       dateIso: new Date().toISOString().split('T')[0]
     };
@@ -214,6 +215,24 @@ export default function App() {
     setNotificationsList(updated);
     setActiveTab('notifications');
     triggerToast(`Đã phát thông báo chỉ đạo: "${newNoti.title}"!`);
+  };
+
+  const handleAddTask = async (newTask) => {
+    const taskItem = {
+      id: `task-${Date.now()}`,
+      title: newTask.title,
+      status: 'todo',
+      priority: newTask.priority || 'Bình thường',
+      dueDate: newTask.dueDate || 'Hôm nay'
+    };
+    const updated = await syncSaveTask(taskItem);
+    setTasksList(updated);
+    triggerToast(`Đã thêm công việc mới: "${newTask.title}"!`);
+  };
+
+  const handleToggleTask = async (taskId, newStatus) => {
+    const updated = await syncToggleTaskStatus(taskId, newStatus);
+    setTasksList(updated);
   };
 
   return (
@@ -311,7 +330,7 @@ export default function App() {
                   {isDoanXa ? (
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
-                        <TodoList setActiveTab={setActiveTab} />
+                        <TodoList tasks={tasksList} setActiveTab={setActiveTab} />
                       </div>
                       <div className="col-12 col-md-6">
                         <UpcomingActivities 
@@ -359,7 +378,7 @@ export default function App() {
                   />
 
                   {!isDoanXa && (
-                    <BranchTasks setActiveTab={setActiveTab} />
+                    <BranchTasks tasks={tasksList} setActiveTab={setActiveTab} />
                   )}
 
                   <NotificationsList 
@@ -400,7 +419,12 @@ export default function App() {
             />
           ) : activeTab === 'todo' || activeTab === 'branch_tasks' ? (
             /* TASKS MANAGEMENT VIEW */
-            <TasksView isDoanXa={isDoanXa} />
+            <TasksView 
+              tasks={tasksList} 
+              onAddTask={handleAddTask} 
+              onToggleTask={handleToggleTask} 
+              isDoanXa={isDoanXa} 
+            />
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */
             <ReportsView 

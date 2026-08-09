@@ -26,7 +26,7 @@ import {
   Cloud,
   AlertTriangle
 } from 'lucide-react';
-import { INITIAL_BRANCHES, isSupabaseConfigured } from '../lib/supabase';
+import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
@@ -459,39 +459,21 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
   );
 }
 
-// 5. Full Tasks & Todo Management View
-export function TasksView({ isDoanXa }) {
-  const [tasks, setTasks] = useState([
-    { id: 't1', title: 'Tổng hợp báo cáo tháng 5 của 30 Chi đoàn Ấp', status: 'inProgress', priority: 'Cao', dueDate: '15/06/2026' },
-    { id: 't2', title: 'Chuẩn bị nội dung cuộc họp Ban chấp hành Đoàn xã', status: 'todo', priority: 'Trung bình', dueDate: '18/06/2026' },
-    { id: 't3', title: 'Rà soát danh sách đoàn viên ưu tú 30 Ấp', status: 'completed', priority: 'Bình thường', dueDate: '10/06/2026' }
-  ]);
+// 5. Full Tasks & Todo Management View (Fully Synced with Supabase Realtime)
+export function TasksView({ tasks = [], onAddTask, onToggleTask, isDoanXa }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
-  const handleAddTask = (e) => {
+  const handleAddTaskSubmit = (e) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
-    setTasks([
-      {
-        id: `t-${Date.now()}`,
-        title: newTaskTitle.trim(),
-        status: 'todo',
-        priority: 'Bình thường',
-        dueDate: 'Hôm nay'
-      },
-      ...tasks
-    ]);
+    onAddTask && onAddTask({
+      id: `t-${Date.now()}`,
+      title: newTaskTitle.trim(),
+      status: 'todo',
+      priority: 'Bình thường',
+      dueDate: 'Hôm nay'
+    });
     setNewTaskTitle('');
-  };
-
-  const handleToggleTask = (id) => {
-    setTasks(tasks.map(t => {
-      if (t.id === id) {
-        const nextStatus = t.status === 'completed' ? 'todo' : 'completed';
-        return { ...t, status: nextStatus };
-      }
-      return t;
-    }));
   };
 
   return (
@@ -508,7 +490,7 @@ export function TasksView({ isDoanXa }) {
         </div>
 
         {/* Add Task Quick Form */}
-        <form onSubmit={handleAddTask} className="d-flex gap-2" style={{ maxWidth: '420px', width: '100%' }}>
+        <form onSubmit={handleAddTaskSubmit} className="d-flex gap-2" style={{ maxWidth: '420px', width: '100%' }}>
           <input 
             type="text" 
             className="form-control" 
@@ -535,7 +517,7 @@ export function TasksView({ isDoanXa }) {
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'todo').map(t => (
                 <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2">
-                  <button className="btn btn-link p-0 text-secondary" onClick={() => handleToggleTask(t.id)}>
+                  <button className="btn btn-link p-0 text-secondary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
                     <Circle size={18} />
                   </button>
                   <div className="flex-grow-1">
@@ -552,13 +534,13 @@ export function TasksView({ isDoanXa }) {
         <div className="col-12 col-md-4">
           <div className="p-3 bg-light rounded-3 border h-100">
             <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-              <span className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>🔄 Đang tiến hành ({tasks.filter(t => t.status === 'inProgress').length})</span>
+              <span className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>🔄 Đang tiến hành ({tasks.filter(t => t.status === 'inProgress' || t.status === 'in_progress').length})</span>
               <span className="badge bg-primary-subtle text-primary">In Progress</span>
             </div>
             <div className="d-flex flex-column gap-2">
-              {tasks.filter(t => t.status === 'inProgress').map(t => (
+              {tasks.filter(t => t.status === 'inProgress' || t.status === 'in_progress').map(t => (
                 <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2">
-                  <button className="btn btn-link p-0 text-primary" onClick={() => handleToggleTask(t.id)}>
+                  <button className="btn btn-link p-0 text-primary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
                     <Circle size={18} />
                   </button>
                   <div className="flex-grow-1">
@@ -581,7 +563,7 @@ export function TasksView({ isDoanXa }) {
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'completed').map(t => (
                 <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 text-decoration-line-through text-muted">
-                  <button className="btn btn-link p-0 text-success" onClick={() => handleToggleTask(t.id)}>
+                  <button className="btn btn-link p-0 text-success" onClick={() => onToggleTask && onToggleTask(t.id, 'todo')}>
                     <CheckCircle2 size={18} />
                   </button>
                   <div className="flex-grow-1">
@@ -883,6 +865,11 @@ export function SettingsView({ currentRole }) {
                 <div className="text-muted" style={{ fontSize: '11px' }}>{DOAN_XA_GMAIL} (Dung lượng cao)</div>
               </div>
               <span className="badge bg-primary text-white">Auto-Switch Ready</span>
+            </div>
+
+            <div className="mt-3 p-2.5 bg-white rounded-2 border" style={{ fontSize: '11.5px' }}>
+              <strong>Địa chỉ Trụ sở Chính thức:</strong>
+              <div className="text-secondary mt-1">{OFFICIAL_ADDRESS}</div>
             </div>
           </div>
         </div>

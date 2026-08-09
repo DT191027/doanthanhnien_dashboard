@@ -13,6 +13,8 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createClient(DEFAULT_SUPABASE_URL, supabaseAnonKey);
 
+export const OFFICIAL_ADDRESS = 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam';
+
 // Official 30 Hamlets (Ấp) from Administrator Image
 export const OFFICIAL_HAMLETS = [
   { code: 'BM', name: 'Ấp Bùi Môn', email: 'apbuimon@xuanthoison.gov.vn' },
@@ -139,7 +141,7 @@ export async function syncFetchActivities() {
             day: String(d.getDate()).padStart(2, '0'),
             month: months[d.getMonth()] || 'THÁNG 5',
             time: `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
-            location: item.location || 'Hội trường UBND xã Xuân Thới Sơn',
+            location: item.location || OFFICIAL_ADDRESS,
             status: item.status || 'Sắp diễn ra',
             description: item.description || ''
           };
@@ -175,7 +177,7 @@ export async function syncSaveActivity(activityItem) {
         start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
         start_time: startTime,
         end_time: endTime,
-        location: activityItem.location || 'Hội trường UBND xã Xuân Thới Sơn',
+        location: activityItem.location || OFFICIAL_ADDRESS,
         status: activityItem.status || 'Sắp diễn ra',
         organizer: 'Đoàn xã Xuân Thới Sơn'
       }]).select();
@@ -232,7 +234,6 @@ export async function syncSaveDocument(docItem) {
 
   if (supabase) {
     try {
-      // Map Vietnamese status string to Postgres enum value ('unread', 'read', 'pending')
       let validDocStatus = 'unread';
       if (docItem.status === 'Đã đọc' || docItem.status === 'read') validDocStatus = 'read';
       else if (docItem.status === 'Đang xử lý' || docItem.status === 'pending') validDocStatus = 'pending';
@@ -389,9 +390,9 @@ export async function syncFetchTasks() {
         const mapped = data.map(item => ({
           id: item.id,
           title: item.title,
-          status: item.status || 'todo',
-          priority: item.priority || 'medium',
-          due_date: item.due_date || 'Hôm nay',
+          status: item.status === 'in_progress' ? 'inProgress' : item.status || 'todo',
+          priority: item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : 'Bình thường',
+          dueDate: item.due_date || 'Hôm nay',
           assigned_to: item.assigned_to || 'Đoàn xã'
         }));
         setPersistedData('tasks', mapped);
@@ -411,10 +412,18 @@ export async function syncSaveTask(taskItem) {
 
   if (supabase) {
     try {
+      let validTaskStatus = 'todo';
+      if (taskItem.status === 'inProgress' || taskItem.status === 'in_progress') validTaskStatus = 'in_progress';
+      else if (taskItem.status === 'completed') validTaskStatus = 'completed';
+
+      let validPriority = 'medium';
+      if (taskItem.priority === 'Cao' || taskItem.priority === 'high') validPriority = 'high';
+      else if (taskItem.priority === 'Thấp' || taskItem.priority === 'low') validPriority = 'low';
+
       const { data, error } = await supabase.from('tasks').insert([{
         title: taskItem.title,
-        status: taskItem.status || 'todo',
-        priority: taskItem.priority || 'medium',
+        status: validTaskStatus,
+        priority: validPriority,
         due_date: new Date().toISOString().split('T')[0],
         assigned_to: taskItem.assigned_to || 'Đoàn xã'
       }]).select();
@@ -426,6 +435,26 @@ export async function syncSaveTask(taskItem) {
       }
     } catch (e) {
       console.error('Supabase save task exception:', e);
+    }
+    return await syncFetchTasks();
+  }
+  return updatedLocal;
+}
+
+export async function syncToggleTaskStatus(taskId, newStatus) {
+  const current = getPersistedData('tasks', []);
+  const updatedLocal = current.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+  setPersistedData('tasks', updatedLocal);
+
+  if (supabase) {
+    try {
+      let validTaskStatus = 'todo';
+      if (newStatus === 'inProgress' || newStatus === 'in_progress') validTaskStatus = 'in_progress';
+      else if (newStatus === 'completed') validTaskStatus = 'completed';
+
+      await supabase.from('tasks').update({ status: validTaskStatus }).eq('id', taskId);
+    } catch (e) {
+      console.error('Supabase toggle task exception:', e);
     }
     return await syncFetchTasks();
   }

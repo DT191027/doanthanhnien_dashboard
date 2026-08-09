@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { CheckSquare } from 'lucide-react';
+import { CheckSquare, Plus } from 'lucide-react';
 
-export default function TodoList({ tasks = [], setActiveTab }) {
+export default function TodoList({ tasks = [], setActiveTab, onOpenCreateTask }) {
   const [activeSubTab, setActiveSubTab] = useState('todo'); // 'todo', 'inProgress', 'completed'
 
   const todoTasks = tasks.filter(t => t.status === 'todo');
@@ -15,12 +15,23 @@ export default function TodoList({ tasks = [], setActiveTab }) {
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="card-title-header mb-0">Công việc (Todo List)</h3>
-        <span 
-          className="card-link cursor-pointer"
-          onClick={() => setActiveTab && setActiveTab('todo')}
-        >
-          Xem tất cả
-        </span>
+        <div className="d-flex align-items-center gap-2">
+          {onOpenCreateTask && (
+            <button 
+              className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 fw-semibold px-2.5 py-1 rounded-2 shadow-sm"
+              style={{ fontSize: '12px', backgroundColor: '#0066FF' }}
+              onClick={onOpenCreateTask}
+            >
+              <Plus size={14} /> Thêm công việc
+            </button>
+          )}
+          <span 
+            className="card-link cursor-pointer"
+            onClick={() => setActiveTab && setActiveTab('todo')}
+          >
+            Xem tất cả
+          </span>
+        </div>
       </div>
 
       {/* Tabs Row */}
@@ -59,8 +70,13 @@ export default function TodoList({ tasks = [], setActiveTab }) {
           <div className="p-2 bg-white d-inline-block rounded-circle shadow-sm mb-2 text-secondary">
             <CheckSquare size={24} />
           </div>
-          <div className="fw-semibold text-dark" style={{ fontSize: '13px' }}>Chưa có công việc nào trong danh sách</div>
-          <div className="text-secondary" style={{ fontSize: '11.5px' }}>Sẵn sàng quản lý công việc và giao phó nhiệm vụ</div>
+          <div className="fw-semibold text-dark mb-1" style={{ fontSize: '13px' }}>Chưa có công việc nào trong danh sách</div>
+          <div className="text-secondary mb-3" style={{ fontSize: '11.5px' }}>Sẵn sàng quản lý công việc và giao phó nhiệm vụ</div>
+          {onOpenCreateTask && (
+            <button className="btn btn-sm btn-primary px-3 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={onOpenCreateTask}>
+              + Tạo công việc đầu tiên
+            </button>
+          )}
         </div>
       ) : (
         <div className="d-flex flex-column gap-2" style={{ maxHeight: '320px', overflowY: 'auto' }}>

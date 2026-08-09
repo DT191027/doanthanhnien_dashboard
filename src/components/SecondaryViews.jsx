@@ -460,22 +460,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
 }
 
 // 5. Full Tasks & Todo Management View (Fully Synced with Supabase Realtime)
-export function TasksView({ tasks = [], onAddTask, onToggleTask, isDoanXa }) {
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-
-  const handleAddTaskSubmit = (e) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    onAddTask && onAddTask({
-      id: `t-${Date.now()}`,
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      priority: 'Bình thường',
-      dueDate: 'Hôm nay'
-    });
-    setNewTaskTitle('');
-  };
-
+export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa }) {
   return (
     <div className="content-card">
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
@@ -489,20 +474,14 @@ export function TasksView({ tasks = [], onAddTask, onToggleTask, isDoanXa }) {
           </div>
         </div>
 
-        {/* Add Task Quick Form */}
-        <form onSubmit={handleAddTaskSubmit} className="d-flex gap-2" style={{ maxWidth: '420px', width: '100%' }}>
-          <input 
-            type="text" 
-            className="form-control" 
-            placeholder="Nhập tên nhiệm vụ mới..." 
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            style={{ fontSize: '13px' }}
-          />
-          <button type="submit" className="btn btn-primary text-nowrap px-3 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-            + Thêm
-          </button>
-        </form>
+        <button 
+          className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
+          style={{ backgroundColor: '#0066FF', border: 'none' }}
+          onClick={onOpenCreateTask}
+        >
+          <Plus size={18} />
+          <span>Giao nhiệm vụ / Thêm công việc</span>
+        </button>
       </div>
 
       {/* Task List Table */}
@@ -522,7 +501,7 @@ export function TasksView({ tasks = [], onAddTask, onToggleTask, isDoanXa }) {
                   </button>
                   <div className="flex-grow-1">
                     <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-muted" style={{ fontSize: '10.5px' }}>Hạn: {t.dueDate}</div>
+                    <div className="text-muted" style={{ fontSize: '10.5px' }}>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</div>
                   </div>
                 </div>
               ))}

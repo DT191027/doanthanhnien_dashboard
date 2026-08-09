@@ -18,7 +18,8 @@ import {
   IssueDocumentModal, 
   SubmitDocumentModal, 
   SendMessageModal,
-  SupportModal 
+  SupportModal,
+  CreateTaskModal 
 } from './components/Modals';
 import { 
   ActivitiesView, 
@@ -49,9 +50,6 @@ import {
 import { Search, CheckCircle } from 'lucide-react';
 
 export default function App() {
-  // Session Persistence via sessionStorage:
-  // - Persists on F5 Page Reload within same tab
-  // - Automatically Wiped when Browser Tab is Closed
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = sessionStorage.getItem('xts_current_user');
@@ -78,6 +76,7 @@ export default function App() {
   const [showSubmitDocModal, setShowSubmitDocModal] = useState(false);
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -94,7 +93,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Toast notification helper
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -102,7 +100,6 @@ export default function App() {
     }, 4000);
   };
 
-  // Initial Load & Supabase Realtime Sync
   const loadAllData = async () => {
     const [acts, docs, subs, notis, tsks] = await Promise.all([
       syncFetchActivities(),
@@ -121,7 +118,6 @@ export default function App() {
   useEffect(() => {
     loadAllData();
 
-    // Supabase Realtime Channel Subscription
     if (supabase) {
       const channel = supabase
         .channel('public-db-changes')
@@ -136,18 +132,15 @@ export default function App() {
     }
   }, []);
 
-  // Unauthenticated -> Login Screen
   if (!currentUser) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
-  // Calculate separate Document counts for Incoming vs Outgoing
   const incomingDocsCount = submissionsList.length + documentsList.filter(d => d.type === 'incoming').length;
   const outgoingDocsCount = documentsList.filter(d => d.type === 'outgoing' || !d.type).length;
 
-  // Handlers for dynamic actions with Persistent Sync & Visual Toast Feedback
   const handleAddActivity = async (newAct) => {
     const activityItem = {
       id: `act-${Date.now()}`,
@@ -223,7 +216,8 @@ export default function App() {
       title: newTask.title,
       status: 'todo',
       priority: newTask.priority || 'Bình thường',
-      dueDate: newTask.dueDate || 'Hôm nay'
+      dueDate: newTask.dueDate || 'Hôm nay',
+      assigned_to: newTask.assigned_to || 'Đoàn xã Xuân Thới Sơn'
     };
     const updated = await syncSaveTask(taskItem);
     setTasksList(updated);
@@ -237,7 +231,6 @@ export default function App() {
 
   return (
     <div className="d-flex min-vh-100 bg-main position-relative">
-      {/* Toast Feedback Alert Banner */}
       {toastMessage && (
         <div 
           className="position-fixed top-0 start-50 translate-middle-x mt-3 bg-success text-white px-4 py-2.5 rounded-3 shadow-lg d-flex align-items-center gap-2 fw-semibold"
@@ -272,7 +265,6 @@ export default function App() {
 
         {/* Workspace Body */}
         <div className="p-3 p-lg-4 flex-grow-1">
-          {/* Global Search Results View */}
           {searchQuery.trim() !== '' ? (
             <div className="content-card">
               <h3 className="card-title-header mb-3 d-flex align-items-center gap-2">
@@ -330,7 +322,11 @@ export default function App() {
                   {isDoanXa ? (
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
-                        <TodoList tasks={tasksList} setActiveTab={setActiveTab} />
+                        <TodoList 
+                          tasks={tasksList} 
+                          setActiveTab={setActiveTab} 
+                          onOpenCreateTask={() => setShowCreateTaskModal(true)}
+                        />
                       </div>
                       <div className="col-12 col-md-6">
                         <UpcomingActivities 
@@ -421,7 +417,7 @@ export default function App() {
             /* TASKS MANAGEMENT VIEW */
             <TasksView 
               tasks={tasksList} 
-              onAddTask={handleAddTask} 
+              onOpenCreateTask={() => setShowCreateTaskModal(true)} 
               onToggleTask={handleToggleTask} 
               isDoanXa={isDoanXa} 
             />
@@ -517,6 +513,12 @@ export default function App() {
       <SupportModal 
         show={showSupportModal}
         onClose={() => setShowSupportModal(false)}
+      />
+
+      <CreateTaskModal 
+        show={showCreateTaskModal}
+        onClose={() => setShowCreateTaskModal(false)}
+        onSave={handleAddTask}
       />
     </div>
   );

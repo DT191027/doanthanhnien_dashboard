@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
@@ -512,6 +512,106 @@ export function SupportModal({ show, onClose }) {
           <div className="modal-footer justify-content-center">
             <button type="button" className="btn-primary btn px-4 fw-semibold" onClick={onClose}>Đóng Cửa Sổ</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 6. Create Task / Todo Modal
+export function CreateTaskModal({ show, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    assigned_to: 'Đoàn xã Xuân Thới Sơn',
+    priority: 'Bình thường',
+    dueDate: 'Hôm nay'
+  });
+
+  if (!show) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
+    onSave && onSave(formData);
+    setFormData({ title: '', assigned_to: 'Đoàn xã Xuân Thới Sơn', priority: 'Bình thường', dueDate: 'Hôm nay' });
+    onClose();
+  };
+
+  return (
+    <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
+              <CheckSquare className="text-primary" size={20} />
+              Giao Nhiệm vụ / Thêm Công việc Mới
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body p-4">
+              <div className="mb-3">
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên nhiệm vụ / công việc <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ví dụ: Rà soát danh sách đoàn viên ưu tú 30 Ấp..."
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
+              </div>
+
+              <div className="row g-2 mb-3">
+                <div className="col-6">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Phân công thực hiện</label>
+                  <select
+                    className="form-select"
+                    value={formData.assigned_to}
+                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                  >
+                    <option value="Đoàn xã Xuân Thới Sơn">Đoàn xã Xuân Thới Sơn</option>
+                    {INITIAL_BRANCHES.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-6">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
+                  <select
+                    className="form-select"
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  >
+                    <option value="Bình thường">Bình thường</option>
+                    <option value="Cao">🔥 Cao (Khẩn)</option>
+                    <option value="Trung bình">Trung bình</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Hạn hoàn thành <span className="text-danger">*</span></label>
+                <input
+                  type="date"
+                  className="form-control"
+                  required
+                  onChange={(e) => {
+                    const parts = e.target.value.split('-');
+                    if (parts.length === 3) {
+                      setFormData({ ...formData, dueDate: `${parts[2]}/${parts[1]}/${parts[0]}` });
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
+              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
+                Tạo Công Việc Ngay
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

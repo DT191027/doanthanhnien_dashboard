@@ -44,7 +44,13 @@ export default function ChiDoanDocsList({ documents = [], setActiveTab }) {
                   <div className="text-muted" style={{ fontSize: '10.5px' }}>{doc.sender}</div>
                 </div>
               </div>
-              <a href={`/${doc.file_name}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+              <a 
+                href={doc.file_url || `/${doc.file_name}`} 
+                download={doc.file_name || 'Van_Ban.pdf'}
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+              >
                 <Download size={13} /> Tải PDF
               </a>
             </div>

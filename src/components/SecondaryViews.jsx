@@ -159,14 +159,17 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
 export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpenIssueDocument, isDoanXa }) {
   const [search, setSearch] = useState('');
 
-  const filtered = documents.filter(d => 
-    d.title.toLowerCase().includes(search.toLowerCase()) || 
-    (d.doc_number && d.doc_number.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = documents.filter(d => {
+    const matchType = tabType === 'incoming_docs' ? d.type === 'incoming' : 
+                      tabType === 'outgoing_docs' ? (d.type === 'outgoing' || !d.type) : true;
+    const matchSearch = d.title.toLowerCase().includes(search.toLowerCase()) || 
+                        (d.doc_number && d.doc_number.toLowerCase().includes(search.toLowerCase()));
+    return matchType && matchSearch;
+  });
 
   const titleMap = {
-    incoming_docs: 'Quản lý Văn bản đến',
-    outgoing_docs: 'Quản lý Văn bản đi',
+    incoming_docs: 'Quản lý Văn bản đến (Báo cáo tiếp nhận)',
+    outgoing_docs: 'Quản lý Văn bản đi (Văn bản ban hành)',
     doan_xa_docs: 'Văn bản từ Đoàn xã',
     required_docs: 'Văn bản cần nộp'
   };
@@ -260,8 +263,14 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
                     </span>
                   </td>
                   <td>
-                    {doc.file_name ? (
-                      <a href={`/${doc.file_name}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+                    {doc.file_url || doc.file_name ? (
+                      <a 
+                        href={doc.file_url || `/${doc.file_name}`} 
+                        download={doc.file_name || 'Van_Ban.pdf'}
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                      >
                         <Download size={13} /> Tải PDF
                       </a>
                     ) : (
@@ -363,9 +372,15 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
                     </span>
                   </td>
                   <td>
-                    {s.file_name ? (
-                      <a href={`/${s.file_name}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
-                        <Download size={13} /> {s.file_name}
+                    {s.file_url || s.file_name ? (
+                      <a 
+                        href={s.file_url || `/${s.file_name}`} 
+                        download={s.file_name || 'Bao_Cao.pdf'}
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                      >
+                        <Download size={13} /> {s.file_name || 'Tải tệp'}
                       </a>
                     ) : (
                       <span className="text-muted" style={{ fontSize: '11px' }}>Không có tệp</span>
@@ -655,8 +670,22 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
   const [search, setSearch] = useState('');
 
   const allFiles = [
-    ...documents.filter(d => d.file_name).map(d => ({ id: d.id, name: d.file_name, title: d.title, category: 'Văn bản ban hành', date: d.date || 'Hôm nay' })),
-    ...submissions.filter(s => s.file_name).map(s => ({ id: s.id, name: s.file_name, title: s.title, category: 'Báo cáo Chi đoàn', date: s.sub_date || 'Hôm nay' }))
+    ...documents.filter(d => d.file_name || d.file_url).map(d => ({ 
+      id: d.id, 
+      name: d.file_name || 'Van_Ban.pdf', 
+      url: d.file_url || d.pdf_url || `/${d.file_name}`,
+      title: d.title, 
+      category: 'Văn bản ban hành', 
+      date: d.date || 'Hôm nay' 
+    })),
+    ...submissions.filter(s => s.file_name || s.file_url).map(s => ({ 
+      id: s.id, 
+      name: s.file_name || 'Bao_Cao.pdf', 
+      url: s.file_url || `/${s.file_name}`,
+      title: s.title, 
+      category: 'Báo cáo Chi đoàn', 
+      date: s.sub_date || 'Hôm nay' 
+    }))
   ].filter(f => f.title.toLowerCase().includes(search.toLowerCase()) || f.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -709,7 +738,13 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
                     <div className="text-muted" style={{ fontSize: '11px' }}>{file.category} • {file.date}</div>
                   </div>
                 </div>
-                <a href={`/${file.name}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                <a 
+                  href={file.url} 
+                  download={file.name}
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-sm btn-outline-primary"
+                >
                   <Download size={14} />
                 </a>
               </div>

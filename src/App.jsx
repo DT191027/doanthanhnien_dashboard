@@ -137,6 +137,10 @@ export default function App() {
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
+  // Calculate separate Document counts for Incoming vs Outgoing
+  const incomingDocsCount = submissionsList.length + documentsList.filter(d => d.type === 'incoming').length;
+  const outgoingDocsCount = documentsList.filter(d => d.type === 'outgoing' || !d.type).length;
+
   // Handlers for dynamic actions with Persistent Sync & Visual Toast Feedback
   const handleAddActivity = async (newAct) => {
     const activityItem = {
@@ -167,7 +171,8 @@ export default function App() {
       type: 'outgoing',
       date: new Date().toLocaleDateString('vi-VN'),
       dateText: 'Hôm nay',
-      file_name: newDoc.file_name || ''
+      file_name: newDoc.file_name || '',
+      file_url: newDoc.file_url || ''
     };
     const updated = await syncSaveDocument(createdDoc);
     setDocumentsList(updated);
@@ -182,7 +187,8 @@ export default function App() {
       due_date: new Date().toLocaleDateString('vi-VN'),
       sub_date: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
       status: 'Đã nộp',
-      file_name: newSub.file_name || ''
+      file_name: newSub.file_name || '',
+      file_url: newSub.file_url || ''
     };
     const updated = await syncSaveSubmission(createdSub);
     setSubmissionsList(updated);
@@ -289,7 +295,8 @@ export default function App() {
                   {isDoanXa && (
                     <StatsCards 
                       activitiesCount={activitiesList.length}
-                      docsCount={documentsList.length}
+                      incomingDocsCount={incomingDocsCount}
+                      outgoingDocsCount={outgoingDocsCount}
                     />
                   )}
 
@@ -340,6 +347,7 @@ export default function App() {
                   <PendingDocs 
                     currentRole={currentUser}
                     documents={documentsList}
+                    submissions={submissionsList}
                     setActiveTab={setActiveTab}
                   />
 

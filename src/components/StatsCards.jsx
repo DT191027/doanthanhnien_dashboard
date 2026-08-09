@@ -1,10 +1,10 @@
 import React from 'react';
 import { Calendar, FileText, Send, Users, Minus } from 'lucide-react';
 
-export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
+export default function StatsCards({ activitiesCount = 0, incomingDocsCount = 0, outgoingDocsCount = 0 }) {
   return (
     <div className="row g-3 mb-4">
-      {/* Stat Card 1 */}
+      {/* Stat Card 1: Hoạt động tháng này */}
       <div className="col-12 col-sm-6 col-xl-3">
         <div className="content-card mb-0 h-100">
           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -34,7 +34,7 @@ export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
         </div>
       </div>
 
-      {/* Stat Card 2 */}
+      {/* Stat Card 2: Văn bản đến (Báo cáo nộp từ 30 Chi đoàn Ấp) */}
       <div className="col-12 col-sm-6 col-xl-3">
         <div className="content-card mb-0 h-100">
           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -46,11 +46,11 @@ export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
             </div>
           </div>
           <div className="fw-extrabold text-dark mb-2" style={{ fontSize: '24px' }}>
-            {docsCount}
+            {incomingDocsCount}
           </div>
           <div className="d-flex align-items-center gap-1 text-secondary mb-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
             <Minus size={14} />
-            <span>{docsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${docsCount} văn bản mới`}</span>
+            <span>{incomingDocsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${incomingDocsCount} báo cáo tiếp nhận`}</span>
           </div>
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
@@ -64,7 +64,7 @@ export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
         </div>
       </div>
 
-      {/* Stat Card 3 */}
+      {/* Stat Card 3: Văn bản đi (Công văn/kế hoạch do Đoàn xã ban hành) */}
       <div className="col-12 col-sm-6 col-xl-3">
         <div className="content-card mb-0 h-100">
           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -76,11 +76,11 @@ export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
             </div>
           </div>
           <div className="fw-extrabold text-dark mb-2" style={{ fontSize: '24px' }}>
-            {docsCount}
+            {outgoingDocsCount}
           </div>
           <div className="d-flex align-items-center gap-1 text-secondary mb-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
             <Minus size={14} />
-            <span>{docsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${docsCount} văn bản đã ban hành`}</span>
+            <span>{outgoingDocsCount === 0 ? 'Chưa phát sinh dữ liệu' : `${outgoingDocsCount} văn bản đã ban hành`}</span>
           </div>
           <svg viewBox="0 0 100 24" className="w-100" style={{ height: '32px' }}>
             <path 
@@ -94,7 +94,7 @@ export default function StatsCards({ activitiesCount = 0, docsCount = 0 }) {
         </div>
       </div>
 
-      {/* Stat Card 4 */}
+      {/* Stat Card 4: Chi đoàn trực thuộc */}
       <div className="col-12 col-sm-6 col-xl-3">
         <div className="content-card mb-0 h-100">
           <div className="d-flex align-items-center justify-content-between mb-2">

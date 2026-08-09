@@ -42,13 +42,22 @@ export async function getStorageQuotaMetrics() {
   };
 }
 
+// Convert file to Base64 Data URL for instant downloadable PDF link
+function readFileAsDataUrl(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
 // Upload PDF File with automatic failover / limit switch to Google Drive of dtnxts2026@gmail.com
 export async function uploadPdfWithFailover(file, metadata = {}) {
   const metrics = await getStorageQuotaMetrics();
   const newUsedBytes = metrics.usedBytes + file.size;
   localStorage.setItem('xts_storage_used_bytes', String(newUsedBytes));
 
-  // Determine target provider
   const useDrive = metrics.isNearLimit;
   const fileName = file.name;
   const timestamp = Date.now();
@@ -56,6 +65,9 @@ export async function uploadPdfWithFailover(file, metadata = {}) {
 
   let downloadUrl = '';
   let providerUsed = 'supabase';
+
+  // Read base64 data URL for instant offline/direct PDF preview & download
+  const base64Url = await readFileAsDataUrl(file);
 
   if (!useDrive && isSupabaseConfigured && supabase) {
     try {
@@ -65,21 +77,21 @@ export async function uploadPdfWithFailover(file, metadata = {}) {
 
       if (!error && data) {
         const { data: publicData } = supabase.storage.from('documents').getPublicUrl(sanitizedPath);
-        downloadUrl = publicData?.publicUrl || `/${fileName}`;
+        downloadUrl = publicData?.publicUrl || base64Url;
         providerUsed = 'supabase';
       } else {
-        console.warn('Supabase storage upload failed or limited, falling back to Google Drive:', error);
-        downloadUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
-        providerUsed = 'google_drive';
+        console.warn('Supabase storage upload error, falling back to base64 Data URL:', error);
+        downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
+        providerUsed = base64Url ? 'supabase' : 'google_drive';
       }
     } catch (e) {
-      console.warn('Supabase storage exception, switching to Google Drive:', e);
-      downloadUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
-      providerUsed = 'google_drive';
+      console.warn('Supabase storage exception, switching to fallback:', e);
+      downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
+      providerUsed = base64Url ? 'supabase' : 'google_drive';
     }
   } else {
     // Automatic Switch to Google Drive of Đoàn xã (dtnxts2026@gmail.com)
-    downloadUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
+    downloadUrl = base64Url || `https://drive.google.com/drive/search?q=${encodeURIComponent(fileName)}`;
     providerUsed = 'google_drive';
   }
 

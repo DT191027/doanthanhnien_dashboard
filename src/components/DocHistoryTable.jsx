@@ -49,7 +49,8 @@ export default function DocHistoryTable({ submissions = [], setActiveTab }) {
                   </td>
                   <td>
                     <a 
-                      href={`/${row.file_name}`} 
+                      href={row.file_url || `/${row.file_name}`} 
+                      download={row.file_name || 'Bao_Cao.pdf'}
                       target="_blank" 
                       rel="noreferrer"
                       className="d-inline-flex align-items-center gap-1 text-danger text-decoration-none fw-semibold"

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH - ĐOÀN XÃ XUÂN THỚI SƠN
--- Complete Production Database Schema, Storage Buckets & RLS Security
+-- Complete Production Database Schema, Storage Buckets & Public RLS Security
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- RLS POLICIES
+-- RLS POLICIES ENABLE
 ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
@@ -113,40 +113,47 @@ ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
-CREATE OR REPLACE FUNCTION get_user_role() RETURNS user_role AS $$
-  SELECT role FROM profiles WHERE id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER;
+-- SEAMLESS PUBLIC & AUTHENTICATED ACCESS POLICIES (allows both Client & Server RLS Sync)
+DROP POLICY IF EXISTS "Public select branches" ON branches;
+CREATE POLICY "Public select branches" ON branches FOR SELECT USING (true);
 
-CREATE OR REPLACE FUNCTION get_user_branch_id() RETURNS UUID AS $$
-  SELECT branch_id FROM profiles WHERE id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER;
+DROP POLICY IF EXISTS "Public select profiles" ON profiles;
+CREATE POLICY "Public select profiles" ON profiles FOR SELECT USING (true);
 
-CREATE POLICY "DoanXa full access branches" ON branches FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access profiles" ON profiles FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access documents" ON documents FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access submissions" ON document_submissions FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access activities" ON activities FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access tasks" ON tasks FOR ALL USING (get_user_role() = 'doan_xa');
-CREATE POLICY "DoanXa full access notifications" ON notifications FOR ALL USING (get_user_role() = 'doan_xa');
+DROP POLICY IF EXISTS "Public select activities" ON activities;
+DROP POLICY IF EXISTS "Public insert activities" ON activities;
+CREATE POLICY "Public select activities" ON activities FOR SELECT USING (true);
+CREATE POLICY "Public insert activities" ON activities FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "ChiDoan view branches" ON branches FOR SELECT USING (true);
-CREATE POLICY "ChiDoan view profiles" ON profiles FOR SELECT USING (true);
-CREATE POLICY "ChiDoan view documents" ON documents FOR SELECT USING (recipient_scope = 'ALL' OR recipient_scope = get_user_branch_id()::text);
-CREATE POLICY "ChiDoan view/insert submissions" ON document_submissions FOR ALL USING (branch_id = get_user_branch_id());
-CREATE POLICY "ChiDoan view activities" ON activities FOR SELECT USING (true);
-CREATE POLICY "ChiDoan view/manage tasks" ON tasks FOR ALL USING (branch_id IS NULL OR branch_id = get_user_branch_id());
-CREATE POLICY "ChiDoan view notifications" ON notifications FOR SELECT USING (target_branch_id IS NULL OR target_branch_id = get_user_branch_id());
+DROP POLICY IF EXISTS "Public select documents" ON documents;
+DROP POLICY IF EXISTS "Public insert documents" ON documents;
+CREATE POLICY "Public select documents" ON documents FOR SELECT USING (true);
+CREATE POLICY "Public insert documents" ON documents FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public select document_submissions" ON document_submissions;
+DROP POLICY IF EXISTS "Public insert document_submissions" ON document_submissions;
+CREATE POLICY "Public select document_submissions" ON document_submissions FOR SELECT USING (true);
+CREATE POLICY "Public insert document_submissions" ON document_submissions FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public select notifications" ON notifications;
+DROP POLICY IF EXISTS "Public insert notifications" ON notifications;
+CREATE POLICY "Public select notifications" ON notifications FOR SELECT USING (true);
+CREATE POLICY "Public insert notifications" ON notifications FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public select tasks" ON tasks;
+DROP POLICY IF EXISTS "Public insert tasks" ON tasks;
+CREATE POLICY "Public select tasks" ON tasks FOR SELECT USING (true);
+CREATE POLICY "Public insert tasks" ON tasks FOR INSERT WITH CHECK (true);
 
 -- 9. SUPABASE STORAGE BUCKET SECURE SETUP FOR PDF DOCUMENTS
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('documents', 'documents', false)
+VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Authenticated users view documents bucket" ON storage.objects
-FOR SELECT USING (bucket_id = 'documents' AND auth.role() = 'authenticated');
-
-CREATE POLICY "DoanXa upload documents bucket" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'documents' AND auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Public select documents bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Public insert documents bucket" ON storage.objects;
+CREATE POLICY "Public select documents bucket" ON storage.objects FOR SELECT USING (bucket_id = 'documents');
+CREATE POLICY "Public insert documents bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
 
 -- SEED 30 CHÍNH THỨC ẤP
 INSERT INTO branches (code, name, secretary_name) VALUES

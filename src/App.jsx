@@ -46,7 +46,18 @@ import {
 import { Search, CheckCircle } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null); 
+  // Session Persistence via sessionStorage:
+  // - Persists on F5 Page Reload within same tab
+  // - Automatically Wiped when Browser Tab is Closed (protects against unauthorized access)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('xts_current_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -64,6 +75,21 @@ export default function App() {
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    try {
+      sessionStorage.setItem('xts_current_user', JSON.stringify(user));
+    } catch (e) {}
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+    try {
+      sessionStorage.removeItem('xts_current_user');
+    } catch (e) {}
+  };
+
   // Toast notification helper
   const triggerToast = (msg) => {
     setToastMessage(msg);
@@ -72,29 +98,29 @@ export default function App() {
     }, 4000);
   };
 
-  // Initial Load from Persistent Sync
+  // Initial Load & Supabase Realtime Sync
+  const loadAllData = async () => {
+    const [acts, docs, subs, notis] = await Promise.all([
+      syncFetchActivities(),
+      syncFetchDocuments(),
+      syncFetchSubmissions(),
+      syncFetchNotifications()
+    ]);
+    setActivitiesList(acts);
+    setDocumentsList(docs);
+    setSubmissionsList(subs);
+    setNotificationsList(notis);
+  };
+
   useEffect(() => {
-    async function loadInitialData() {
-      const [acts, docs, subs, notis] = await Promise.all([
-        syncFetchActivities(),
-        syncFetchDocuments(),
-        syncFetchSubmissions(),
-        syncFetchNotifications()
-      ]);
-      setActivitiesList(acts);
-      setDocumentsList(docs);
-      setSubmissionsList(subs);
-      setNotificationsList(notis);
-    }
+    loadAllData();
 
-    loadInitialData();
-
-    // Supabase Realtime Channel
+    // Supabase Realtime Channel Subscription
     if (isSupabaseConfigured && supabase) {
       const channel = supabase
         .channel('public-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-          loadInitialData();
+          loadAllData();
         })
         .subscribe();
 
@@ -106,7 +132,7 @@ export default function App() {
 
   // Unauthenticated -> Login Screen
   if (!currentUser) {
-    return <Login onLoginSuccess={(user) => setCurrentUser(user)} />;
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   const isDoanXa = currentUser.role === 'doan_xa';
@@ -173,7 +199,7 @@ export default function App() {
     };
     const updated = await syncSaveNotification(createdNoti);
     setNotificationsList(updated);
-    setActiveTab('notifications'); // Automatically switch tab so user sees the new notification immediately!
+    setActiveTab('notifications');
     triggerToast(`Đã phát thông báo chỉ đạo: "${newNoti.title}"!`);
   };
 
@@ -207,10 +233,7 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           onOpenNotifications={() => setActiveTab('notifications')}
           onOpenMessages={() => setShowSendMessageModal(true)}
-          onLogout={() => {
-            setCurrentUser(null);
-            setActiveTab('dashboard');
-          }}
+          onLogout={handleLogout}
           unreadNotiCount={notificationsList.length}
           unreadMsgCount={notificationsList.length > 0 ? 1 : 0}
         />

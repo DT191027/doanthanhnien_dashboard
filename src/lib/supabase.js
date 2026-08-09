@@ -74,7 +74,7 @@ export const INITIAL_ROLES = [
   }))
 ];
 
-// Clean Initial Empty States for Official Handover
+// Initial Empty Constant Exports
 export const INITIAL_ACTIVITIES = [];
 export const INITIAL_DOCUMENTS_DOAN_XA = [];
 export const INITIAL_DOCUMENTS_CHI_DOAN = [];
@@ -123,9 +123,23 @@ export async function syncFetchActivities() {
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        setPersistedData('activities', data);
-        return data;
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(item => {
+          const d = item.start_date ? new Date(item.start_date) : new Date();
+          const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
+          return {
+            id: item.id,
+            title: item.title,
+            day: String(d.getDate()).padStart(2, '0'),
+            month: months[d.getMonth()] || 'THÁNG 5',
+            time: `${item.start_time || '08:00'} - ${item.end_time || '11:30'}`,
+            location: item.location || 'Hội trường UBND xã Xuân Thới Sơn',
+            status: item.status || 'Sắp diễn ra',
+            description: item.description || ''
+          };
+        });
+        setPersistedData('activities', mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase fetch activities error, using local storage fallback:', e);
@@ -136,12 +150,12 @@ export async function syncFetchActivities() {
 
 export async function syncSaveActivity(activityItem) {
   const current = getPersistedData('activities', []);
-  const updated = [activityItem, ...current];
-  setPersistedData('activities', updated);
+  const updatedLocal = [activityItem, ...current];
+  setPersistedData('activities', updatedLocal);
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('activities').insert([{
+      const { error } = await supabase.from('activities').insert([{
         title: activityItem.title,
         description: activityItem.description || '',
         start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
@@ -151,20 +165,34 @@ export async function syncSaveActivity(activityItem) {
         status: activityItem.status || 'Sắp diễn ra',
         organizer: 'Đoàn xã Xuân Thới Sơn'
       }]);
+      if (error) console.error('Supabase error inserting activity:', error);
     } catch (e) {
-      console.warn('Supabase save activity error:', e);
+      console.error('Supabase save activity error:', e);
     }
+    return await syncFetchActivities();
   }
-  return updated;
+  return updatedLocal;
 }
 
 export async function syncFetchDocuments() {
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        setPersistedData('documents', data);
-        return data;
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(item => ({
+          id: item.id,
+          doc_number: item.doc_number,
+          title: item.title,
+          summary: `Ban hành ngày ${item.issue_date || new Date().toLocaleDateString('vi-VN')}`,
+          sender: item.sender || 'Đoàn xã Xuân Thới Sơn',
+          recipient_scope: item.recipient_scope || 'ALL',
+          status: item.status || 'Chưa đọc',
+          type: item.type || 'outgoing',
+          date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
+          file_name: item.pdf_url || ''
+        }));
+        setPersistedData('documents', mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase fetch documents error, using local storage fallback:', e);
@@ -175,12 +203,12 @@ export async function syncFetchDocuments() {
 
 export async function syncSaveDocument(docItem) {
   const current = getPersistedData('documents', []);
-  const updated = [docItem, ...current];
-  setPersistedData('documents', updated);
+  const updatedLocal = [docItem, ...current];
+  setPersistedData('documents', updatedLocal);
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('documents').insert([{
+      const { error } = await supabase.from('documents').insert([{
         doc_number: docItem.doc_number,
         title: docItem.title,
         type: docItem.type || 'outgoing',
@@ -190,20 +218,31 @@ export async function syncSaveDocument(docItem) {
         status: docItem.status || 'unread',
         pdf_url: docItem.file_name || ''
       }]);
+      if (error) console.error('Supabase error inserting document:', error);
     } catch (e) {
-      console.warn('Supabase save document error:', e);
+      console.error('Supabase save document error:', e);
     }
+    return await syncFetchDocuments();
   }
-  return updated;
+  return updatedLocal;
 }
 
 export async function syncFetchSubmissions() {
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('document_submissions').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        setPersistedData('submissions', data);
-        return data;
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(item => ({
+          id: item.id,
+          title: item.doc_title,
+          branch_name: item.branch_name || 'Chi đoàn Ấp',
+          due_date: new Date().toLocaleDateString('vi-VN'),
+          sub_date: new Date(item.submission_date || Date.now()).toLocaleDateString('vi-VN'),
+          status: item.status || 'Đã nộp',
+          file_name: item.file_name || 'Bao_cao.pdf'
+        }));
+        setPersistedData('submissions', mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase fetch submissions error, using local storage fallback:', e);
@@ -214,12 +253,12 @@ export async function syncFetchSubmissions() {
 
 export async function syncSaveSubmission(subItem) {
   const current = getPersistedData('submissions', []);
-  const updated = [subItem, ...current];
-  setPersistedData('submissions', updated);
+  const updatedLocal = [subItem, ...current];
+  setPersistedData('submissions', updatedLocal);
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('document_submissions').insert([{
+      const { error } = await supabase.from('document_submissions').insert([{
         branch_name: subItem.branch_name || 'Chi đoàn Ấp',
         doc_title: subItem.title,
         submission_date: new Date().toISOString(),
@@ -227,20 +266,29 @@ export async function syncSaveSubmission(subItem) {
         file_name: subItem.file_name || 'Bao_cao.pdf',
         file_url: subItem.file_name || ''
       }]);
+      if (error) console.error('Supabase error inserting submission:', error);
     } catch (e) {
-      console.warn('Supabase save submission error:', e);
+      console.error('Supabase save submission error:', e);
     }
+    return await syncFetchSubmissions();
   }
-  return updated;
+  return updatedLocal;
 }
 
 export async function syncFetchNotifications() {
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        setPersistedData('notifications', data);
-        return data;
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          content: item.content || '',
+          type: item.type || 'general',
+          time_ago: item.time_ago || 'Vừa xong'
+        }));
+        setPersistedData('notifications', mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase fetch notifications error, using local storage fallback:', e);
@@ -251,20 +299,22 @@ export async function syncFetchNotifications() {
 
 export async function syncSaveNotification(notiItem) {
   const current = getPersistedData('notifications', []);
-  const updated = [notiItem, ...current];
-  setPersistedData('notifications', updated);
+  const updatedLocal = [notiItem, ...current];
+  setPersistedData('notifications', updatedLocal);
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('notifications').insert([{
+      const { error } = await supabase.from('notifications').insert([{
         title: notiItem.title,
         content: notiItem.content || '',
         type: notiItem.type || 'general',
         time_ago: notiItem.time_ago || 'Vừa xong'
       }]);
+      if (error) console.error('Supabase error inserting notification:', error);
     } catch (e) {
-      console.warn('Supabase save notification error:', e);
+      console.error('Supabase save notification error:', e);
     }
+    return await syncFetchNotifications();
   }
-  return updated;
+  return updatedLocal;
 }

@@ -1,11 +1,13 @@
 -- ============================================================================
--- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH - ĐOÀN XÃ XUÂN THỚI SƠN
--- Production Database Schema & Ready-to-Run Supabase Cloud SQL Script
+-- UỶ BAN NHÂN DÂN XÃ XUÂN THỚI SƠN - ĐOÀN TNCS HỒ CHÍ MINH
+-- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH SỐ HÓA
+-- KỊCH BẢN CƠ SỞ DỮ LIỆU SẢN XUẤT CHUẨN ĐỒNG BỘ REALTIME & GOOGLE DRIVE BACKUP
 -- ============================================================================
 
+-- Khởi tạo extension UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. ENUMS
+-- 1. ĐỊNH NGHĨA KIỂU DỮ LIỆU ENUM CHUẨN
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('doan_xa', 'chi_doan');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -26,7 +28,7 @@ DO $$ BEGIN
   CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'completed');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- 2. BẢNG CHI ĐOÀN (30 Ấp Chính thức)
+-- 2. BẢNG CHI ĐOÀN (30 Ấp Chính thức của Xã Xuân Thới Sơn)
 CREATE TABLE IF NOT EXISTS branches (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(50) UNIQUE NOT NULL,
@@ -37,7 +39,7 @@ CREATE TABLE IF NOT EXISTS branches (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. BẢNG PROFILES
+-- 3. BẢNG PROFILES (Tài khoản & Phân quyền Điều hành)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -50,7 +52,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. BẢNG VĂN BẢN (BAN HÀNH TỪ ĐOÀN XÃ)
+-- 4. BẢNG VĂN BẢN (Ban hành từ Đoàn xã)
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   doc_number VARCHAR(100) NOT NULL,
@@ -68,7 +70,11 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. BẢNG NỘP VĂN BẢN & BÁO CÁO (CHI ĐOÀN ẤP)
+-- Cập nhật bổ sung cột nếu bảng đã tồn tại từ trước
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_url TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS storage_provider VARCHAR(50) DEFAULT 'supabase';
+
+-- 5. BẢNG NỘP VĂN BẢN & BÁO CÁO (Chi đoàn Ấp nộp lên Đoàn xã)
 CREATE TABLE IF NOT EXISTS document_submissions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
@@ -84,6 +90,9 @@ CREATE TABLE IF NOT EXISTS document_submissions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Cập nhật bổ sung cột nếu bảng đã tồn tại từ trước
+ALTER TABLE document_submissions ADD COLUMN IF NOT EXISTS storage_provider VARCHAR(50) DEFAULT 'supabase';
+
 -- 6. BẢNG HOẠT ĐỘNG & PHONG TRÀO
 CREATE TABLE IF NOT EXISTS activities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -98,7 +107,7 @@ CREATE TABLE IF NOT EXISTS activities (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. BẢNG CÔNG VIỆC (TODO LIST)
+-- 7. BẢNG CÔNG VIỆC (Todo List & Nhiệm vụ)
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -110,7 +119,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. BẢNG THÔNG BÁO & CHỈ ĐẠO
+-- 8. BẢNG THÔNG BÁO & CHỈ ĐẠO ĐIỀU HÀNH
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
@@ -122,7 +131,15 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- ============================================================================
--- GIẢI PHÓNG HÀN NGẠCH BẢO MẬT RLS (MỞ QUYỀN TRUY VẤN VÀ CHÈN DỮ LIỆU TỪ WEB DASHBOARD)
+-- THIẾT LẬP CHỈ MỤC INDEX TỐI ƯU TỐC ĐỘ TRUY VẤN
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_documents_issue_date ON documents(issue_date DESC);
+CREATE INDEX IF NOT EXISTS idx_submissions_submission_date ON document_submissions(submission_date DESC);
+CREATE INDEX IF NOT EXISTS idx_activities_start_date ON activities(start_date DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+
+-- ============================================================================
+-- GIẢI PHÓNG HÀN NGẠCH BẢO MẬT RLS (MỞ QUYỀN TRUY VẤN & GHI DỮ LIỆU ĐỒNG BỘ 100%)
 -- ============================================================================
 ALTER TABLE branches DISABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
@@ -132,7 +149,31 @@ ALTER TABLE activities DISABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
 
--- CẤU HÌNH SUPABASE STORAGE BUCKET SECURE SETUP CHO TỆP PDF & GOOGLE DRIVE BACKUP
+-- THIẾT LẬP PUBLIC POLICIES DỰ PHÒNG (DÙ BẬT Hay TẮT RLS TRÊN CLOUD CŨNG KHÔNG BỊ LỖI CHẶN)
+DROP POLICY IF EXISTS "Public_All_branches" ON branches;
+CREATE POLICY "Public_All_branches" ON branches FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_profiles" ON profiles;
+CREATE POLICY "Public_All_profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_documents" ON documents;
+CREATE POLICY "Public_All_documents" ON documents FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_submissions" ON document_submissions;
+CREATE POLICY "Public_All_submissions" ON document_submissions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_activities" ON activities;
+CREATE POLICY "Public_All_activities" ON activities FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_tasks" ON tasks;
+CREATE POLICY "Public_All_tasks" ON tasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public_All_notifications" ON notifications;
+CREATE POLICY "Public_All_notifications" ON notifications FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- CẤU HÌNH BUCKET LƯU TRỮ VĂN BẢN PDF & LƯU TRỮ CHUYỂN VÙNG GOOGLE DRIVE
+-- ============================================================================
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
@@ -142,7 +183,9 @@ DROP POLICY IF EXISTS "Public insert documents bucket" ON storage.objects;
 CREATE POLICY "Public select documents bucket" ON storage.objects FOR SELECT USING (bucket_id = 'documents');
 CREATE POLICY "Public insert documents bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
 
--- NẠP DỮ LIỆU 30 ẤP CHÍNH THỨC
+-- ============================================================================
+-- NẠP DỮ LIỆU DỰ PHÒNG 30 ẤP CHÍNH THỨC CỦA XÃ XUÂN THỚI SƠN
+-- ============================================================================
 INSERT INTO branches (code, name, secretary_name) VALUES
 ('BM', 'Chi đoàn Ấp Bùi Môn', 'Bí thư Chi đoàn Ấp Bùi Môn'),
 ('DT', 'Chi đoàn Ấp Dân Thắng', 'Bí thư Chi đoàn Ấp Dân Thắng'),

@@ -132,7 +132,7 @@ export async function syncFetchActivities() {
             title: item.title,
             day: String(d.getDate()).padStart(2, '0'),
             month: months[d.getMonth()] || 'THÁNG 5',
-            time: `${item.start_time || '08:00'} - ${item.end_time || '11:30'}`,
+            time: `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
             location: item.location || 'Hội trường UBND xã Xuân Thới Sơn',
             status: item.status || 'Sắp diễn ra',
             description: item.description || ''
@@ -155,19 +155,32 @@ export async function syncSaveActivity(activityItem) {
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase.from('activities').insert([{
+      let startTime = '08:00:00';
+      let endTime = '11:30:00';
+      if (activityItem.time && activityItem.time.includes(' - ')) {
+        const parts = activityItem.time.split(' - ');
+        startTime = parts[0].length === 5 ? `${parts[0]}:00` : parts[0];
+        endTime = parts[1].length === 5 ? `${parts[1]}:00` : parts[1];
+      }
+
+      const { data, error } = await supabase.from('activities').insert([{
         title: activityItem.title,
         description: activityItem.description || '',
         start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
-        start_time: activityItem.time ? activityItem.time.split(' - ')[0] : '08:00',
-        end_time: activityItem.time ? activityItem.time.split(' - ')[1] || '11:30' : '11:30',
-        location: activityItem.location,
+        start_time: startTime,
+        end_time: endTime,
+        location: activityItem.location || 'Hội trường UBND xã Xuân Thới Sơn',
         status: activityItem.status || 'Sắp diễn ra',
         organizer: 'Đoàn xã Xuân Thới Sơn'
-      }]);
-      if (error) console.error('Supabase error inserting activity:', error);
+      }]).select();
+
+      if (error) {
+        console.error('Supabase error inserting activity:', error);
+      } else {
+        console.log('Supabase activity inserted successfully:', data);
+      }
     } catch (e) {
-      console.error('Supabase save activity error:', e);
+      console.error('Supabase save activity exception:', e);
     }
     return await syncFetchActivities();
   }
@@ -208,7 +221,7 @@ export async function syncSaveDocument(docItem) {
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase.from('documents').insert([{
+      const { data, error } = await supabase.from('documents').insert([{
         doc_number: docItem.doc_number,
         title: docItem.title,
         type: docItem.type || 'outgoing',
@@ -217,10 +230,15 @@ export async function syncSaveDocument(docItem) {
         issue_date: new Date().toISOString().split('T')[0],
         status: docItem.status || 'unread',
         pdf_url: docItem.file_name || ''
-      }]);
-      if (error) console.error('Supabase error inserting document:', error);
+      }]).select();
+
+      if (error) {
+        console.error('Supabase error inserting document:', error);
+      } else {
+        console.log('Supabase document inserted successfully:', data);
+      }
     } catch (e) {
-      console.error('Supabase save document error:', e);
+      console.error('Supabase save document exception:', e);
     }
     return await syncFetchDocuments();
   }
@@ -258,17 +276,22 @@ export async function syncSaveSubmission(subItem) {
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase.from('document_submissions').insert([{
+      const { data, error } = await supabase.from('document_submissions').insert([{
         branch_name: subItem.branch_name || 'Chi đoàn Ấp',
         doc_title: subItem.title,
         submission_date: new Date().toISOString(),
         status: subItem.status || 'Đã nộp',
         file_name: subItem.file_name || 'Bao_cao.pdf',
         file_url: subItem.file_name || ''
-      }]);
-      if (error) console.error('Supabase error inserting submission:', error);
+      }]).select();
+
+      if (error) {
+        console.error('Supabase error inserting submission:', error);
+      } else {
+        console.log('Supabase submission inserted successfully:', data);
+      }
     } catch (e) {
-      console.error('Supabase save submission error:', e);
+      console.error('Supabase save submission exception:', e);
     }
     return await syncFetchSubmissions();
   }
@@ -304,15 +327,20 @@ export async function syncSaveNotification(notiItem) {
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase.from('notifications').insert([{
+      const { data, error } = await supabase.from('notifications').insert([{
         title: notiItem.title,
         content: notiItem.content || '',
         type: notiItem.type || 'general',
         time_ago: notiItem.time_ago || 'Vừa xong'
-      }]);
-      if (error) console.error('Supabase error inserting notification:', error);
+      }]).select();
+
+      if (error) {
+        console.error('Supabase error inserting notification:', error);
+      } else {
+        console.log('Supabase notification inserted successfully:', data);
+      }
     } catch (e) {
-      console.error('Supabase save notification error:', e);
+      console.error('Supabase save notification exception:', e);
     }
     return await syncFetchNotifications();
   }

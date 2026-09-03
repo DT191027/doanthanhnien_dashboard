@@ -25,7 +25,8 @@ import {
   HardDrive,
   Cloud,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Edit3
 } from 'lucide-react';
 import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
@@ -429,7 +430,7 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
 }
 
 // 4. Full Notifications Management View
-export function NotificationsView({ notifications = [], onOpenSendMessage, isDoanXa }) {
+export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa }) {
   const sorted = sortNotificationsByPriority(notifications);
 
   const getBadgeStyle = (priority) => {
@@ -460,7 +461,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
           <button 
             className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
             style={{ backgroundColor: '#0066FF', border: 'none' }}
-            onClick={onOpenSendMessage}
+            onClick={() => onOpenSendMessage && onOpenSendMessage()}
           >
             <MessageSquare size={16} />
             <span>Gửi thông báo / Tin nhắn</span>
@@ -478,7 +479,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
             Bấm nút "Gửi thông báo / Tin nhắn" ở trên để gửi tin tức điều hành tới Đoàn xã và 30 Chi đoàn Ấp.
           </p>
           {isDoanXa && (
-            <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={onOpenSendMessage}>
+            <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={() => onOpenSendMessage && onOpenSendMessage()}>
               + Gửi thông báo đầu tiên
             </button>
           )}
@@ -505,7 +506,35 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
                   {n.content && <p className="text-secondary mb-2" style={{ fontSize: '13px', lineHeight: '1.4' }}>{n.content}</p>}
                   <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
                     <span className="fw-semibold text-primary">📌 Gửi đến: {n.target_scope || '30 Chi đoàn Ấp'}</span>
-                    <span>🏛️ Ban Thường vụ Đoàn xã</span>
+                    
+                    {isDoanXa ? (
+                      <div className="d-flex align-items-center gap-2">
+                        <button 
+                          className="btn btn-sm btn-outline-primary fw-semibold d-flex align-items-center gap-1 px-2.5 py-1"
+                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          title="Chỉnh sửa thông báo"
+                          onClick={() => onEditNotification && onEditNotification(n)}
+                        >
+                          <Edit3 size={13} />
+                          <span>Chỉnh sửa</span>
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 px-2.5 py-1"
+                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          title="Xóa thông báo nhầm lẫn"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" khỏi hệ thống?`)) {
+                              onDeleteNotification && onDeleteNotification(n.id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Xóa</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <span>🏛️ Ban Thường vụ Đoàn xã</span>
+                    )}
                   </div>
                 </div>
               </div>

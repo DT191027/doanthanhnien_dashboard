@@ -483,6 +483,45 @@ export async function syncSaveNotification(notiItem) {
   return updatedLocal;
 }
 
+export async function syncUpdateNotification(updatedNoti) {
+  const current = getPersistedData('notifications', []);
+  const updatedLocal = sortNotificationsByPriority(
+    current.map(n => n.id === updatedNoti.id ? { ...n, ...updatedNoti } : n)
+  );
+  setPersistedData('notifications', updatedLocal);
+
+  if (supabase) {
+    try {
+      await supabase.from('notifications').update({
+        title: updatedNoti.title,
+        content: updatedNoti.content || '',
+        priority: updatedNoti.priority || 'Bình thường',
+        target_scope: updatedNoti.target_scope || 'Tất cả 30 Chi đoàn Ấp'
+      }).eq('id', updatedNoti.id);
+    } catch (e) {
+      console.error('Supabase update notification exception:', e);
+    }
+    return await syncFetchNotifications();
+  }
+  return updatedLocal;
+}
+
+export async function syncDeleteNotification(notificationId) {
+  const current = getPersistedData('notifications', []);
+  const updatedLocal = current.filter(n => n.id !== notificationId);
+  setPersistedData('notifications', updatedLocal);
+
+  if (supabase) {
+    try {
+      await supabase.from('notifications').delete().eq('id', notificationId);
+    } catch (e) {
+      console.error('Supabase delete notification exception:', e);
+    }
+    return await syncFetchNotifications();
+  }
+  return updatedLocal;
+}
+
 // ============================================================================
 // 5. TASKS SYNC (BẢNG CÔNG VIỆC / TODO LIST)
 // ============================================================================

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS } from '../lib/supabase';
@@ -465,12 +465,26 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
   );
 }
 
-// 4. Send Message / Notification Modal
-export function SendMessageModal({ show, onClose, onSave, currentRole }) {
+// 4. Send Message / Notification Modal (Supports Create & Edit)
+export function SendMessageModal({ show, onClose, onSave, currentRole, editData = null }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetScope, setTargetScope] = useState('ALL');
   const [priority, setPriority] = useState('Bình thường');
+
+  useEffect(() => {
+    if (editData) {
+      setTitle(editData.title || '');
+      setContent(editData.content || '');
+      setTargetScope(editData.target_scope === 'Tất cả 30 Chi đoàn Ấp' ? 'ALL' : editData.target_scope || 'ALL');
+      setPriority(editData.priority || 'Bình thường');
+    } else {
+      setTitle('');
+      setContent('');
+      setTargetScope('ALL');
+      setPriority('Bình thường');
+    }
+  }, [editData, show]);
 
   if (!show) return null;
 
@@ -480,13 +494,13 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
     
     const scopeText = targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope;
     onSave && onSave({
-      id: `noti-${Date.now()}`,
+      id: editData ? editData.id : `noti-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
       target_scope: scopeText,
       priority: priority,
-      time_ago: 'Vừa xong',
-      createdAt: Date.now()
+      time_ago: editData ? (editData.time_ago || 'Vừa xong') : 'Vừa xong',
+      createdAt: editData ? (editData.createdAt || Date.now()) : Date.now()
     });
     setTitle('');
     setContent('');
@@ -502,7 +516,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
           <div className="modal-header border-bottom-0 pb-0">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
               <Megaphone className="text-primary" size={22} />
-              Gửi Thông Báo / Chỉ Đạo Điều Hành
+              {editData ? 'Chỉnh Sửa / Cập Nhật Thông Báo' : 'Gửi Thông Báo / Chỉ Đạo Điều Hành'}
             </h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
@@ -571,7 +585,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
               <button type="button" className="btn btn-light border px-4 rounded-3" onClick={onClose}>Hủy</button>
               <button type="submit" className="btn btn-primary px-4 fw-semibold rounded-3 d-flex align-items-center gap-2" style={{ backgroundColor: '#0066FF' }}>
                 <Send size={15} />
-                <span>Gửi Thông Báo Ngay</span>
+                <span>{editData ? 'Lưu Thay Đổi' : 'Gửi Thông Báo Ngay'}</span>
               </button>
             </div>
           </form>

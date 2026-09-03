@@ -45,6 +45,8 @@ import {
   syncSaveSubmission,
   syncFetchNotifications,
   syncSaveNotification,
+  syncUpdateNotification,
+  syncDeleteNotification,
   syncFetchTasks,
   syncSaveTask,
   syncToggleTaskStatus,
@@ -79,6 +81,7 @@ export default function App() {
   const [showIssueDocModal, setShowIssueDocModal] = useState(false);
   const [showSubmitDocModal, setShowSubmitDocModal] = useState(false);
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
+  const [editingNotification, setEditingNotification] = useState(null);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
 
@@ -225,18 +228,45 @@ export default function App() {
     triggerToast(`Đã nộp thành công báo cáo: "${newSub.title}"!`);
   };
 
-  const handleSendNotification = async (newNoti) => {
-    const createdNoti = {
-      id: `noti-${Date.now()}`,
-      title: newNoti.title,
-      content: newNoti.content,
-      target_scope: newNoti.target_scope || 'Tất cả 30 Chi đoàn Ấp',
-      time_ago: 'Vừa xong'
-    };
-    const updated = await syncSaveNotification(createdNoti);
+  const handleSaveNotification = async (notiData) => {
+    if (editingNotification) {
+      const updatedNoti = {
+        ...editingNotification,
+        title: notiData.title,
+        content: notiData.content,
+        target_scope: notiData.target_scope,
+        priority: notiData.priority
+      };
+      const updated = await syncUpdateNotification(updatedNoti);
+      setNotificationsList(updated);
+      setEditingNotification(null);
+      triggerToast(`Đã cập nhật thông báo "${notiData.title}" thành công!`);
+    } else {
+      const createdNoti = {
+        id: notiData.id || `noti-${Date.now()}`,
+        title: notiData.title,
+        content: notiData.content,
+        target_scope: notiData.target_scope || 'Tất cả 30 Chi đoàn Ấp',
+        priority: notiData.priority || 'Bình thường',
+        time_ago: 'Vừa xong',
+        createdAt: Date.now()
+      };
+      const updated = await syncSaveNotification(createdNoti);
+      setNotificationsList(updated);
+      setActiveTab('notifications');
+      triggerToast(`Đã phát thông báo chỉ đạo: "${notiData.title}"!`);
+    }
+  };
+
+  const handleEditNotification = (noti) => {
+    setEditingNotification(noti);
+    setShowSendMessageModal(true);
+  };
+
+  const handleDeleteNotification = async (notiId) => {
+    const updated = await syncDeleteNotification(notiId);
     setNotificationsList(updated);
-    setActiveTab('notifications');
-    triggerToast(`Đã phát thông báo chỉ đạo: "${newNoti.title}"!`);
+    triggerToast('Đã xóa thông báo khỏi hệ thống!');
   };
 
   const handleAddTask = async (newTask) => {
@@ -333,7 +363,10 @@ export default function App() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onOpenNotifications={() => setActiveTab('notifications')}
-          onOpenMessages={() => setShowSendMessageModal(true)}
+          onOpenMessages={() => {
+            setEditingNotification(null);
+            setShowSendMessageModal(true);
+          }}
           onLogout={handleLogout}
           unreadNotiCount={notificationsList.length}
           unreadMsgCount={notificationsList.length > 0 ? 1 : 0}
@@ -490,7 +523,12 @@ export default function App() {
             /* NOTIFICATIONS VIEW */
             <NotificationsView 
               notifications={notificationsList}
-              onOpenSendMessage={() => setShowSendMessageModal(true)}
+              onOpenSendMessage={() => {
+                setEditingNotification(null);
+                setShowSendMessageModal(true);
+              }}
+              onEditNotification={handleEditNotification}
+              onDeleteNotification={handleDeleteNotification}
               isDoanXa={isDoanXa}
             />
           ) : activeTab === 'todo' || activeTab === 'branch_tasks' ? (
@@ -585,9 +623,13 @@ export default function App() {
 
       <SendMessageModal 
         show={showSendMessageModal}
-        onClose={() => setShowSendMessageModal(false)}
-        onSave={handleSendNotification}
+        onClose={() => {
+          setShowSendMessageModal(false);
+          setEditingNotification(null);
+        }}
+        onSave={handleSaveNotification}
         currentRole={currentUser}
+        editData={editingNotification}
       />
 
       <SupportModal 

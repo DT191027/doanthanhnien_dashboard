@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function CalendarWidget() {
+export default function CalendarWidget({ activities = [] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
-  const month = currentDate.getMonth(); // 0-indexed
+  const month = currentDate.getMonth(); // 0-indexed (0 = Tháng 1, 8 = Tháng 9)
 
   const monthNames = [
     'Tháng 01', 'Tháng 02', 'Tháng 03', 'Tháng 04', 'Tháng 05', 'Tháng 06',
@@ -20,11 +20,17 @@ export default function CalendarWidget() {
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  // Get total days in month
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  // Total days in current target month
   const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-  // Get starting weekday (0 = Sun, 1 = Mon, ..., 6 = Sat)
+
+  // Get starting weekday of 1st day of month
+  // getDay(): 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+  // We align T2 (Monday) = 0, T3 (Tuesday) = 1, ..., CN (Sunday) = 6
   let startDay = new Date(year, month, 1).getDay();
-  // Convert Sunday=0 to 7 so Monday is index 0
   startDay = startDay === 0 ? 6 : startDay - 1;
 
   const today = new Date();
@@ -39,43 +45,73 @@ export default function CalendarWidget() {
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="card-title-header mb-0">Lịch công tác</h3>
         <div className="d-flex align-items-center gap-1">
-          <button className="btn btn-sm btn-light p-1 rounded-circle me-1" onClick={handlePrevMonth}>
+          <button 
+            className="btn btn-sm btn-light p-1.5 rounded-circle d-flex align-items-center justify-content-center" 
+            onClick={handlePrevMonth}
+            title="Tháng trước"
+          >
             <ChevronLeft size={16} />
           </button>
-          <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+          <span 
+            className="fw-bold text-dark px-1 cursor-pointer" 
+            onClick={handleToday} 
+            title="Về tháng hiện tại" 
+            style={{ fontSize: '13px' }}
+          >
             {monthNames[month]}/{year}
           </span>
-          <button className="btn btn-sm btn-light p-1 rounded-circle ms-1" onClick={handleNextMonth}>
+          <button 
+            className="btn btn-sm btn-light p-1.5 rounded-circle d-flex align-items-center justify-content-center" 
+            onClick={handleNextMonth}
+            title="Tháng sau"
+          >
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      {/* Weekdays header */}
-      <div className="row text-center mb-2 g-0 text-muted fw-bold" style={{ fontSize: '11px' }}>
-        <div className="col">T2</div>
-        <div className="col">T3</div>
-        <div className="col">T4</div>
-        <div className="col">T5</div>
-        <div className="col">T6</div>
-        <div className="col">T7</div>
-        <div className="col">CN</div>
+      {/* Weekdays header (Strict 7 columns: T2 -> CN) */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(7, 1fr)', 
+          textAlign: 'center', 
+          marginBottom: '8px', 
+          color: '#64748B', 
+          fontWeight: '700', 
+          fontSize: '11.5px' 
+        }}
+      >
+        <div>T2</div>
+        <div>T3</div>
+        <div>T4</div>
+        <div>T5</div>
+        <div>T6</div>
+        <div>T7</div>
+        <div>CN</div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="row text-center g-0" style={{ rowGap: '6px' }}>
-        {/* Leading empty spaces */}
+      {/* Calendar Days Grid (Strict 7 columns layout) */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(7, 1fr)', 
+          textAlign: 'center', 
+          rowGap: '6px' 
+        }}
+      >
+        {/* Leading empty spaces offset */}
         {leadingSpaces.map((s) => (
-          <div key={`space-${s}`} className="col">
+          <div key={`space-${s}`} className="d-flex justify-content-center align-items-center">
             <div className="calendar-day-cell text-muted opacity-25">•</div>
           </div>
         ))}
 
-        {/* Days of current month */}
+        {/* Days of month */}
         {daysArray.map((d) => {
           const isTodayActive = isCurrentMonthReal && realTodayDay === d;
           return (
-            <div key={`day-${d}`} className="col">
+            <div key={`day-${d}`} className="d-flex justify-content-center align-items-center">
               <div className={`calendar-day-cell ${isTodayActive ? 'active' : ''}`}>
                 <span>{d}</span>
               </div>

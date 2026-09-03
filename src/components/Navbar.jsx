@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, MessageSquare, ChevronDown, LogOut } from 'lucide-react';
+import { Search, Bell, MessageSquare, ChevronDown, LogOut, Menu, X } from 'lucide-react';
 
 export default function Navbar({ 
   currentRole, 
@@ -9,22 +9,36 @@ export default function Navbar({
   onOpenMessages,
   onLogout,
   unreadNotiCount = 0,
-  unreadMsgCount = 0
+  unreadMsgCount = 0,
+  onToggleMobileMenu,
+  mobileMenuOpen = false
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <div className="top-navbar d-flex align-items-center justify-content-between">
-      {/* Search Input */}
-      <div className="search-input-group">
-        <Search size={16} className="text-secondary me-2" />
-        <input 
-          type="text" 
-          placeholder="Tìm kiếm hoạt động, văn bản, công việc..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <span className="shortcut-badge">⌘ K</span>
+    <div className="top-navbar d-flex align-items-center justify-content-between gap-2">
+      {/* Left Section: Hamburger Menu Toggle Button for Mobile + Search */}
+      <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0 }}>
+        <button 
+          className="btn btn-light border p-2 d-lg-none rounded-3 flex-shrink-0 d-flex align-items-center justify-content-center"
+          onClick={onToggleMobileMenu}
+          title="Mở menu hệ thống"
+          aria-label="Toggle Navigation Menu"
+        >
+          {mobileMenuOpen ? <X size={20} className="text-primary" /> : <Menu size={20} className="text-primary" />}
+        </button>
+
+        {/* Search Input */}
+        <div className="search-input-group flex-grow-1">
+          <Search size={16} className="text-secondary me-2 flex-shrink-0" />
+          <input 
+            type="text" 
+            placeholder="Tìm kiếm..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <span className="shortcut-badge d-none d-md-inline-block">⌘ K</span>
+        </div>
       </div>
 
       {/* Right Controls */}

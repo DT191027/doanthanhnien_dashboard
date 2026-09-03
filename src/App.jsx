@@ -65,6 +65,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Dynamic Realtime & Persistent State Lists
   const [activitiesList, setActivitiesList] = useState([]);
@@ -308,12 +309,20 @@ export default function App() {
         </div>
       )}
 
-      {/* 1. Left Sidebar */}
+      {/* Mobile Sidebar Overlay Backdrop */}
+      <div 
+        className={`sidebar-backdrop ${mobileMenuOpen ? 'show' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      ></div>
+
+      {/* 1. Left Sidebar (Sticky on Desktop, Slide-out Drawer on Mobile) */}
       <Sidebar 
         currentRole={currentUser}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSupportModal={() => setShowSupportModal(true)}
+        mobileMenuOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       {/* Main Content Workspace Area */}
@@ -328,6 +337,8 @@ export default function App() {
           onLogout={handleLogout}
           unreadNotiCount={notificationsList.length}
           unreadMsgCount={notificationsList.length > 0 ? 1 : 0}
+          mobileMenuOpen={mobileMenuOpen}
+          onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
         />
 
         {/* Workspace Body */}

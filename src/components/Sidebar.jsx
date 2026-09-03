@@ -12,10 +12,18 @@ import {
   Settings,
   FileSpreadsheet,
   PhoneCall,
-  Headphones
+  Headphones,
+  X
 } from 'lucide-react';
 
-export default function Sidebar({ currentRole, activeTab, setActiveTab, onOpenSupportModal }) {
+export default function Sidebar({ 
+  currentRole, 
+  activeTab, 
+  setActiveTab, 
+  onOpenSupportModal,
+  mobileMenuOpen = false,
+  onCloseMobile
+}) {
   const isDoanXa = currentRole.role === 'doan_xa';
 
   const menuDoanXa = [
@@ -44,21 +52,37 @@ export default function Sidebar({ currentRole, activeTab, setActiveTab, onOpenSu
 
   const currentMenu = isDoanXa ? menuDoanXa : menuChiDoan;
 
+  const handleItemClick = (id) => {
+    setActiveTab(id);
+    onCloseMobile && onCloseMobile();
+  };
+
   return (
-    <div className="app-sidebar">
+    <div className={`app-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
       {/* Header section */}
-      <div className="sidebar-header d-flex align-items-center gap-3">
-        <img 
-          src="/logo.png" 
-          alt="Logo Đoàn" 
-          className="sidebar-logo"
-          onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/9/91/Logo_H%E1%BB%99i_L%C3%AAn_hi%E1%BB%87p_Ph%E1%BB%A5_n%E1%BB%AF_Vi%E1%BB%87t_Nam.svg'; }}
-        />
-        <div>
-          <h1 className="sidebar-title-main">ĐOÀN TNCS HỒ CHÍ MINH</h1>
-          <h2 className="sidebar-title-sub">XÃ XUÂN THỚI SƠN</h2>
-          <div className="sidebar-title-desc">HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH</div>
+      <div className="sidebar-header d-flex align-items-center justify-content-between">
+        <div className="d-flex align-items-center gap-3">
+          <img 
+            src="/logo.png" 
+            alt="Logo Đoàn" 
+            className="sidebar-logo"
+            onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/9/91/Logo_H%E1%BB%99i_L%C3%AAn_hi%E1%BB%87p_Ph%E1%BB%A5_n%E1%BB%AF_Vi%E1%BB%87t_Nam.svg'; }}
+          />
+          <div>
+            <h1 className="sidebar-title-main">ĐOÀN TNCS HỒ CHÍ MINH</h1>
+            <h2 className="sidebar-title-sub">XÃ XUÂN THỚI SƠN</h2>
+            <div className="sidebar-title-desc">HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ ĐIỀU HÀNH</div>
+          </div>
         </div>
+
+        {/* Mobile Close Button */}
+        <button 
+          className="btn btn-sm btn-light border p-1.5 rounded-circle d-lg-none text-secondary"
+          onClick={onCloseMobile}
+          title="Đóng menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation List */}
@@ -70,7 +94,7 @@ export default function Sidebar({ currentRole, activeTab, setActiveTab, onOpenSu
             <div
               key={item.id}
               className={`sidebar-item ${isActive ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => handleItemClick(item.id)}
             >
               <Icon size={18} />
               <span>{item.label}</span>
@@ -87,7 +111,7 @@ export default function Sidebar({ currentRole, activeTab, setActiveTab, onOpenSu
             <div className="support-desc">
               Nếu bạn cần hỗ trợ, hãy liên hệ Ban Thường vụ Đoàn xã.
             </div>
-            <button className="btn-support" onClick={onOpenSupportModal}>
+            <button className="btn-support" onClick={() => { onOpenSupportModal && onOpenSupportModal(); onCloseMobile && onCloseMobile(); }}>
               Liên hệ hỗ trợ
             </button>
           </div>

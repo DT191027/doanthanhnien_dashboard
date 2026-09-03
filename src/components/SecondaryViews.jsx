@@ -533,7 +533,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                   </button>
                   <div className="flex-grow-1">
                     <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-muted" style={{ fontSize: '10.5px' }}>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</div>
+                    <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                      <span>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
+                      {t.assigned_to && (
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -556,7 +561,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                   </button>
                   <div className="flex-grow-1">
                     <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-muted" style={{ fontSize: '10.5px' }}>Ưu tiên: {t.priority}</div>
+                    <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                      <span>Ưu tiên: {t.priority}</span>
+                      {t.assigned_to && (
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -579,7 +589,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                   </button>
                   <div className="flex-grow-1">
                     <div className="fw-semibold text-muted" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-success" style={{ fontSize: '10.5px' }}>Đã hoàn tất</div>
+                    <div className="text-success d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                      <span>Đã hoàn tất</span>
+                      {t.assigned_to && (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

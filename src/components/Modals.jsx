@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, OFFICIAL_ADDRESS } from '../lib/supabase';
+import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Create Activity Modal
@@ -646,10 +646,22 @@ export function CreateTaskModal({ show, onClose, onSave }) {
                     value={formData.assigned_to}
                     onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
                   >
-                    <option value="Đoàn xã Xuân Thới Sơn">Đoàn xã Xuân Thới Sơn</option>
-                    {INITIAL_BRANCHES.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
+                    <option value="Đoàn xã Xuân Thới Sơn">🏛️ Đoàn xã Xuân Thới Sơn</option>
+                    <option value="Tất cả 30 Chi đoàn Ấp">📢 30 Chi đoàn (gửi thông báo đến toàn bộ 30 chi đoàn)</option>
+
+                    <optgroup label="🏆 Cụm Thi Đua">
+                      {COMPETITION_CLUSTERS.map(c => (
+                        <option key={c.id} value={c.name}>
+                          🏆 {c.label}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup label="📍 Các Chi đoàn Ấp trực thuộc">
+                      {INITIAL_BRANCHES.map(b => (
+                        <option key={b.id} value={b.name}>📍 {b.name}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
                 <div className="col-6">

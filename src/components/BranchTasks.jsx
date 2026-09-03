@@ -1,23 +1,40 @@
-import React, { useState } from 'react';
-import { CheckSquare, Square, Check } from 'lucide-react';
-import { INITIAL_TASKS_CHI_DOAN } from '../lib/supabase';
+import React from 'react';
+import { CheckSquare } from 'lucide-react';
+import { COMPETITION_CLUSTERS } from '../lib/supabase';
 
-export default function BranchTasks({ setActiveTab }) {
-  const [tasks, setTasks] = useState(INITIAL_TASKS_CHI_DOAN);
+export default function BranchTasks({ tasks = [], currentRole, setActiveTab }) {
+  const branchName = currentRole?.branch_name || currentRole?.title || '';
+
+  // Filter tasks relevant to this Chi đoàn:
+  // 1. Assigned to "Tất cả 30 Chi đoàn Ấp"
+  // 2. Assigned directly to this branchName
+  // 3. Assigned to a Cụm thi đua that contains this branchName
+  const myTasks = tasks.filter(t => {
+    if (!t.assigned_to) return false;
+    if (t.assigned_to === 'Tất cả 30 Chi đoàn Ấp' || t.assigned_to.includes('30 Chi đoàn')) return true;
+    if (t.assigned_to === branchName) return true;
+    if (t.assigned_to.startsWith('Cụm thi đua')) {
+      const cluster = COMPETITION_CLUSTERS.find(c => c.name === t.assigned_to);
+      if (cluster && cluster.branches.some(b => b.includes(branchName) || branchName.includes(b))) {
+        return true;
+      }
+    }
+    return false;
+  });
 
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <h3 className="card-title-header mb-0">Công việc của chi đoàn</h3>
+        <h3 className="card-title-header mb-0">Công việc của chi đoàn ({myTasks.length})</h3>
         <span 
           className="card-link cursor-pointer"
-          onClick={() => setActiveTab && setActiveTab('branch_tasks')}
+          onClick={() => setActiveTab && setActiveTab('todo')}
         >
           Xem tất cả
         </span>
       </div>
 
-      {tasks.length === 0 ? (
+      {myTasks.length === 0 ? (
         <div className="p-3 bg-light rounded-3 text-center border">
           <div className="p-2 bg-white d-inline-block rounded-circle shadow-sm mb-2 text-success">
             <CheckSquare size={22} />
@@ -26,10 +43,19 @@ export default function BranchTasks({ setActiveTab }) {
           <div className="text-secondary" style={{ fontSize: '11px' }}>Sẵn sàng theo dõi công việc chi đoàn</div>
         </div>
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {tasks.map((task) => (
-            <div key={task.id} className="p-2 px-3 rounded-3 border d-flex align-items-center justify-content-between">
-              <div className="fw-semibold text-dark" style={{ fontSize: '12.5px' }}>{task.title}</div>
+        <div className="d-flex flex-column gap-2" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+          {myTasks.map((task) => (
+            <div key={task.id} className="p-2 px-3 rounded-3 bg-light border d-flex align-items-center justify-content-between hover-shadow transition">
+              <div>
+                <div className="fw-semibold text-dark" style={{ fontSize: '12.5px' }}>{task.title}</div>
+                <div className="text-muted" style={{ fontSize: '10.5px' }}>
+                  <span>Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
+                  <span className="ms-2 text-primary fw-semibold">📌 {task.assigned_to}</span>
+                </div>
+              </div>
+              <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
+                {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
+              </span>
             </div>
           ))}
         </div>

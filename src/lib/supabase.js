@@ -58,6 +58,46 @@ export const INITIAL_BRANCHES = OFFICIAL_HAMLETS.map((h, i) => ({
   member_count: 0
 }));
 
+// Official 6 Competition Clusters (Cụm thi đua số 1 - số 6)
+export const COMPETITION_CLUSTERS = [
+  {
+    id: 'cum-1',
+    name: 'Cụm thi đua số 1',
+    label: 'Cụm thi đua số 1 (Mỹ Hoà 2, Mỹ Hoà 4, Mỹ Hoà 3, Mỹ Hoà 5, Tân Tiến)',
+    branches: ['Chi đoàn Ấp Mỹ Hoà 2', 'Chi đoàn Ấp Mỹ Hoà 4', 'Chi đoàn Ấp Mỹ Hoà 3', 'Chi đoàn Ấp Mỹ Hoà 5', 'Chi đoàn Ấp Tân Tiến']
+  },
+  {
+    id: 'cum-2',
+    name: 'Cụm thi đua số 2',
+    label: 'Cụm thi đua số 2 (Xuân Thới Đông, Xuân Thới Đông 1, Xuân Thới Đông 2, Xuân Thới Đông 3, Bùi Môn)',
+    branches: ['Chi đoàn Ấp Xuân Thới Đông', 'Chi đoàn Ấp Xuân Thới Đông 1', 'Chi đoàn Ấp Xuân Thới Đông 2', 'Chi đoàn Ấp Xuân Thới Đông 3', 'Chi đoàn Ấp Bùi Môn']
+  },
+  {
+    id: 'cum-3',
+    name: 'Cụm thi đua số 3',
+    label: 'Cụm thi đua số 3 (Nam Xuân, Nam Xuân 1, Nam Xuân 2, Xuân Thới Đông 4, Xuân Thới Đông 5)',
+    branches: ['Chi đoàn Ấp Nam Xuân', 'Chi đoàn Ấp Nam Xuân 1', 'Chi đoàn Ấp Nam Xuân 2', 'Chi đoàn Ấp Xuân Thới Đông 4', 'Chi đoàn Ấp Xuân Thới Đông 5']
+  },
+  {
+    id: 'cum-4',
+    name: 'Cụm thi đua số 4',
+    label: 'Cụm thi đua số 4 (Xuân Thới, Thới Sơn, Xuân Thới 2, Xuân Thới 1, Nhị Tân 3)',
+    branches: ['Chi đoàn Ấp Xuân Thới', 'Chi đoàn Ấp Thới Sơn', 'Chi đoàn Ấp Xuân Thới 2', 'Chi đoàn Ấp Xuân Thới 1', 'Chi đoàn Ấp Nhị Tân 3']
+  },
+  {
+    id: 'cum-5',
+    name: 'Cụm thi đua số 5',
+    label: 'Cụm thi đua số 5 (Dân Thắng, Tân Thới Nhì, Thống Nhất 1, Thống Nhất 2, Nhị Tân 1)',
+    branches: ['Chi đoàn Ấp Dân Thắng', 'Chi đoàn Ấp Tân Thới Nhì', 'Chi đoàn Ấp Thống Nhất 1', 'Chi đoàn Ấp Thống Nhất 2', 'Chi đoàn Ấp Nhị Tân 1']
+  },
+  {
+    id: 'cum-6',
+    name: 'Cụm thi đua số 6',
+    label: 'Cụm thi đua số 6 (Nhị Tân 2, Tân Lập, Nhị Xuân 1, Nhị Xuân, Nhị Tân)',
+    branches: ['Chi đoàn Ấp Nhị Tân 2', 'Chi đoàn Ấp Tân Lập', 'Chi đoàn Ấp Nhị Xuân 1', 'Chi đoàn Ấp Nhị Xuân', 'Chi đoàn Ấp Nhị Tân']
+  }
+];
+
 // All Accounts use the official Youth Union logo for avatars!
 export const INITIAL_ROLES = [
   {

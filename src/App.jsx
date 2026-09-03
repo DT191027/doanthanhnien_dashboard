@@ -47,7 +47,8 @@ import {
   syncSaveNotification,
   syncFetchTasks,
   syncSaveTask,
-  syncToggleTaskStatus
+  syncToggleTaskStatus,
+  COMPETITION_CLUSTERS
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -248,7 +249,46 @@ export default function App() {
     };
     const updated = await syncSaveTask(taskItem);
     setTasksList(updated);
-    triggerToast(`Đã thêm công việc mới: "${newTask.title}"!`);
+
+    // Gửi thông báo tự động khi giao nhiệm vụ cho 30 Chi đoàn hoặc Các Cụm thi đua
+    if (newTask.assigned_to === 'Tất cả 30 Chi đoàn Ấp' || newTask.assigned_to.includes('30 Chi đoàn')) {
+      const autoNoti = {
+        id: `noti-${Date.now()}`,
+        title: `📋 Nhiệm vụ mới: ${newTask.title}`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) tới Tất cả 30 Chi đoàn Ấp. Đề nghị các Chi đoàn khẩn trương thực hiện.`,
+        target_scope: 'Tất cả 30 Chi đoàn Ấp',
+        time_ago: 'Vừa xong'
+      };
+      const updatedNotis = await syncSaveNotification(autoNoti);
+      setNotificationsList(updatedNotis);
+      triggerToast(`Đã giao nhiệm vụ "${newTask.title}" và phát thông báo tới toàn bộ 30 Chi đoàn Ấp!`);
+    } else if (newTask.assigned_to && newTask.assigned_to.startsWith('Cụm thi đua')) {
+      const cluster = COMPETITION_CLUSTERS.find(c => c.name === newTask.assigned_to);
+      const branchInfo = cluster ? ` (${cluster.branches.map(b => b.replace('Chi đoàn Ấp ', '')).join(', ')})` : '';
+      const autoNoti = {
+        id: `noti-${Date.now()}`,
+        title: `📋 Nhiệm vụ mới - ${newTask.assigned_to}: ${newTask.title}`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) cho ${newTask.assigned_to}${branchInfo}. Đề nghị các đơn vị trong cụm phối hợp triển khai.`,
+        target_scope: newTask.assigned_to,
+        time_ago: 'Vừa xong'
+      };
+      const updatedNotis = await syncSaveNotification(autoNoti);
+      setNotificationsList(updatedNotis);
+      triggerToast(`Đã giao nhiệm vụ "${newTask.title}" cho ${newTask.assigned_to} và phát thông báo!`);
+    } else if (newTask.assigned_to && newTask.assigned_to !== 'Đoàn xã Xuân Thới Sơn') {
+      const autoNoti = {
+        id: `noti-${Date.now()}`,
+        title: `📋 Nhiệm vụ mới: ${newTask.title}`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) cho ${newTask.assigned_to}.`,
+        target_scope: newTask.assigned_to,
+        time_ago: 'Vừa xong'
+      };
+      const updatedNotis = await syncSaveNotification(autoNoti);
+      setNotificationsList(updatedNotis);
+      triggerToast(`Đã giao nhiệm vụ "${newTask.title}" cho ${newTask.assigned_to}!`);
+    } else {
+      triggerToast(`Đã thêm công việc mới: "${newTask.title}"!`);
+    }
   };
 
   const handleToggleTask = async (taskId, newStatus) => {
@@ -401,7 +441,7 @@ export default function App() {
                   />
 
                   {!isDoanXa && (
-                    <BranchTasks tasks={tasksList} setActiveTab={setActiveTab} />
+                    <BranchTasks tasks={tasksList} currentRole={currentUser} setActiveTab={setActiveTab} />
                   )}
 
                   <NotificationsList 

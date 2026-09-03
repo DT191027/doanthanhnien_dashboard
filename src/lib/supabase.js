@@ -399,6 +399,26 @@ export async function syncSaveSubmission(subItem) {
   return updatedLocal;
 }
 
+// Helper to sort notifications by Priority descending: Khẩn cấp (3) -> Trung bình (2) -> Bình thường (1)
+export function sortNotificationsByPriority(notis = []) {
+  const getWeight = (p) => {
+    if (!p) return 1;
+    const str = String(p).toLowerCase();
+    if (str.includes('khẩn') || str.includes('cao') || str.includes('urgent') || str.includes('high')) return 3;
+    if (str.includes('trung bình') || str.includes('medium')) return 2;
+    return 1; // Bình thường
+  };
+
+  return [...notis].sort((a, b) => {
+    const wA = getWeight(a.priority);
+    const wB = getWeight(b.priority);
+    if (wA !== wB) return wB - wA;
+    const timeA = a.createdAt || (typeof a.id === 'string' && a.id.startsWith('noti-') ? parseInt(a.id.replace('noti-', '')) : 0);
+    const timeB = b.createdAt || (typeof b.id === 'string' && b.id.startsWith('noti-') ? parseInt(b.id.replace('noti-', '')) : 0);
+    return timeB - timeA;
+  });
+}
+
 // ============================================================================
 // 4. NOTIFICATIONS SYNC (BẢNG THÔNG BÁO & CHỈ ĐẠO)
 // ============================================================================
@@ -411,31 +431,43 @@ export async function syncFetchNotifications() {
           id: item.id,
           title: item.title,
           content: item.content || '',
+          target_scope: item.target_scope || 'Tất cả 30 Chi đoàn Ấp',
+          priority: item.priority || item.type || 'Bình thường',
           type: item.type || 'general',
-          time_ago: item.time_ago || 'Vừa xong'
+          time_ago: item.time_ago || 'Vừa xong',
+          createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now()
         }));
-        setPersistedData('notifications', mapped);
-        return mapped;
+        const sorted = sortNotificationsByPriority(mapped);
+        setPersistedData('notifications', sorted);
+        return sorted;
       }
     } catch (e) {
       console.warn('Supabase fetch notifications error, using local storage fallback:', e);
     }
   }
-  return getPersistedData('notifications', []);
+  const local = getPersistedData('notifications', []);
+  return sortNotificationsByPriority(local);
 }
 
 export async function syncSaveNotification(notiItem) {
   const current = getPersistedData('notifications', []);
-  const updatedLocal = [notiItem, ...current];
+  const newItem = {
+    ...notiItem,
+    priority: notiItem.priority || 'Bình thường',
+    createdAt: notiItem.createdAt || Date.now()
+  };
+  const updatedLocal = sortNotificationsByPriority([newItem, ...current]);
   setPersistedData('notifications', updatedLocal);
 
   if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').insert([{
-        title: notiItem.title,
-        content: notiItem.content || '',
-        type: notiItem.type || 'general',
-        time_ago: notiItem.time_ago || 'Vừa xong'
+        title: newItem.title,
+        content: newItem.content || '',
+        type: newItem.type || 'general',
+        time_ago: newItem.time_ago || 'Vừa xong',
+        priority: newItem.priority || 'Bình thường',
+        target_scope: newItem.target_scope || 'Tất cả 30 Chi đoàn Ấp'
       }]).select();
 
       if (error) {

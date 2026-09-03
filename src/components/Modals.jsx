@@ -470,6 +470,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetScope, setTargetScope] = useState('ALL');
+  const [priority, setPriority] = useState('Bình thường');
 
   if (!show) return null;
 
@@ -483,11 +484,14 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
       title: title.trim(),
       content: content.trim(),
       target_scope: scopeText,
-      time_ago: 'Vừa xong'
+      priority: priority,
+      time_ago: 'Vừa xong',
+      createdAt: Date.now()
     });
     setTitle('');
     setContent('');
     setTargetScope('ALL');
+    setPriority('Bình thường');
     onClose();
   };
 
@@ -504,18 +508,39 @@ export function SendMessageModal({ show, onClose, onSave, currentRole }) {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="modal-body p-4">
-              <div className="mb-3">
-                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Đơn vị nhận thông báo</label>
-                <select 
-                  className="form-select"
-                  value={targetScope}
-                  onChange={(e) => setTargetScope(e.target.value)}
-                >
-                  <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
-                  {INITIAL_BRANCHES.map(b => (
-                    <option key={b.id} value={b.name}>📍 {b.name}</option>
-                  ))}
-                </select>
+              <div className="row g-2 mb-3">
+                <div className="col-md-7">
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Đơn vị nhận thông báo</label>
+                  <select 
+                    className="form-select"
+                    value={targetScope}
+                    onChange={(e) => setTargetScope(e.target.value)}
+                  >
+                    <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
+                    <optgroup label="🏆 Cụm Thi Đua">
+                      {COMPETITION_CLUSTERS.map(c => (
+                        <option key={c.id} value={c.name}>🏆 {c.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="📍 Các Chi đoàn Ấp trực thuộc">
+                      {INITIAL_BRANCHES.map(b => (
+                        <option key={b.id} value={b.name}>📍 {b.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+                <div className="col-md-5">
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
+                  <select
+                    className="form-select"
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                  >
+                    <option value="Bình thường">Bình thường</option>
+                    <option value="Trung bình">Trung bình</option>
+                    <option value="Khẩn cấp">🔥 Khẩn cấp (Cao)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="mb-3">

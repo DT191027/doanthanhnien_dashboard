@@ -27,7 +27,7 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
-import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS } from '../lib/supabase';
+import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
@@ -430,6 +430,19 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
 
 // 4. Full Notifications Management View
 export function NotificationsView({ notifications = [], onOpenSendMessage, isDoanXa }) {
+  const sorted = sortNotificationsByPriority(notifications);
+
+  const getBadgeStyle = (priority) => {
+    const p = String(priority || '').toLowerCase();
+    if (p.includes('khẩn') || p.includes('cao')) {
+      return { bg: 'bg-danger text-white', label: '🔥 Khẩn cấp' };
+    }
+    if (p.includes('trung bình')) {
+      return { bg: 'bg-warning text-dark', label: '⚡ Trung bình' };
+    }
+    return { bg: 'bg-secondary text-white', label: 'Bình thường' };
+  };
+
   return (
     <div className="content-card">
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
@@ -439,21 +452,23 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
             Quản lý Thông báo & Tin tức Điều hành
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Danh sách thông báo khẩn, chỉ đạo điều hành tức thời toàn hệ thống
+            Thông báo tự động sắp xếp ưu tiên giảm dần: <strong>🔥 Khẩn cấp ➔ ⚡ Trung bình ➔ Bình thường</strong>
           </div>
         </div>
 
-        <button 
-          className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
-          style={{ backgroundColor: '#0066FF', border: 'none' }}
-          onClick={onOpenSendMessage}
-        >
-          <MessageSquare size={16} />
-          <span>Gửi thông báo / Tin nhắn</span>
-        </button>
+        {isDoanXa && (
+          <button 
+            className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
+            style={{ backgroundColor: '#0066FF', border: 'none' }}
+            onClick={onOpenSendMessage}
+          >
+            <MessageSquare size={16} />
+            <span>Gửi thông báo / Tin nhắn</span>
+          </button>
+        )}
       </div>
 
-      {notifications.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="p-5 bg-light rounded-3 text-center border my-3">
           <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-3 text-warning">
             <Bell size={32} />
@@ -462,29 +477,40 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, isDoa
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
             Bấm nút "Gửi thông báo / Tin nhắn" ở trên để gửi tin tức điều hành tới Đoàn xã và 30 Chi đoàn Ấp.
           </p>
-          <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={onOpenSendMessage}>
-            + Gửi thông báo đầu tiên
-          </button>
+          {isDoanXa && (
+            <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={onOpenSendMessage}>
+              + Gửi thông báo đầu tiên
+            </button>
+          )}
         </div>
       ) : (
         <div className="d-flex flex-column gap-3">
-          {notifications.map((n) => (
-            <div key={n.id} className="p-3 rounded-3 bg-light border d-flex align-items-start gap-3 hover-shadow transition">
-              <div className="p-2.5 rounded-3 bg-warning-subtle text-warning mt-1">
-                <Bell size={20} />
-              </div>
-              <div className="flex-grow-1">
-                <div className="d-flex align-items-center justify-content-between mb-1">
-                  <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '14.5px' }}>{n.title}</h6>
-                  <span className="text-muted" style={{ fontSize: '11px' }}>{n.time_ago || 'Vừa xong'}</span>
+          {sorted.map((n) => {
+            const badge = getBadgeStyle(n.priority);
+            return (
+              <div key={n.id} className="p-3.5 rounded-3 bg-light border d-flex align-items-start gap-3 hover-shadow transition">
+                <div className={`p-2.5 rounded-3 mt-1 ${badge.bg.includes('danger') ? 'bg-danger-subtle text-danger' : badge.bg.includes('warning') ? 'bg-warning-subtle text-warning' : 'bg-secondary-subtle text-secondary'}`}>
+                  <Bell size={20} />
                 </div>
-                {n.content && <p className="text-secondary mb-0" style={{ fontSize: '12.5px' }}>{n.content}</p>}
-                <div className="mt-2 text-primary fw-semibold" style={{ fontSize: '11px' }}>
-                  📌 Gửi từ: Đoàn xã Xuân Thới Sơn đến {n.target_scope || '30 Chi đoàn Ấp'}
+                <div className="flex-grow-1">
+                  <div className="d-flex align-items-center justify-content-between mb-1 gap-2">
+                    <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>{n.title}</h6>
+                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                      <span className={`badge ${badge.bg} px-2.5 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                        {badge.label}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: '11px' }}>{n.time_ago || 'Vừa xong'}</span>
+                    </div>
+                  </div>
+                  {n.content && <p className="text-secondary mb-2" style={{ fontSize: '13px', lineHeight: '1.4' }}>{n.content}</p>}
+                  <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
+                    <span className="fw-semibold text-primary">📌 Gửi đến: {n.target_scope || '30 Chi đoàn Ấp'}</span>
+                    <span>🏛️ Ban Thường vụ Đoàn xã</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

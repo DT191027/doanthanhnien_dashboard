@@ -28,7 +28,7 @@ import {
   Trash2,
   Edit3
 } from 'lucide-react';
-import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, getBranchClusterName, calculateBranchRating } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
@@ -661,68 +661,288 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
   );
 }
 
-// 6. Full Reports & Analytics View
-export function ReportsView({ activitiesCount = 0, docsCount = 0, submissionsCount = 0 }) {
+// 6. Full Reports & Analytics View (Featuring Attendance & Rating Evaluation System)
+export function ReportsView({ 
+  activitiesCount = 0, 
+  docsCount = 0, 
+  submissionsCount = 0,
+  activities = [],
+  attendanceRecords = {},
+  onOpenAttendanceModal,
+  isDoanXa
+}) {
+  const [selectedCluster, setSelectedCluster] = useState('ALL');
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  // Calculate participation & evaluation rating per Hamlet branch
+  const branchStats = INITIAL_BRANCHES.map(branch => {
+    const clusterName = getBranchClusterName(branch.name);
+
+    let attendedCount = 0;
+    let totalAssigned = 0;
+
+    if (activities.length > 0) {
+      activities.forEach(act => {
+        totalAssigned += 1;
+        const record = attendanceRecords[act.id];
+        if (record) {
+          if (record[branch.name] === true) attendedCount += 1;
+        } else {
+          attendedCount += 1; // Default attended
+        }
+      });
+    } else {
+      totalAssigned = 10;
+      // Default initial mock distribution for initial presentation
+      const lastDigit = parseInt(branch.id.replace('ap-', '')) || 1;
+      if (lastDigit % 5 === 0) attendedCount = 7; // 70%
+      else if (lastDigit % 7 === 0) attendedCount = 4; // 40%
+      else if (lastDigit % 3 === 0) attendedCount = 8; // 85%
+      else attendedCount = 10; // 100%
+    }
+
+    const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : 100;
+    const rating = calculateBranchRating(percentage);
+
+    return {
+      ...branch,
+      clusterName,
+      attendedCount,
+      totalAssigned,
+      percentage,
+      rating
+    };
+  });
+
+  const filteredBranchStats = branchStats.filter(b => {
+    const matchesCluster = selectedCluster === 'ALL' || b.clusterName === selectedCluster;
+    const matchesSearch = b.name.toLowerCase().includes(searchKeyword.toLowerCase()) || b.secretary_name.toLowerCase().includes(searchKeyword.toLowerCase());
+    return matchesCluster && matchesSearch;
+  });
+
+  const countExcellent = branchStats.filter(b => b.percentage >= 90).length;
+  const countGood = branchStats.filter(b => b.percentage >= 80 && b.percentage < 90).length;
+  const countFair = branchStats.filter(b => b.percentage >= 50 && b.percentage < 80).length;
+  const countFailed = branchStats.filter(b => b.percentage < 50).length;
+
   return (
     <div className="content-card">
-      <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+      {/* Header section */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
             <BarChart2 className="text-primary" size={24} />
-            Báo cáo Thống kê Công tác Đoàn
+            Báo cáo Thống kê & Đánh giá Thi đua 30 Chi đoàn Ấp
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Tổng hợp dữ liệu điều hành và chỉ số nộp báo cáo của Đoàn xã & 30 Chi đoàn Ấp
+            Hệ thống tính toán tỷ lệ % tham gia hoạt động, kiểm tra điểm danh và xếp loại nhiệm vụ khách quan.
           </div>
         </div>
+
+        {isDoanXa && (
+          <button 
+            className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
+            style={{ backgroundColor: '#16A34A', border: 'none' }}
+            onClick={onOpenAttendanceModal}
+          >
+            <CheckCircle2 size={18} />
+            <span>⚡ Điểm danh & Đánh giá Hoạt động</span>
+          </button>
+        )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Overview Metric Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-12 col-md-3">
-          <div className="p-3 bg-light rounded-3 border text-center">
-            <div className="text-secondary fw-semibold" style={{ fontSize: '12px' }}>Chi đoàn Ấp trực thuộc</div>
-            <div className="fw-extrabold text-primary my-1" style={{ fontSize: '26px' }}>30</div>
-            <div className="text-success" style={{ fontSize: '11px' }}>100% Đang hoạt động</div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="p-3 bg-success-subtle border border-success-subtle rounded-3 h-100">
+            <div className="d-flex align-items-center justify-content-between text-success mb-1">
+              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🌟 Xuất sắc (90-100%)</span>
+              <span className="badge bg-success text-white">90 - 100%</span>
+            </div>
+            <div className="fw-extrabold text-success" style={{ fontSize: '28px', lineHeight: 1.1 }}>
+              {countExcellent} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            </div>
+            <div className="text-success mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành xuất sắc nhiệm vụ</div>
           </div>
         </div>
-        <div className="col-12 col-md-3">
-          <div className="p-3 bg-light rounded-3 border text-center">
-            <div className="text-secondary fw-semibold" style={{ fontSize: '12px' }}>Hoạt động đã phát động</div>
-            <div className="fw-extrabold text-dark my-1" style={{ fontSize: '26px' }}>{activitiesCount}</div>
-            <div className="text-muted" style={{ fontSize: '11px' }}>Cập nhật Realtime</div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 h-100">
+            <div className="d-flex align-items-center justify-content-between text-primary mb-1">
+              <span className="fw-bold" style={{ fontSize: '12.5px' }}>💙 Tốt (80 - dưới 90%)</span>
+              <span className="badge bg-primary text-white">80 - 89%</span>
+            </div>
+            <div className="fw-extrabold text-primary" style={{ fontSize: '28px', lineHeight: 1.1 }}>
+              {countGood} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            </div>
+            <div className="text-primary mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành tốt nhiệm vụ</div>
           </div>
         </div>
-        <div className="col-12 col-md-3">
-          <div className="p-3 bg-light rounded-3 border text-center">
-            <div className="text-secondary fw-semibold" style={{ fontSize: '12px' }}>Văn bản đã ban hành</div>
-            <div className="fw-extrabold text-dark my-1" style={{ fontSize: '26px' }}>{docsCount}</div>
-            <div className="text-muted" style={{ fontSize: '11px' }}>Cập nhật Realtime</div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="p-3 bg-warning-subtle border border-warning-subtle rounded-3 h-100">
+            <div className="d-flex align-items-center justify-content-between text-warning-emphasis mb-1">
+              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🟡 Hoàn thành (50 - dưới 80%)</span>
+              <span className="badge bg-warning text-dark">50 - 79%</span>
+            </div>
+            <div className="fw-extrabold text-warning-emphasis" style={{ fontSize: '28px', lineHeight: 1.1 }}>
+              {countFair} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            </div>
+            <div className="text-warning-emphasis mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành nhiệm vụ</div>
           </div>
         </div>
-        <div className="col-12 col-md-3">
-          <div className="p-3 bg-light rounded-3 border text-center">
-            <div className="text-secondary fw-semibold" style={{ fontSize: '12px' }}>Báo cáo đã tiếp nhận</div>
-            <div className="fw-extrabold text-success my-1" style={{ fontSize: '26px' }}>{submissionsCount}</div>
-            <div className="text-muted" style={{ fontSize: '11px' }}>Cập nhật Realtime</div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="p-3 bg-danger-subtle border border-danger-subtle rounded-3 h-100">
+            <div className="d-flex align-items-center justify-content-between text-danger mb-1">
+              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🔴 Chưa hoàn thành (&lt;50%)</span>
+              <span className="badge bg-danger text-white">&lt; 50%</span>
+            </div>
+            <div className="fw-extrabold text-danger" style={{ fontSize: '28px', lineHeight: 1.1 }}>
+              {countFailed} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            </div>
+            <div className="text-danger mt-1 fw-semibold" style={{ fontSize: '11px' }}>Không hoàn thành nhiệm vụ</div>
           </div>
         </div>
       </div>
 
-      {/* Progress Breakdown of 30 Hamlets */}
-      <h5 className="fw-bold text-dark mb-3">Tình hình nộp báo cáo 30 Chi đoàn Ấp</h5>
-      <div className="row g-2">
-        {INITIAL_BRANCHES.slice(0, 12).map(b => (
-          <div key={b.id} className="col-12 col-md-6 col-lg-4">
-            <div className="p-2.5 bg-light rounded-2 border d-flex align-items-center justify-content-between">
-              <div>
-                <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{b.name}</div>
-                <div className="text-muted" style={{ fontSize: '10.5px' }}>Bí thư: {b.secretary_name}</div>
-              </div>
-              <span className="badge bg-success-subtle text-success">Đã hoàn thành</span>
+      {/* Criteria Legend Card */}
+      <div className="p-3 bg-light rounded-3 border mb-4">
+        <div className="fw-bold text-dark mb-2" style={{ fontSize: '13.5px' }}>📌 Tiêu chí Đánh giá & Xếp loại Thi đua theo Tỷ lệ % Tham gia Hoạt động:</div>
+        <div className="row g-2 text-dark" style={{ fontSize: '12px' }}>
+          <div className="col-12 col-md-6 col-lg-3">
+            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
+              <span className="badge bg-success text-white">90 - 100%</span>
+              <span className="fw-bold text-success">🌟 Hoàn thành xuất sắc nhiệm vụ</span>
             </div>
           </div>
-        ))}
+          <div className="col-12 col-md-6 col-lg-3">
+            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
+              <span className="badge bg-primary text-white">80 - dưới 90%</span>
+              <span className="fw-bold text-primary">💙 Hoàn thành tốt nhiệm vụ</span>
+            </div>
+          </div>
+          <div className="col-12 col-md-6 col-lg-3">
+            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
+              <span className="badge bg-warning text-dark">50 - dưới 80%</span>
+              <span className="fw-bold text-warning-emphasis">🟡 Hoàn thành nhiệm vụ</span>
+            </div>
+          </div>
+          <div className="col-12 col-md-6 col-lg-3">
+            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
+              <span className="badge bg-danger text-white">dưới 50%</span>
+              <span className="fw-bold text-danger">🔴 Không hoàn thành nhiệm vụ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Search Toolbar */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <Filter size={18} className="text-secondary" />
+          <span className="fw-semibold text-dark" style={{ fontSize: '13px' }}>Lọc theo Cụm thi đua:</span>
+          <select 
+            className="form-select form-select-sm"
+            style={{ width: '240px' }}
+            value={selectedCluster}
+            onChange={(e) => setSelectedCluster(e.target.value)}
+          >
+            <option value="ALL">🏆 Tất cả 6 Cụm thi đua</option>
+            {COMPETITION_CLUSTERS.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="search-input-group" style={{ maxWidth: '280px' }}>
+          <Search size={15} className="text-secondary me-2" />
+          <input 
+            type="text" 
+            placeholder="Tìm tên Chi đoàn Ấp..." 
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Ratings Table for 30 Hamlets */}
+      <div className="table-responsive">
+        <table className="custom-table align-middle">
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}>STT</th>
+              <th>Chi đoàn Ấp</th>
+              <th>Cụm thi đua</th>
+              <th>Bí thư Chi đoàn</th>
+              <th>Hoạt động tham gia</th>
+              <th style={{ width: '180px' }}>Tỷ lệ % tham gia</th>
+              <th>Kết quả Xếp loại</th>
+              {isDoanXa && <th className="text-end">Thao tác</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredBranchStats.map((item, index) => (
+              <tr key={item.id}>
+                <td className="fw-bold text-muted" style={{ fontSize: '12px' }}>{index + 1}</td>
+                <td>
+                  <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>{item.name}</div>
+                  <div className="text-muted" style={{ fontSize: '11px' }}>{item.code}</div>
+                </td>
+                <td>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
+                    🏆 {item.clusterName}
+                  </span>
+                </td>
+                <td className="text-dark" style={{ fontSize: '12.5px' }}>
+                  {item.secretary_name}
+                </td>
+                <td>
+                  <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                    {item.attendedCount} / {item.totalAssigned}
+                  </span>
+                  <span className="text-muted ms-1" style={{ fontSize: '11px' }}>HĐ</span>
+                </td>
+                <td>
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
+                      <div 
+                        className="progress-bar transition" 
+                        role="progressbar" 
+                        style={{ 
+                          width: `${item.percentage}%`,
+                          backgroundColor: item.rating.color 
+                        }}
+                      ></div>
+                    </div>
+                    <span className="fw-bold" style={{ fontSize: '12px', color: item.rating.color, minWidth: '38px' }}>
+                      {item.percentage}%
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <span className={`badge ${item.rating.badgeClass} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                    <span>{item.rating.icon}</span>
+                    <span>{item.rating.label}</span>
+                  </span>
+                </td>
+                {isDoanXa && (
+                  <td className="text-end">
+                    <button 
+                      className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1"
+                      style={{ fontSize: '11px', borderRadius: '6px' }}
+                      onClick={onOpenAttendanceModal}
+                      title="Điểm danh cho Chi đoàn này"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Điểm danh</span>
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

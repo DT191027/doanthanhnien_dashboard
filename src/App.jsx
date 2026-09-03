@@ -19,7 +19,8 @@ import {
   SubmitDocumentModal, 
   SendMessageModal,
   SupportModal,
-  CreateTaskModal 
+  CreateTaskModal,
+  ActivityAttendanceModal
 } from './components/Modals';
 import { 
   ActivitiesView, 
@@ -50,6 +51,8 @@ import {
   syncFetchTasks,
   syncSaveTask,
   syncToggleTaskStatus,
+  syncFetchAttendance,
+  syncSaveAttendance,
   COMPETITION_CLUSTERS
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
@@ -75,6 +78,7 @@ export default function App() {
   const [submissionsList, setSubmissionsList] = useState([]);
   const [notificationsList, setNotificationsList] = useState([]);
   const [tasksList, setTasksList] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState({});
 
   // Modals state
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
@@ -84,6 +88,7 @@ export default function App() {
   const [editingNotification, setEditingNotification] = useState(null);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -108,18 +113,20 @@ export default function App() {
   };
 
   const loadAllData = async () => {
-    const [acts, docs, subs, notis, tsks] = await Promise.all([
+    const [acts, docs, subs, notis, tsks, atts] = await Promise.all([
       syncFetchActivities(),
       syncFetchDocuments(),
       syncFetchSubmissions(),
       syncFetchNotifications(),
-      syncFetchTasks()
+      syncFetchTasks(),
+      syncFetchAttendance()
     ]);
     setActivitiesList(acts);
     setDocumentsList(docs);
     setSubmissionsList(subs);
     setNotificationsList(notis);
     setTasksList(tsks);
+    setAttendanceRecords(atts || {});
   };
 
   useEffect(() => {
@@ -325,6 +332,12 @@ export default function App() {
   const handleToggleTask = async (taskId, newStatus) => {
     const updated = await syncToggleTaskStatus(taskId, newStatus);
     setTasksList(updated);
+  };
+
+  const handleSaveAttendance = async (activityId, recordData) => {
+    const updated = await syncSaveAttendance(activityId, recordData);
+    setAttendanceRecords(updated);
+    triggerToast('Đã lưu kết quả điểm danh & đánh giá tham gia hoạt động!');
   };
 
   return (
@@ -545,6 +558,10 @@ export default function App() {
               activitiesCount={activitiesList.length}
               docsCount={documentsList.length}
               submissionsCount={submissionsList.length}
+              activities={activitiesList}
+              attendanceRecords={attendanceRecords}
+              onOpenAttendanceModal={() => setShowAttendanceModal(true)}
+              isDoanXa={isDoanXa}
             />
           ) : activeTab === 'storage' ? (
             /* STORAGE ARCHIVE VIEW */
@@ -641,6 +658,14 @@ export default function App() {
         show={showCreateTaskModal}
         onClose={() => setShowCreateTaskModal(false)}
         onSave={handleAddTask}
+      />
+
+      <ActivityAttendanceModal 
+        show={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+        activities={activitiesList}
+        attendanceRecords={attendanceRecords}
+        onSaveAttendance={handleSaveAttendance}
       />
     </div>
   );

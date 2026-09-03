@@ -744,3 +744,176 @@ export function CreateTaskModal({ show, onClose, onSave }) {
     </div>
   );
 }
+
+// 7. Activity Attendance & Urgent Task Evaluation Modal
+export function ActivityAttendanceModal({ show, onClose, activities = [], attendanceRecords = {}, onSaveAttendance }) {
+  const [selectedActivityId, setSelectedActivityId] = useState('');
+  const [attendanceData, setAttendanceData] = useState({});
+  const [isUrgentTask, setIsUrgentTask] = useState(false);
+
+  useEffect(() => {
+    if (activities && activities.length > 0 && !selectedActivityId) {
+      setSelectedActivityId(activities[0].id);
+    }
+  }, [activities, show]);
+
+  useEffect(() => {
+    if (selectedActivityId) {
+      const record = attendanceRecords[selectedActivityId] || {};
+      const initialMap = {};
+      INITIAL_BRANCHES.forEach(b => {
+        initialMap[b.name] = record[b.name] !== undefined ? record[b.name] : true;
+      });
+      setAttendanceData(initialMap);
+      setIsUrgentTask(record.isUrgentTask || false);
+    }
+  }, [selectedActivityId, attendanceRecords, show]);
+
+  if (!show) return null;
+
+  const handleToggleBranch = (branchName) => {
+    setAttendanceData(prev => ({
+      ...prev,
+      [branchName]: !prev[branchName]
+    }));
+  };
+
+  const handleSelectAll = (val) => {
+    const nextMap = {};
+    INITIAL_BRANCHES.forEach(b => {
+      nextMap[b.name] = val;
+    });
+    setAttendanceData(nextMap);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+    if (selectedActivityId) {
+      onSaveAttendance && onSaveAttendance(selectedActivityId, {
+        ...attendanceData,
+        isUrgentTask
+      });
+    }
+    onClose();
+  };
+
+  const attendedCount = Object.values(attendanceData).filter(Boolean).length;
+
+  return (
+    <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
+      <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
+          <div className="modal-header border-bottom pb-3">
+            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
+              <CheckCircle className="text-success" size={22} />
+              Điểm Danh & Kiểm Tra Số Lượng Chi Đoàn Tham Gia
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body p-4">
+              {/* Select Activity / Task */}
+              <div className="row g-3 mb-3">
+                <div className="col-md-8">
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Chọn Hoạt động / Công việc phát động</label>
+                  <select 
+                    className="form-select"
+                    value={selectedActivityId}
+                    onChange={(e) => setSelectedActivityId(e.target.value)}
+                  >
+                    {activities.map(act => (
+                      <option key={act.id} value={act.id}>
+                        📌 {act.title} ({act.date || act.dueDate || 'Hoạt động Đoàn'})
+                      </option>
+                    ))}
+                    {activities.length === 0 && (
+                      <option value="default-act">📌 Hoạt động phát động chung 30 Chi đoàn Ấp</option>
+                    )}
+                  </select>
+                </div>
+                <div className="col-md-4 d-flex align-items-end">
+                  <div className="form-check form-switch p-2 bg-warning-subtle rounded-3 border border-warning-subtle w-100 mb-0">
+                    <input 
+                      className="form-check-input ms-1 me-2 cursor-pointer" 
+                      type="checkbox" 
+                      id="urgentTaskCheck"
+                      checked={isUrgentTask}
+                      onChange={(e) => setIsUrgentTask(e.target.checked)}
+                    />
+                    <label className="form-check-label fw-bold text-warning-emphasis cursor-pointer" htmlFor="urgentTaskCheck" style={{ fontSize: '12px' }}>
+                      ⚡ Công việc đột xuất / Bất ngờ
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attendance Quick Tools & Counter */}
+              <div className="p-3 bg-light rounded-3 border mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                  <span className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
+                    Kết quả điểm danh: <span className="text-primary fw-extrabold">{attendedCount} / 30</span> Chi đoàn tham gia
+                  </span>
+                  <div className="text-secondary" style={{ fontSize: '11px' }}>
+                    Tỷ lệ tham gia đợt này: <strong className="text-success">{Math.round((attendedCount / 30) * 100)}%</strong>
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-outline-success fw-semibold px-2.5 py-1"
+                    style={{ fontSize: '11.5px' }}
+                    onClick={() => handleSelectAll(true)}
+                  >
+                    ✓ Chọn tất cả (30/30)
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-outline-secondary fw-semibold px-2.5 py-1"
+                    style={{ fontSize: '11.5px' }}
+                    onClick={() => handleSelectAll(false)}
+                  >
+                    ✗ Bỏ chọn tất cả
+                  </button>
+                </div>
+              </div>
+
+              {/* 30 Hamlets Checklist Grid */}
+              <div className="row g-2" style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                {INITIAL_BRANCHES.map((b) => {
+                  const isChecked = Boolean(attendanceData[b.name]);
+                  return (
+                    <div key={b.id} className="col-12 col-md-6 col-lg-4">
+                      <div 
+                        className={`p-2.5 rounded-3 border cursor-pointer transition d-flex align-items-center justify-content-between ${isChecked ? 'bg-success-subtle border-success' : 'bg-white border-light-subtle opacity-75'}`}
+                        onClick={() => handleToggleBranch(b.name)}
+                      >
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{b.name}</div>
+                          <div className="text-muted" style={{ fontSize: '10.5px' }}>Bí thư: {b.secretary_name}</div>
+                        </div>
+                        <input 
+                          type="checkbox" 
+                          className="form-check-input cursor-pointer"
+                          checked={isChecked}
+                          onChange={() => handleToggleBranch(b.name)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="modal-footer border-top pt-2">
+              <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
+              <button type="submit" className="btn btn-success px-4 fw-semibold d-flex align-items-center gap-2" style={{ backgroundColor: '#16A34A', border: 'none' }}>
+                <CheckCircle size={16} />
+                <span>Lưu Điểm Danh & Đánh Giá</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

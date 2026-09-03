@@ -603,3 +603,69 @@ export async function syncToggleTaskStatus(taskId, newStatus) {
   }
   return updatedLocal;
 }
+
+// ============================================================================
+// 6. ATTENDANCE & EVALUATION RATING HELPERS FOR 30 HAMLET BRANCHES
+// ============================================================================
+
+export function getBranchClusterName(branchName) {
+  const cluster = COMPETITION_CLUSTERS.find(c => 
+    c.branches.some(b => b === branchName || b.includes(branchName.replace('Chi đoàn Ấp ', '')))
+  );
+  return cluster ? cluster.name : 'Chưa phân cụm';
+}
+
+export function calculateBranchRating(percentage) {
+  if (percentage >= 90) {
+    return {
+      label: 'Hoàn thành xuất sắc nhiệm vụ',
+      badgeClass: 'bg-success text-white',
+      borderClass: 'border-success',
+      bgSubtle: 'bg-success-subtle text-success',
+      icon: '🌟',
+      color: '#16A34A'
+    };
+  }
+  if (percentage >= 80) {
+    return {
+      label: 'Hoàn thành tốt nhiệm vụ',
+      badgeClass: 'bg-primary text-white',
+      borderClass: 'border-primary',
+      bgSubtle: 'bg-primary-subtle text-primary',
+      icon: '💙',
+      color: '#2563EB'
+    };
+  }
+  if (percentage >= 50) {
+    return {
+      label: 'Hoàn thành nhiệm vụ',
+      badgeClass: 'bg-warning text-dark',
+      borderClass: 'border-warning',
+      bgSubtle: 'bg-warning-subtle text-warning-emphasis',
+      icon: '🟡',
+      color: '#D97706'
+    };
+  }
+  return {
+    label: 'Không hoàn thành nhiệm vụ',
+    badgeClass: 'bg-danger text-white',
+    borderClass: 'border-danger',
+    bgSubtle: 'bg-danger-subtle text-danger',
+    icon: '🔴',
+    color: '#DC2626'
+  };
+}
+
+export async function syncFetchAttendance() {
+  return getPersistedData('attendance_records', {});
+}
+
+export async function syncSaveAttendance(activityId, recordData) {
+  const current = getPersistedData('attendance_records', {});
+  const updated = {
+    ...current,
+    [activityId]: recordData
+  };
+  setPersistedData('attendance_records', updated);
+  return updated;
+}

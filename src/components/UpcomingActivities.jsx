@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, MapPin, Calendar, Plus } from 'lucide-react';
 
-export default function UpcomingActivities({ activities = [], setActiveTab, onOpenCreateActivity }) {
+export default function UpcomingActivities({ activities = [], setActiveTab, onOpenCreateActivity, onOpenActivityDetail }) {
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -40,6 +40,7 @@ export default function UpcomingActivities({ activities = [], setActiveTab, onOp
             <div 
               key={act.id}
               className="p-2 rounded-3 bg-light border d-flex align-items-center justify-content-between cursor-pointer hover-bg-white transition"
+              onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
             >
               <div className="d-flex align-items-center gap-3">
                 <div className="activity-date-badge">
@@ -56,9 +57,21 @@ export default function UpcomingActivities({ activities = [], setActiveTab, onOp
                   </div>
                 </div>
               </div>
-              <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
-                {act.status}
-              </span>
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
+                  {act.status}
+                </span>
+                <button 
+                  className="btn btn-sm btn-outline-primary fw-semibold px-2 py-1"
+                  style={{ fontSize: '11px' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenActivityDetail && onOpenActivityDetail(act);
+                  }}
+                >
+                  Chi tiết
+                </button>
+              </div>
             </div>
           ))}
         </div>

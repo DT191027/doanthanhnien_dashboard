@@ -20,7 +20,8 @@ import {
   SendMessageModal,
   SupportModal,
   CreateTaskModal,
-  ActivityAttendanceModal
+  ActivityAttendanceModal,
+  ActivityDetailModal
 } from './components/Modals';
 import { 
   ActivitiesView, 
@@ -89,6 +90,8 @@ export default function App() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedActivityDetail, setSelectedActivityDetail] = useState(null);
+  const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -340,6 +343,26 @@ export default function App() {
     triggerToast('Đã lưu kết quả điểm danh & đánh giá tham gia hoạt động!');
   };
 
+  const handleRespondAttendance = async (activityId, branchName, attended, reason) => {
+    const currentActivityRec = attendanceRecords[activityId] || {};
+    const updatedRec = {
+      ...currentActivityRec,
+      [branchName]: attended ? true : { attended: false, reason }
+    };
+    const updated = await syncSaveAttendance(activityId, updatedRec);
+    setAttendanceRecords(updated);
+    if (attended) {
+      triggerToast(`Đã xác nhận THAM GIA hoạt động cho ${branchName}!`);
+    } else {
+      triggerToast(`Đã gửi báo VẮNG MẶT cho ${branchName}!`);
+    }
+  };
+
+  const handleOpenActivityDetail = (activity) => {
+    setSelectedActivityDetail(activity);
+    setShowActivityDetailModal(true);
+  };
+
   return (
     <div className="d-flex min-vh-100 bg-main position-relative">
       {toastMessage && (
@@ -457,6 +480,7 @@ export default function App() {
                           activities={activitiesList}
                           setActiveTab={setActiveTab} 
                           onOpenCreateActivity={() => setShowCreateActivityModal(true)}
+                          onOpenActivityDetail={handleOpenActivityDetail}
                         />
                       </div>
                     </div>
@@ -466,6 +490,7 @@ export default function App() {
                         <UpcomingActivities 
                           activities={activitiesList}
                           setActiveTab={setActiveTab} 
+                          onOpenActivityDetail={handleOpenActivityDetail}
                         />
                       </div>
                       <div className="col-12 col-md-6">
@@ -517,6 +542,7 @@ export default function App() {
               isDoanXa={isDoanXa}
               onToggleStatus={handleToggleActivityStatus}
               onDeleteActivity={handleDeleteActivity}
+              onOpenActivityDetail={handleOpenActivityDetail}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */
@@ -666,6 +692,15 @@ export default function App() {
         activities={activitiesList}
         attendanceRecords={attendanceRecords}
         onSaveAttendance={handleSaveAttendance}
+      />
+
+      <ActivityDetailModal 
+        show={showActivityDetailModal}
+        onClose={() => setShowActivityDetailModal(false)}
+        activity={selectedActivityDetail}
+        currentRole={currentUser}
+        attendanceRecords={attendanceRecords}
+        onRespondAttendance={handleRespondAttendance}
       />
     </div>
   );

@@ -32,7 +32,7 @@ import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
-export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity }) {
+export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
@@ -147,9 +147,16 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-top d-flex align-items-center justify-content-between">
-                  <span className="text-muted" style={{ fontSize: '11px' }}>🏛️ Ban Thường vụ Đoàn xã</span>
-                  {isDoanXa ? (
+                <div className="pt-2.5 border-top d-flex align-items-center justify-content-between gap-2">
+                  <button 
+                    className="btn btn-sm btn-outline-primary fw-semibold px-2.5 py-1"
+                    style={{ fontSize: '11px', borderRadius: '6px' }}
+                    onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
+                  >
+                    Chi tiết →
+                  </button>
+
+                  {isDoanXa && (
                     <div className="d-flex align-items-center gap-1.5">
                       <button 
                         className={`btn btn-sm ${act.status === 'Đã hoàn thành' ? 'btn-outline-warning' : 'btn-success'} fw-semibold d-flex align-items-center gap-1 py-1 px-2.5`}
@@ -175,8 +182,6 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                         <span>Xóa</span>
                       </button>
                     </div>
-                  ) : (
-                    <span className="fw-semibold text-primary" style={{ fontSize: '11px' }}>Chi tiết →</span>
                   )}
                 </div>
               </div>

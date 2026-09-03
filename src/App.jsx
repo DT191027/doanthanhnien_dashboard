@@ -37,6 +37,8 @@ import {
   isSupabaseConfigured,
   syncFetchActivities,
   syncSaveActivity,
+  syncToggleActivityStatus,
+  syncDeleteActivity,
   syncFetchDocuments,
   syncSaveDocument,
   syncFetchSubmissions,
@@ -149,12 +151,37 @@ export default function App() {
       title: newAct.title,
       time: newAct.time || '08:00 - 11:30',
       location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam',
+      description: newAct.description || '',
       status: 'Sắp diễn ra',
       dateIso: new Date().toISOString().split('T')[0]
     };
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
-    triggerToast(`Đã tạo thành công hoạt động: "${newAct.title}"!`);
+
+    // Tự động phát thông báo tới tất cả 30 Chi đoàn Ấp
+    const autoNoti = {
+      id: `noti-${Date.now()}`,
+      title: `📢 Hoạt động mới: ${newAct.title}`,
+      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn phát động hoạt động "${newAct.title}" vào ${activityItem.time} ngày ${activityItem.day} ${activityItem.month} tại ${activityItem.location}. Đề nghị 30 Chi đoàn Ấp triển khai tham gia.`,
+      target_scope: 'Tất cả 30 Chi đoàn Ấp',
+      time_ago: 'Vừa xong'
+    };
+    const updatedNotis = await syncSaveNotification(autoNoti);
+    setNotificationsList(updatedNotis);
+
+    triggerToast(`Đã tạo hoạt động "${newAct.title}" và tự động phát thông báo tới 30 Chi đoàn Ấp!`);
+  };
+
+  const handleToggleActivityStatus = async (activityId, newStatus) => {
+    const updated = await syncToggleActivityStatus(activityId, newStatus);
+    setActivitiesList(updated);
+    triggerToast(newStatus === 'Đã hoàn thành' ? 'Đã đánh dấu hoàn thành hoạt động!' : 'Đã chuyển hoạt động về sắp diễn ra!');
+  };
+
+  const handleDeleteActivity = async (activityId) => {
+    const updated = await syncDeleteActivity(activityId);
+    setActivitiesList(updated);
+    triggerToast('Đã xóa hoạt động thành công!');
   };
 
   const handleIssueDocument = async (newDoc) => {
@@ -391,6 +418,8 @@ export default function App() {
               activities={activitiesList}
               onOpenCreateActivity={() => setShowCreateActivityModal(true)}
               isDoanXa={isDoanXa}
+              onToggleStatus={handleToggleActivityStatus}
+              onDeleteActivity={handleDeleteActivity}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */

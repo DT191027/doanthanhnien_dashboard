@@ -24,13 +24,14 @@ import {
   CheckSquare,
   HardDrive,
   Cloud,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { INITIAL_BRANCHES, isSupabaseConfigured, OFFICIAL_ADDRESS } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
-export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa }) {
+export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
@@ -122,14 +123,14 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
         <div className="row g-3">
           {filtered.map((act) => (
             <div key={act.id} className="col-12 col-md-6 col-xl-4">
-              <div className="p-3 rounded-3 bg-light border h-100 d-flex flex-column justify-content-between hover-shadow transition">
+              <div className="p-3.5 rounded-3 bg-light border h-100 d-flex flex-column justify-content-between hover-shadow transition">
                 <div>
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <div className="activity-date-badge">
                       <div className="activity-date-num">{act.day}</div>
                       <div className="activity-date-month">{act.month}</div>
                     </div>
-                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
+                    <span className={`badge ${act.status === 'Đã hoàn thành' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-subtle text-primary border-primary-subtle'} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
                       {act.status}
                     </span>
                   </div>
@@ -139,12 +140,43 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   <div className="text-secondary d-flex flex-column gap-1 mb-3" style={{ fontSize: '12px' }}>
                     <span className="d-flex align-items-center gap-1.5"><Clock size={14} className="text-primary" /> {act.time}</span>
                     <span className="d-flex align-items-center gap-1.5"><MapPin size={14} className="text-danger" /> {act.location}</span>
+                    {act.description && (
+                      <span className="text-muted mt-1" style={{ fontSize: '11.5px' }}>{act.description}</span>
+                    )}
                   </div>
                 </div>
 
-                <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11px' }}>
-                  <span>🏛️ Ban Thường vụ Đoàn xã</span>
-                  <span className="fw-semibold text-primary">Chi tiết →</span>
+                <div className="pt-2.5 border-top d-flex align-items-center justify-content-between">
+                  <span className="text-muted" style={{ fontSize: '11px' }}>🏛️ Ban Thường vụ Đoàn xã</span>
+                  {isDoanXa ? (
+                    <div className="d-flex align-items-center gap-1.5">
+                      <button 
+                        className={`btn btn-sm ${act.status === 'Đã hoàn thành' ? 'btn-outline-warning' : 'btn-success'} fw-semibold d-flex align-items-center gap-1 py-1 px-2.5`}
+                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                        title={act.status === 'Đã hoàn thành' ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}
+                        onClick={() => onToggleStatus && onToggleStatus(act.id, act.status === 'Đã hoàn thành' ? 'Sắp diễn ra' : 'Đã hoàn thành')}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>{act.status === 'Đã hoàn thành' ? 'Hoàn tác' : 'Hoàn thành'}</span>
+                      </button>
+                      
+                      <button 
+                        className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 py-1 px-2.5"
+                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                        title="Xóa hoạt động khi sai thông tin"
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa hoạt động "${act.title}" không?`)) {
+                            onDeleteActivity && onDeleteActivity(act.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="fw-semibold text-primary" style={{ fontSize: '11px' }}>Chi tiết →</span>
+                  )}
                 </div>
               </div>
             </div>

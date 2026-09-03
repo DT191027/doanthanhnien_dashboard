@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
@@ -14,106 +14,182 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     location: '',
     description: ''
   });
+  const [rawDate, setRawDate] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
 
   if (!show) return null;
 
+  const handleClose = () => {
+    setIsPreview(false);
+    onClose && onClose();
+  };
+
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
     onSave && onSave({
       ...formData,
       location: formData.location || OFFICIAL_ADDRESS
     });
     setFormData({ title: '', day: '', month: '', time: '', location: '', description: '' });
-    onClose();
+    setRawDate('');
+    setIsPreview(false);
+    onClose && onClose();
+  };
+
+  const handleOpenPreview = (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.time || !formData.location) {
+      alert('Vui lòng điền đầy đủ các thông tin bắt buộc trước khi xem trước!');
+      return;
+    }
+    setIsPreview(true);
   };
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
+      <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-content border-0 shadow-lg">
+          <div className="modal-header border-bottom">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
-              <Calendar className="text-primary" size={20} />
-              Tạo Hoạt động Mới
+              {isPreview ? <Eye className="text-primary" size={20} /> : <Calendar className="text-primary" size={20} />}
+              {isPreview ? 'Xem Trước Giao Diện Hoạt Động' : 'Tạo Hoạt động Mới'}
             </h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+            <button type="button" className="btn-close" onClick={handleClose}></button>
           </div>
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body p-4">
-              <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên hoạt động <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Ví dụ: Ra quân Ngày Chủ nhật xanh..."
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
 
-              <div className="row g-2 mb-3">
-                <div className="col-6">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian <span className="text-danger">*</span></label>
+          {!isPreview ? (
+            <form onSubmit={handleSubmit}>
+              <div className="modal-body p-4">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên hoạt động <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="08:00 - 11:30"
+                    placeholder="Ví dụ: Ra quân Ngày Chủ nhật xanh..."
                     required
-                    value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
                 </div>
-                <div className="col-6">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày tổ chức <span className="text-danger">*</span></label>
+
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="08:00 - 11:30"
+                      required
+                      value={formData.time}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày tổ chức <span className="text-danger">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      required
+                      value={rawDate}
+                      onChange={(e) => {
+                        setRawDate(e.target.value);
+                        if (e.target.value) {
+                          const d = new Date(e.target.value);
+                          const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
+                          setFormData({ 
+                            ...formData, 
+                            day: String(d.getDate()).padStart(2, '0'),
+                            month: months[d.getMonth()]
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Địa điểm tổ chức <span className="text-danger">*</span></label>
                   <input
-                    type="date"
+                    type="text"
                     className="form-control"
+                    placeholder="Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54..."
                     required
-                    onChange={(e) => {
-                      const d = new Date(e.target.value);
-                      const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
-                      setFormData({ 
-                        ...formData, 
-                        day: String(d.getDate()).padStart(2, '0'),
-                        month: months[d.getMonth()]
-                      });
-                    }}
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
                 </div>
-              </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Địa điểm tổ chức <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54..."
-                  required
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
+                <div className="mb-2">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mô tả chi tiết</label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    placeholder="Nội dung chương trình, yêu cầu tham gia..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  ></textarea>
+                </div>
               </div>
+              <div className="modal-footer border-top bg-light">
+                <button type="button" className="btn btn-light border px-4" onClick={handleClose}>Hủy</button>
+                <button type="button" className="btn btn-outline-primary px-3 fw-semibold d-flex align-items-center gap-1.5" onClick={handleOpenPreview}>
+                  <Eye size={16} />
+                  <span>Xem trước</span>
+                </button>
+                <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
+                  Tạo Hoạt Động
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div>
+              <div className="modal-body p-4">
+                <div className="alert alert-primary d-flex align-items-center gap-2 py-2.5 px-3 mb-3" style={{ fontSize: '13px' }}>
+                  <Bell size={18} className="text-primary flex-shrink-0" />
+                  <div>
+                    <strong>Chế độ xem trước:</strong> Kiểm tra hiển thị của thẻ hoạt động trước khi đăng. Sau khi tạo, hệ thống sẽ <strong>tự động phát thông báo tới tất cả 30 Chi đoàn Ấp</strong>.
+                  </div>
+                </div>
 
-              <div className="mb-2">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mô tả chi tiết</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  placeholder="Nội dung chương trình, yêu cầu tham gia..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                ></textarea>
+                <div className="p-3.5 rounded-3 bg-light border shadow-sm" style={{ maxWidth: '450px', margin: '0 auto' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="activity-date-badge">
+                      <div className="activity-date-num">{formData.day || '03'}</div>
+                      <div className="activity-date-month">{formData.month || 'THÁNG 9'}</div>
+                    </div>
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
+                      Sắp diễn ra
+                    </span>
+                  </div>
+                  <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '16px', lineHeight: '1.3' }}>
+                    {formData.title || 'Tên hoạt động chưa đặt'}
+                  </h5>
+                  <div className="text-secondary d-flex flex-column gap-1.5 mb-3" style={{ fontSize: '12.5px' }}>
+                    <span className="d-flex align-items-center gap-1.5"><Clock size={14} className="text-primary" /> {formData.time || '08:00 - 11:30'}</span>
+                    <span className="d-flex align-items-center gap-1.5"><MapPin size={14} className="text-danger" /> {formData.location || OFFICIAL_ADDRESS}</span>
+                    {formData.description && (
+                      <div className="p-2 bg-white rounded border text-dark mt-1" style={{ fontSize: '12px' }}>
+                        {formData.description}
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
+                    <span>🏛️ Ban Thường vụ Đoàn xã</span>
+                    <span className="fw-semibold text-primary">Chi tiết →</span>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-top bg-light">
+                <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={() => setIsPreview(false)}>
+                  ← Quay lại chỉnh sửa
+                </button>
+                <button type="button" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={handleSubmit}>
+                  Xác Nhận & Tạo Hoạt Động
+                </button>
               </div>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
-              <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                Tạo Hoạt Động
-              </button>
-            </div>
-          </form>
+          )}
         </div>
       </div>
     </div>

@@ -195,6 +195,38 @@ export async function syncSaveActivity(activityItem) {
   return updatedLocal;
 }
 
+export async function syncToggleActivityStatus(activityId, newStatus) {
+  const current = getPersistedData('activities', []);
+  const updatedLocal = current.map(a => a.id === activityId ? { ...a, status: newStatus } : a);
+  setPersistedData('activities', updatedLocal);
+
+  if (supabase) {
+    try {
+      await supabase.from('activities').update({ status: newStatus }).eq('id', activityId);
+    } catch (e) {
+      console.error('Supabase toggle activity status error:', e);
+    }
+    return await syncFetchActivities();
+  }
+  return updatedLocal;
+}
+
+export async function syncDeleteActivity(activityId) {
+  const current = getPersistedData('activities', []);
+  const updatedLocal = current.filter(a => a.id !== activityId);
+  setPersistedData('activities', updatedLocal);
+
+  if (supabase) {
+    try {
+      await supabase.from('activities').delete().eq('id', activityId);
+    } catch (e) {
+      console.error('Supabase delete activity error:', e);
+    }
+    return await syncFetchActivities();
+  }
+  return updatedLocal;
+}
+
 // ============================================================================
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================

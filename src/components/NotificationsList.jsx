@@ -1,9 +1,12 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
 import { sortNotificationsByPriority } from '../lib/supabase';
+import { ReceiptConfirmationBox } from './SecondaryViews';
 
-export default function NotificationsList({ notifications = [], currentRole, setActiveTab }) {
+export default function NotificationsList({ notifications = [], currentRole, setActiveTab, onConfirmReceipt }) {
   const sortedNotifications = sortNotificationsByPriority(notifications);
+
+  const isDoanXa = currentRole?.role === 'admin' || currentRole?.role === 'doan_xa' || currentRole?.full_name?.includes('Đoàn xã');
 
   const getBadgeStyle = (priority) => {
     const p = String(priority || '').toLowerCase();
@@ -53,9 +56,18 @@ export default function NotificationsList({ notifications = [], currentRole, set
                     </span>
                   </div>
                   {n.content && <div className="text-secondary mb-1" style={{ fontSize: '11.5px' }}>{n.content}</div>}
-                  <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '10.5px' }}>
+                  <div className="d-flex align-items-center justify-content-between text-muted mt-2 pt-1 border-top" style={{ fontSize: '10.5px' }}>
                     <span>📌 {n.target_scope || '30 Chi đoàn Ấp'}</span>
-                    <span>{n.time_ago || 'Vừa xong'}</span>
+                    <div className="d-flex align-items-center gap-2">
+                      <span>{n.time_ago || 'Vừa xong'}</span>
+                      <ReceiptConfirmationBox 
+                        type="notification" 
+                        item={n} 
+                        currentRole={currentRole} 
+                        isDoanXa={isDoanXa} 
+                        onConfirmReceipt={onConfirmReceipt} 
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

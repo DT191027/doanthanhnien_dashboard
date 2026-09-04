@@ -3,6 +3,7 @@ import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, 
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
+import { ReceiptConfirmationBox } from './SecondaryViews';
 
 // 1. Create Activity Modal
 export function CreateActivityModal({ show, onClose, onSave }) {
@@ -1111,13 +1112,15 @@ export function ActivityDetailModal({
   activity = null, 
   currentRole = {}, 
   attendanceRecords = {}, 
-  onRespondAttendance 
+  onRespondAttendance,
+  onConfirmReceipt
 }) {
   const [isAbsenceMode, setIsAbsenceMode] = useState(false);
   const [absenceReason, setAbsenceReason] = useState('');
 
   if (!show || !activity) return null;
 
+  const isDoanXa = currentRole?.role === 'admin' || currentRole?.role === 'doan_xa' || currentRole?.full_name?.includes('Đoàn xã');
   const userBranchName = currentRole?.full_name || 'Chi đoàn Ấp Bùi Môn';
   const activityAttendance = attendanceRecords[activity.id] || {};
   const currentBranchRecord = activityAttendance[userBranchName];
@@ -1161,13 +1164,22 @@ export function ActivityDetailModal({
           <div className="modal-body p-4">
             {/* Header info card */}
             <div className="p-3 bg-light rounded-3 border mb-3">
-              <div className="d-flex align-items-center justify-content-between mb-2">
+              <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
                   📌 Phân công: {activity.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}
                 </span>
-                <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
-                  {activity.status || 'Sắp diễn ra'}
-                </span>
+                <div className="d-flex align-items-center gap-2">
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
+                    {activity.status || 'Sắp diễn ra'}
+                  </span>
+                  <ReceiptConfirmationBox 
+                    type="activity" 
+                    item={activity} 
+                    currentRole={currentRole} 
+                    isDoanXa={isDoanXa} 
+                    onConfirmReceipt={onConfirmReceipt} 
+                  />
+                </div>
               </div>
               <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '18px' }}>
                 {activity.title}

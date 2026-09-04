@@ -343,6 +343,58 @@ export default function App() {
     }
   };
 
+  const handleConfirmReceipt = async (type, item) => {
+    const branchName = currentUser?.full_name || 'Chi đoàn Ấp';
+    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('vi-VN');
+    const timeStr = `${nowTime} ${nowDate}`;
+
+    const existingConfirmed = item.confirmedBy || [];
+    if (existingConfirmed.some(c => c.branch === branchName)) {
+      triggerToast('Đơn vị đã xác nhận tiếp nhận nhiệm vụ trước đó!');
+      return;
+    }
+
+    const updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
+
+    if (type === 'notification') {
+      const updatedNoti = {
+        ...item,
+        confirmedBy: updatedConfirmedBy
+      };
+      const updatedList = await syncUpdateNotification(updatedNoti);
+      setNotificationsList(updatedList);
+    } else if (type === 'activity') {
+      const updatedAct = {
+        ...item,
+        confirmedBy: updatedConfirmedBy
+      };
+      const updatedList = await syncSaveActivity(updatedAct);
+      setActivitiesList(updatedList);
+    }
+
+    // Tự động phát thông báo ngược lại cho Quản trị viên (Đoàn xã)
+    const feedbackNoti = {
+      id: `noti-${Date.now()}`,
+      title: `✅ ${branchName} đã tiếp nhận nhiệm vụ`,
+      content: `${branchName} đã xác nhận đã nhận thông báo, đã xem và tiếp nhận nhiệm vụ đối với "${item.title}".`,
+      target_scope: 'Đoàn xã Xuân Thới Sơn',
+      priority: 'Trung bình',
+      time_ago: 'Vừa xong',
+      createdAt: Date.now()
+    };
+    const updatedNotis = await syncSaveNotification(feedbackNoti);
+    setNotificationsList(updatedNotis);
+
+    try {
+      if (typeof window !== 'undefined' && window.confetti) {
+        window.confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+      }
+    } catch(e) {}
+
+    triggerToast(`Đã xác nhận tiếp nhận nhiệm vụ và gửi thông báo tới Ban Thường vụ Đoàn xã!`);
+  };
+
   const handleEditNotification = (noti) => {
     setEditingNotification(noti);
     setShowSendMessageModal(true);
@@ -611,6 +663,7 @@ export default function App() {
                     notifications={userNotifications}
                     currentRole={currentUser}
                     setActiveTab={setActiveTab}
+                    onConfirmReceipt={handleConfirmReceipt}
                   />
                 </div>
               </div>
@@ -624,6 +677,8 @@ export default function App() {
               onToggleStatus={handleToggleActivityStatus}
               onDeleteActivity={handleDeleteActivity}
               onOpenActivityDetail={handleOpenActivityDetail}
+              onConfirmReceipt={handleConfirmReceipt}
+              currentUser={currentUser}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */
@@ -651,6 +706,8 @@ export default function App() {
               onEditNotification={handleEditNotification}
               onDeleteNotification={handleDeleteNotification}
               isDoanXa={isDoanXa}
+              onConfirmReceipt={handleConfirmReceipt}
+              currentUser={currentUser}
             />
           ) : activeTab === 'todo' || activeTab === 'branch_tasks' ? (
             /* TASKS MANAGEMENT VIEW */
@@ -784,6 +841,7 @@ export default function App() {
         currentRole={currentUser}
         attendanceRecords={attendanceRecords}
         onRespondAttendance={handleRespondAttendance}
+        onConfirmReceipt={handleConfirmReceipt}
       />
     </div>
   );

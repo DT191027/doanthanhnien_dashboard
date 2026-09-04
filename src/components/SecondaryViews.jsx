@@ -32,8 +32,88 @@ import {
 import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
+// Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
+export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const confirmedBy = item?.confirmedBy || [];
+  const branchName = currentRole?.full_name || 'Chi đoàn Ấp';
+  const hasConfirmed = confirmedBy.some(c => c.branch === branchName);
+  const myConfirmation = confirmedBy.find(c => c.branch === branchName);
+
+  if (!isDoanXa) {
+    if (hasConfirmed) {
+      return (
+        <div className="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 bg-success-subtle text-success border border-success-subtle rounded-3" style={{ fontSize: '12px', fontWeight: 600 }}>
+          <CheckCircle2 size={15} />
+          <span>✓ Đã tiếp nhận ({myConfirmation?.time || 'Vừa xong'})</span>
+        </div>
+      );
+    }
+    return (
+      <button 
+        type="button"
+        className="btn btn-success btn-sm fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-sm"
+        style={{ backgroundColor: '#16A34A', border: 'none', fontSize: '12px' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onConfirmReceipt && onConfirmReceipt(type, item);
+        }}
+      >
+        <CheckCircle2 size={15} />
+        <span>Xác nhận đã nhận & tiếp nhận nhiệm vụ</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="position-relative d-inline-block">
+      <button 
+        type="button"
+        className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3"
+        style={{ fontSize: '11.5px' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowDropdown(!showDropdown);
+        }}
+      >
+        <CheckCircle2 size={14} />
+        <span>Đã có {confirmedBy.length}/30 Chi đoàn tiếp nhận</span>
+      </button>
+
+      {showDropdown && (
+        <div 
+          className="position-absolute end-0 mt-1 bg-white border shadow-lg rounded-3 p-3 text-dark" 
+          style={{ zIndex: 1050, width: '280px', maxHeight: '240px', overflowY: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-1">
+            <span className="fw-bold text-success" style={{ fontSize: '12.5px' }}>
+              Danh sách tiếp nhận ({confirmedBy.length})
+            </span>
+            <button type="button" className="btn-close btn-sm" onClick={() => setShowDropdown(false)}></button>
+          </div>
+          {confirmedBy.length === 0 ? (
+            <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>
+              Chưa có chi đoàn nào xác nhận
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-1.5">
+              {confirmedBy.map((c, idx) => (
+                <div key={idx} className="d-flex align-items-center justify-content-between p-1.5 bg-light rounded" style={{ fontSize: '12px' }}>
+                  <span className="fw-semibold text-dark">✓ {c.branch}</span>
+                  <span className="text-muted" style={{ fontSize: '10.5px' }}>{c.time}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 1. Full Activities Management View
-export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail }) {
+export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
@@ -157,7 +237,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-top d-flex align-items-center justify-content-between gap-2">
+                <div className="pt-2.5 border-top d-flex align-items-center justify-content-between gap-2 flex-wrap">
                   <button 
                     className="btn btn-sm btn-outline-primary fw-semibold px-2.5 py-1"
                     style={{ fontSize: '11px', borderRadius: '6px' }}
@@ -166,33 +246,43 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                     Chi tiết →
                   </button>
 
-                  {isDoanXa && (
-                    <div className="d-flex align-items-center gap-1.5">
-                      <button 
-                        className={`btn btn-sm ${act.status === 'Đã hoàn thành' ? 'btn-outline-warning' : 'btn-success'} fw-semibold d-flex align-items-center gap-1 py-1 px-2.5`}
-                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                        title={act.status === 'Đã hoàn thành' ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}
-                        onClick={() => onToggleStatus && onToggleStatus(act.id, act.status === 'Đã hoàn thành' ? 'Sắp diễn ra' : 'Đã hoàn thành')}
-                      >
-                        <CheckCircle2 size={13} />
-                        <span>{act.status === 'Đã hoàn thành' ? 'Hoàn tác' : 'Hoàn thành'}</span>
-                      </button>
-                      
-                      <button 
-                        className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 py-1 px-2.5"
-                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                        title="Xóa hoạt động khi sai thông tin"
-                        onClick={() => {
-                          if (window.confirm(`Bạn có chắc chắn muốn xóa hoạt động "${act.title}" không?`)) {
-                            onDeleteActivity && onDeleteActivity(act.id);
-                          }
-                        }}
-                      >
-                        <Trash2 size={13} />
-                        <span>Xóa</span>
-                      </button>
-                    </div>
-                  )}
+                  <div className="d-flex align-items-center gap-1.5 ms-auto flex-wrap">
+                    <ReceiptConfirmationBox 
+                      type="activity" 
+                      item={act} 
+                      currentRole={currentUser} 
+                      isDoanXa={isDoanXa} 
+                      onConfirmReceipt={onConfirmReceipt} 
+                    />
+
+                    {isDoanXa && (
+                      <>
+                        <button 
+                          className={`btn btn-sm ${act.status === 'Đã hoàn thành' ? 'btn-outline-warning' : 'btn-success'} fw-semibold d-flex align-items-center gap-1 py-1 px-2.5`}
+                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          title={act.status === 'Đã hoàn thành' ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}
+                          onClick={() => onToggleStatus && onToggleStatus(act.id, act.status === 'Đã hoàn thành' ? 'Sắp diễn ra' : 'Đã hoàn thành')}
+                        >
+                          <CheckCircle2 size={13} />
+                          <span>{act.status === 'Đã hoàn thành' ? 'Hoàn tác' : 'Hoàn thành'}</span>
+                        </button>
+                        
+                        <button 
+                          className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 py-1 px-2.5"
+                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                          title="Xóa hoạt động khi sai thông tin"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa hoạt động "${act.title}" không?`)) {
+                              onDeleteActivity && onDeleteActivity(act.id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Xóa</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -464,7 +554,7 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
 }
 
 // 4. Full Notifications Management View
-export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa }) {
+export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa, onConfirmReceipt, currentUser }) {
   const [filterPriority, setFilterPriority] = useState('ALL');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -685,31 +775,41 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
                     <span>Gửi đến: {n.target_scope || 'Tất cả 30 Chi đoàn Ấp'}</span>
                   </div>
 
-                  {isDoanXa && (
-                    <div className="d-flex align-items-center gap-2 ms-auto">
-                      <button 
-                        className="btn btn-sm btn-white bg-white border border-primary text-primary fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
-                        style={{ fontSize: '12.5px' }}
-                        onClick={() => onEditNotification && onEditNotification(n)}
-                      >
-                        <Edit3 size={14} />
-                        <span>Chỉnh sửa</span>
-                      </button>
+                  <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                    <ReceiptConfirmationBox 
+                      type="notification" 
+                      item={n} 
+                      currentRole={currentUser} 
+                      isDoanXa={isDoanXa} 
+                      onConfirmReceipt={onConfirmReceipt} 
+                    />
 
-                      <button 
-                        className="btn btn-sm btn-white bg-white border border-danger text-danger fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
-                        style={{ fontSize: '12.5px' }}
-                        onClick={() => {
-                          if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" không?`)) {
-                            onDeleteNotification && onDeleteNotification(n.id);
-                          }
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        <span>Xóa</span>
-                      </button>
-                    </div>
-                  )}
+                    {isDoanXa && (
+                      <>
+                        <button 
+                          className="btn btn-sm btn-white bg-white border border-primary text-primary fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
+                          style={{ fontSize: '12.5px' }}
+                          onClick={() => onEditNotification && onEditNotification(n)}
+                        >
+                          <Edit3 size={14} />
+                          <span>Chỉnh sửa</span>
+                        </button>
+
+                        <button 
+                          className="btn btn-sm btn-white bg-white border border-danger text-danger fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
+                          style={{ fontSize: '12.5px' }}
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" không?`)) {
+                              onDeleteNotification && onDeleteNotification(n.id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={14} />
+                          <span>Xóa</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );

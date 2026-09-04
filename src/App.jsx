@@ -373,26 +373,13 @@ export default function App() {
       setActivitiesList(updatedList);
     }
 
-    // Tự động phát thông báo ngược lại cho Quản trị viên (Đoàn xã)
-    const feedbackNoti = {
-      id: `noti-${Date.now()}`,
-      title: `✅ ${branchName} đã tiếp nhận nhiệm vụ`,
-      content: `${branchName} đã xác nhận đã nhận thông báo, đã xem và tiếp nhận nhiệm vụ đối với "${item.title}".`,
-      target_scope: 'Đoàn xã Xuân Thới Sơn',
-      priority: 'Trung bình',
-      time_ago: 'Vừa xong',
-      createdAt: Date.now()
-    };
-    const updatedNotis = await syncSaveNotification(feedbackNoti);
-    setNotificationsList(updatedNotis);
-
     try {
       if (typeof window !== 'undefined' && window.confetti) {
         window.confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
       }
     } catch(e) {}
 
-    triggerToast(`Đã xác nhận tiếp nhận nhiệm vụ và gửi thông báo tới Ban Thường vụ Đoàn xã!`);
+    triggerToast(`Đã xác nhận tiếp nhận nhiệm vụ thành công!`);
   };
 
   const handleEditNotification = (noti) => {

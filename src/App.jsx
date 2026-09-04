@@ -43,6 +43,7 @@ import {
   syncDeleteActivity,
   syncFetchDocuments,
   syncSaveDocument,
+  syncDeleteDocument,
   syncFetchSubmissions,
   syncSaveSubmission,
   syncFetchNotifications,
@@ -52,9 +53,11 @@ import {
   syncFetchTasks,
   syncSaveTask,
   syncToggleTaskStatus,
+  syncDeleteTask,
   syncFetchAttendance,
   syncSaveAttendance,
-  COMPETITION_CLUSTERS
+  COMPETITION_CLUSTERS,
+  isItemTargetedToUser
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -135,18 +138,37 @@ export default function App() {
   useEffect(() => {
     loadAllData();
 
+    const handleSync = () => {
+      loadAllData();
+    };
+
+    let syncChannel = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      syncChannel = new BroadcastChannel('xts_youth_sync_channel');
+      syncChannel.onmessage = () => {
+        loadAllData();
+      };
+    }
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('doanthanhnien_sync', handleSync);
+
+    let supabaseChannel = null;
     if (supabase) {
-      const channel = supabase
+      supabaseChannel = supabase
         .channel('public-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
           loadAllData();
         })
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
+
+    return () => {
+      if (syncChannel) syncChannel.close();
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('doanthanhnien_sync', handleSync);
+      if (supabaseChannel && supabase) supabase.removeChannel(supabaseChannel);
+    };
   }, []);
 
   if (!currentUser) {
@@ -155,8 +177,14 @@ export default function App() {
 
   const isDoanXa = currentUser.role === 'doan_xa';
 
-  const incomingDocsCount = submissionsList.length + documentsList.filter(d => d.type === 'incoming').length;
-  const outgoingDocsCount = documentsList.filter(d => d.type === 'outgoing' || !d.type).length;
+  // Filtered unit-scoped data lists for Chi đoàn user (Đoàn xã sees all items)
+  const userActivities = isDoanXa ? activitiesList : activitiesList.filter(a => isItemTargetedToUser(a.assigned_to || 'ALL', currentUser));
+  const userDocuments = isDoanXa ? documentsList : documentsList.filter(d => isItemTargetedToUser(d.recipient_scope || 'ALL', currentUser));
+  const userNotifications = isDoanXa ? notificationsList : notificationsList.filter(n => isItemTargetedToUser(n.target_scope || 'ALL', currentUser));
+  const userTasks = isDoanXa ? tasksList : tasksList.filter(t => isItemTargetedToUser(t.assigned_to || 'ALL', currentUser));
+
+  const incomingDocsCount = submissionsList.length + userDocuments.filter(d => d.type === 'incoming').length;
+  const outgoingDocsCount = userDocuments.filter(d => d.type === 'outgoing' || !d.type).length;
 
   const handleAddActivity = async (newAct) => {
     const activityItem = {
@@ -167,24 +195,30 @@ export default function App() {
       time: newAct.time || '08:00 - 11:30',
       location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam',
       description: newAct.description || '',
+      notes: newAct.notes || '',
+      assigned_to: newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+      file_name: newAct.file_name || '',
+      file_url: newAct.file_url || '',
       status: 'Sắp diễn ra',
       dateIso: new Date().toISOString().split('T')[0]
     };
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
 
-    // Tự động phát thông báo tới tất cả 30 Chi đoàn Ấp
+    // Tự động phát thông báo tới đúng đơn vị được giao
+    const targetText = newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp';
     const autoNoti = {
       id: `noti-${Date.now()}`,
       title: `📢 Hoạt động mới: ${newAct.title}`,
-      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn phát động hoạt động "${newAct.title}" vào ${activityItem.time} ngày ${activityItem.day} ${activityItem.month} tại ${activityItem.location}. Đề nghị 30 Chi đoàn Ấp triển khai tham gia.`,
-      target_scope: 'Tất cả 30 Chi đoàn Ấp',
+      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn phát động hoạt động "${newAct.title}" vào ${activityItem.time} ngày ${activityItem.day} ${activityItem.month} tại ${activityItem.location}. Đề nghị ${targetText} triển khai tham gia.`,
+      target_scope: targetText,
+      priority: 'Trung bình',
       time_ago: 'Vừa xong'
     };
     const updatedNotis = await syncSaveNotification(autoNoti);
     setNotificationsList(updatedNotis);
 
-    triggerToast(`Đã tạo hoạt động "${newAct.title}" và tự động phát thông báo tới 30 Chi đoàn Ấp!`);
+    triggerToast(`Đã tạo hoạt động "${newAct.title}" và gửi tới ${targetText}!`);
   };
 
   const handleToggleActivityStatus = async (activityId, newStatus) => {
@@ -196,17 +230,18 @@ export default function App() {
   const handleDeleteActivity = async (activityId) => {
     const updated = await syncDeleteActivity(activityId);
     setActivitiesList(updated);
-    triggerToast('Đã xóa hoạt động thành công!');
+    triggerToast('Đã thu hồi & xóa hoạt động đồng bộ trên toàn hệ thống!');
   };
 
   const handleIssueDocument = async (newDoc) => {
+    const targetText = newDoc.recipient_scope || 'ALL';
     const createdDoc = {
       id: `doc-${Date.now()}`,
       doc_number: newDoc.doc_number,
       title: newDoc.title,
       summary: `Ban hành ngày ${new Date().toLocaleDateString('vi-VN')}`,
       sender: 'Đoàn xã Xuân Thới Sơn',
-      recipient_scope: newDoc.recipient_scope,
+      recipient_scope: targetText,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       status: 'Chưa đọc',
       type: 'outgoing',
@@ -218,7 +253,26 @@ export default function App() {
     };
     const updated = await syncSaveDocument(createdDoc);
     setDocumentsList(updated);
-    triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới các Chi đoàn!`);
+
+    // Phát thông báo tự động khi ban hành văn bản
+    const autoNoti = {
+      id: `noti-${Date.now()}`,
+      title: `📄 Ban hành Văn bản số ${newDoc.doc_number}`,
+      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa ban hành văn bản số ${newDoc.doc_number}: "${newDoc.title}". Đề nghị các đơn vị kiểm tra và thực hiện.`,
+      target_scope: targetText === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetText,
+      priority: 'Trung bình',
+      time_ago: 'Vừa xong'
+    };
+    const updatedNotis = await syncSaveNotification(autoNoti);
+    setNotificationsList(updatedNotis);
+
+    triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới đúng các đơn vị được phân công!`);
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    const updated = await syncDeleteDocument(docId);
+    setDocumentsList(updated);
+    triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 30 Chi đoàn!');
   };
 
   const handleSubmitDocument = async (newSub) => {
@@ -337,6 +391,12 @@ export default function App() {
     setTasksList(updated);
   };
 
+  const handleDeleteTask = async (taskId) => {
+    const updated = await syncDeleteTask(taskId);
+    setTasksList(updated);
+    triggerToast('Đã thu hồi & xóa nhiệm vụ khỏi hệ thống!');
+  };
+
   const handleSaveAttendance = async (activityId, recordData) => {
     const updated = await syncSaveAttendance(activityId, recordData);
     setAttendanceRecords(updated);
@@ -404,8 +464,8 @@ export default function App() {
             setShowSendMessageModal(true);
           }}
           onLogout={handleLogout}
-          unreadNotiCount={notificationsList.length}
-          unreadMsgCount={notificationsList.length > 0 ? 1 : 0}
+          unreadNotiCount={userNotifications.length}
+          unreadMsgCount={userNotifications.length > 0 ? 1 : 0}
           mobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
         />
@@ -420,12 +480,12 @@ export default function App() {
               </h3>
               <div className="p-3 bg-light rounded-3">
                 <div className="fw-semibold text-primary mb-2">Dữ liệu hệ thống:</div>
-                {activitiesList.length === 0 && documentsList.length === 0 ? (
+                {userActivities.length === 0 && userDocuments.length === 0 ? (
                   <div className="text-secondary" style={{ fontSize: '13px' }}>Không tìm thấy văn bản hay hoạt động khớp với từ khóa.</div>
                 ) : (
                   <ul className="mb-0 text-dark" style={{ fontSize: '13px' }}>
-                    {activitiesList.map(a => <li key={a.id} className="mb-1">{a.title}</li>)}
-                    {documentsList.map(d => <li key={d.id} className="mb-1">{d.title}</li>)}
+                    {userActivities.map(a => <li key={a.id} className="mb-1">{a.title}</li>)}
+                    {userDocuments.map(d => <li key={d.id} className="mb-1">{d.title}</li>)}
                   </ul>
                 )}
               </div>
@@ -438,8 +498,8 @@ export default function App() {
                 currentRole={currentUser}
                 onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                 onOpenIssueDocument={() => setShowIssueDocModal(true)}
-                activitiesCount={activitiesList.length}
-                docsCount={documentsList.length}
+                activitiesCount={userActivities.length}
+                docsCount={userDocuments.length}
               />
 
               {/* Main Grid: Center Column (8 cols) & Right Column (4 cols) */}
@@ -459,7 +519,7 @@ export default function App() {
                   {/* Middle Monthly Stats Cards (ONLY FOR ĐOÀN XÃ) */}
                   {isDoanXa && (
                     <StatsCards 
-                      activitiesCount={activitiesList.length}
+                      activitiesCount={userActivities.length}
                       incomingDocsCount={incomingDocsCount}
                       outgoingDocsCount={outgoingDocsCount}
                     />
@@ -470,14 +530,14 @@ export default function App() {
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
                         <TodoList 
-                          tasks={tasksList} 
+                          tasks={userTasks} 
                           setActiveTab={setActiveTab} 
                           onOpenCreateTask={() => setShowCreateTaskModal(true)}
                         />
                       </div>
                       <div className="col-12 col-md-6">
                         <UpcomingActivities 
-                          activities={activitiesList}
+                          activities={userActivities}
                           setActiveTab={setActiveTab} 
                           onOpenCreateActivity={() => setShowCreateActivityModal(true)}
                           onOpenActivityDetail={handleOpenActivityDetail}
@@ -488,14 +548,14 @@ export default function App() {
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
                         <UpcomingActivities 
-                          activities={activitiesList}
+                          activities={userActivities}
                           setActiveTab={setActiveTab} 
                           onOpenActivityDetail={handleOpenActivityDetail}
                         />
                       </div>
                       <div className="col-12 col-md-6">
                         <ChiDoanDocsList 
-                          documents={documentsList}
+                          documents={userDocuments}
                           setActiveTab={setActiveTab} 
                         />
                       </div>
@@ -517,17 +577,17 @@ export default function App() {
 
                   <PendingDocs 
                     currentRole={currentUser}
-                    documents={documentsList}
+                    documents={userDocuments}
                     submissions={submissionsList}
                     setActiveTab={setActiveTab}
                   />
 
                   {!isDoanXa && (
-                    <BranchTasks tasks={tasksList} currentRole={currentUser} setActiveTab={setActiveTab} />
+                    <BranchTasks tasks={userTasks} currentRole={currentUser} setActiveTab={setActiveTab} />
                   )}
 
                   <NotificationsList 
-                    notifications={notificationsList}
+                    notifications={userNotifications}
                     currentRole={currentUser}
                     setActiveTab={setActiveTab}
                   />
@@ -537,7 +597,7 @@ export default function App() {
           ) : activeTab === 'activities' ? (
             /* ACTIVITIES MANAGEMENT VIEW */
             <ActivitiesView 
-              activities={activitiesList}
+              activities={userActivities}
               onOpenCreateActivity={() => setShowCreateActivityModal(true)}
               isDoanXa={isDoanXa}
               onToggleStatus={handleToggleActivityStatus}
@@ -547,9 +607,10 @@ export default function App() {
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */
             <DocumentsView 
-              documents={documentsList}
+              documents={userDocuments}
               tabType={activeTab}
               onOpenIssueDocument={() => setShowIssueDocModal(true)}
+              onDeleteDocument={handleDeleteDocument}
               isDoanXa={isDoanXa}
             />
           ) : activeTab === 'submission_history' ? (
@@ -561,7 +622,7 @@ export default function App() {
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */
             <NotificationsView 
-              notifications={notificationsList}
+              notifications={userNotifications}
               onOpenSendMessage={() => {
                 setEditingNotification(null);
                 setShowSendMessageModal(true);
@@ -573,18 +634,19 @@ export default function App() {
           ) : activeTab === 'todo' || activeTab === 'branch_tasks' ? (
             /* TASKS MANAGEMENT VIEW */
             <TasksView 
-              tasks={tasksList} 
+              tasks={userTasks} 
               onOpenCreateTask={() => setShowCreateTaskModal(true)} 
               onToggleTask={handleToggleTask} 
+              onDeleteTask={handleDeleteTask}
               isDoanXa={isDoanXa} 
             />
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */
             <ReportsView 
-              activitiesCount={activitiesList.length}
-              docsCount={documentsList.length}
+              activitiesCount={userActivities.length}
+              docsCount={userDocuments.length}
               submissionsCount={submissionsList.length}
-              activities={activitiesList}
+              activities={userActivities}
               attendanceRecords={attendanceRecords}
               onOpenAttendanceModal={() => setShowAttendanceModal(true)}
               isDoanXa={isDoanXa}
@@ -592,7 +654,7 @@ export default function App() {
           ) : activeTab === 'storage' ? (
             /* STORAGE ARCHIVE VIEW */
             <StorageArchiveView 
-              documents={documentsList}
+              documents={userDocuments}
               submissions={submissionsList}
             />
           ) : activeTab === 'settings' ? (
@@ -689,7 +751,7 @@ export default function App() {
       <ActivityAttendanceModal 
         show={showAttendanceModal}
         onClose={() => setShowAttendanceModal(false)}
-        activities={activitiesList}
+        activities={userActivities}
         attendanceRecords={attendanceRecords}
         onSaveAttendance={handleSaveAttendance}
       />

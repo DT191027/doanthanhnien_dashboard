@@ -194,7 +194,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
 }
 
 // 2. Full Documents Management View
-export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpenIssueDocument, isDoanXa }) {
+export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpenIssueDocument, onDeleteDocument, isDoanXa }) {
   const [search, setSearch] = useState('');
 
   const filtered = documents.filter(d => {
@@ -283,6 +283,7 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
                 <th>Ngày phát hành</th>
                 <th>Trạng thái</th>
                 <th>Tệp đính kèm</th>
+                {isDoanXa && <th>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
@@ -315,6 +316,23 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
                       <span className="text-muted" style={{ fontSize: '11px' }}>Không có tệp</span>
                     )}
                   </td>
+                  {isDoanXa && (
+                    <td>
+                      <button 
+                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2"
+                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                        title="Thu hồi văn bản tức thì"
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${doc.title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 30 Chi đoàn.`)) {
+                            onDeleteDocument && onDeleteDocument(doc.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Thu hồi</span>
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -552,7 +570,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
 }
 
 // 5. Full Tasks & Todo Management View (Fully Synced with Supabase Realtime)
-export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa }) {
+export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDeleteTask, isDoanXa }) {
   return (
     <div className="content-card">
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
@@ -587,12 +605,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'todo').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2">
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
                   <button className="btn btn-link p-0 text-secondary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
                     <Circle size={18} />
                   </button>
                   <div className="flex-grow-1">
-                    <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                    <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
                     <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
                       <span>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
                       {t.assigned_to && (
@@ -600,6 +618,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                       )}
                     </div>
                   </div>
+                  {isDoanXa && (
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -615,12 +646,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'inProgress' || t.status === 'in_progress').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2">
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
                   <button className="btn btn-link p-0 text-primary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
                     <Circle size={18} />
                   </button>
                   <div className="flex-grow-1">
-                    <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                    <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
                     <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
                       <span>Ưu tiên: {t.priority}</span>
                       {t.assigned_to && (
@@ -628,6 +659,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                       )}
                     </div>
                   </div>
+                  {isDoanXa && (
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -643,12 +687,12 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'completed').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 text-decoration-line-through text-muted">
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
                   <button className="btn btn-link p-0 text-success" onClick={() => onToggleTask && onToggleTask(t.id, 'todo')}>
                     <CheckCircle2 size={18} />
                   </button>
-                  <div className="flex-grow-1">
-                    <div className="fw-semibold text-muted" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                  <div className="flex-grow-1 text-decoration-line-through text-muted">
+                    <div className="fw-semibold text-muted pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
                     <div className="text-success d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
                       <span>Đã hoàn tất</span>
                       {t.assigned_to && (
@@ -656,6 +700,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, isDoanXa
                       )}
                     </div>
                   </div>
+                  {isDoanXa && (
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

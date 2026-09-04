@@ -396,10 +396,17 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                   value={formData.recipient_scope}
                   onChange={(e) => setFormData({ ...formData, recipient_scope: e.target.value })}
                 >
-                  <option value="ALL">Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
-                  {INITIAL_BRANCHES.map(b => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
-                  ))}
+                  <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
+                  <optgroup label="🏆 Cụm Thi Đua">
+                    {COMPETITION_CLUSTERS.map(c => (
+                      <option key={c.id} value={c.name}>🏆 {c.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="📍 Chi đoàn Ấp cụ thể">
+                    {INITIAL_BRANCHES.map(b => (
+                      <option key={b.id} value={b.name}>📍 {b.name}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 

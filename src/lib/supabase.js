@@ -147,6 +147,69 @@ export function getLiveVietnameseDate() {
 }
 
 // Persistent Storage Helpers (LocalStorage Backup)
+// Universal Realtime Broadcast Channel for Zero-Delay Atomic Synchronization
+const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('xts_youth_sync_channel')
+  : null;
+
+export function notifySyncEvent(type, payload) {
+  try {
+    if (syncChannel) {
+      syncChannel.postMessage({ type, payload, timestamp: Date.now() });
+    }
+    window.dispatchEvent(new CustomEvent('doanthanhnien_sync', { detail: { type, payload } }));
+    window.dispatchEvent(new Event('storage'));
+  } catch (e) {
+    console.error('Sync broadcast error:', e);
+  }
+}
+
+// Precise Target Unit Filtering Helper for 30 Chi đoàn Ấp and Cụm thi đua
+export function isItemTargetedToUser(targetScope, currentUser) {
+  if (!currentUser) return true;
+  if (currentUser.role === 'doan_xa') return true; // Administrator sees all items
+
+  if (!targetScope || targetScope === 'ALL' || targetScope === 'Tất cả 30 Chi đoàn Ấp' || targetScope.includes('30 Chi đoàn') || targetScope === 'Tất cả') {
+    return true;
+  }
+
+  const userBranch = currentUser.branch_name || currentUser.title || '';
+  if (!userBranch) return true;
+
+  const cleanUserBranch = userBranch.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+
+  // 1. Direct match with branch name or code
+  if (
+    targetScope === userBranch || 
+    targetScope.includes(userBranch) || 
+    userBranch.includes(targetScope) || 
+    (cleanUserBranch && targetScope.includes(cleanUserBranch))
+  ) {
+    return true;
+  }
+
+  // 2. Check if targetScope is a Competition Cluster (Cụm thi đua số 1 - 6)
+  if (targetScope.startsWith('Cụm thi đua') || targetScope.startsWith('cum-')) {
+    const cluster = COMPETITION_CLUSTERS.find(c => 
+      c.name === targetScope || 
+      c.id === targetScope || 
+      c.label.includes(targetScope) ||
+      targetScope.includes(c.name)
+    );
+    if (cluster) {
+      const isInCluster = cluster.branches.some(b => 
+        b === userBranch || 
+        b.includes(userBranch) || 
+        userBranch.includes(b) || 
+        (cleanUserBranch && b.includes(cleanUserBranch))
+      );
+      if (isInCluster) return true;
+    }
+  }
+
+  return false;
+}
+
 export function getPersistedData(key, fallback = []) {
   try {
     const raw = localStorage.getItem(`xts_youth_${key}`);
@@ -200,6 +263,7 @@ export async function syncSaveActivity(activityItem) {
   const current = getPersistedData('activities', []);
   const updatedLocal = [activityItem, ...current];
   setPersistedData('activities', updatedLocal);
+  notifySyncEvent('SAVE_ACTIVITY', activityItem);
 
   if (supabase) {
     try {
@@ -239,6 +303,7 @@ export async function syncToggleActivityStatus(activityId, newStatus) {
   const current = getPersistedData('activities', []);
   const updatedLocal = current.map(a => a.id === activityId ? { ...a, status: newStatus } : a);
   setPersistedData('activities', updatedLocal);
+  notifySyncEvent('TOGGLE_ACTIVITY', { activityId, newStatus });
 
   if (supabase) {
     try {
@@ -255,6 +320,7 @@ export async function syncDeleteActivity(activityId) {
   const current = getPersistedData('activities', []);
   const updatedLocal = current.filter(a => a.id !== activityId);
   setPersistedData('activities', updatedLocal);
+  notifySyncEvent('DELETE_ACTIVITY', { activityId });
 
   if (supabase) {
     try {
@@ -303,6 +369,7 @@ export async function syncSaveDocument(docItem) {
   const current = getPersistedData('documents', []);
   const updatedLocal = [docItem, ...current];
   setPersistedData('documents', updatedLocal);
+  notifySyncEvent('SAVE_DOCUMENT', docItem);
 
   if (supabase) {
     try {
@@ -334,6 +401,23 @@ export async function syncSaveDocument(docItem) {
       }
     } catch (e) {
       console.error('Supabase save document exception:', e);
+    }
+    return await syncFetchDocuments();
+  }
+  return updatedLocal;
+}
+
+export async function syncDeleteDocument(docId) {
+  const current = getPersistedData('documents', []);
+  const updatedLocal = current.filter(d => d.id !== docId);
+  setPersistedData('documents', updatedLocal);
+  notifySyncEvent('DELETE_DOCUMENT', { docId });
+
+  if (supabase) {
+    try {
+      await supabase.from('documents').delete().eq('id', docId);
+    } catch (e) {
+      console.error('Supabase delete document error:', e);
     }
     return await syncFetchDocuments();
   }
@@ -373,6 +457,7 @@ export async function syncSaveSubmission(subItem) {
   const current = getPersistedData('submissions', []);
   const updatedLocal = [subItem, ...current];
   setPersistedData('submissions', updatedLocal);
+  notifySyncEvent('SAVE_SUBMISSION', subItem);
 
   if (supabase) {
     try {
@@ -458,6 +543,7 @@ export async function syncSaveNotification(notiItem) {
   };
   const updatedLocal = sortNotificationsByPriority([newItem, ...current]);
   setPersistedData('notifications', updatedLocal);
+  notifySyncEvent('SAVE_NOTIFICATION', newItem);
 
   if (supabase) {
     try {
@@ -489,6 +575,7 @@ export async function syncUpdateNotification(updatedNoti) {
     current.map(n => n.id === updatedNoti.id ? { ...n, ...updatedNoti } : n)
   );
   setPersistedData('notifications', updatedLocal);
+  notifySyncEvent('UPDATE_NOTIFICATION', updatedNoti);
 
   if (supabase) {
     try {
@@ -510,6 +597,7 @@ export async function syncDeleteNotification(notificationId) {
   const current = getPersistedData('notifications', []);
   const updatedLocal = current.filter(n => n.id !== notificationId);
   setPersistedData('notifications', updatedLocal);
+  notifySyncEvent('DELETE_NOTIFICATION', { notificationId });
 
   if (supabase) {
     try {
@@ -552,6 +640,7 @@ export async function syncSaveTask(taskItem) {
   const current = getPersistedData('tasks', []);
   const updatedLocal = [taskItem, ...current];
   setPersistedData('tasks', updatedLocal);
+  notifySyncEvent('SAVE_TASK', taskItem);
 
   if (supabase) {
     try {
@@ -588,6 +677,7 @@ export async function syncToggleTaskStatus(taskId, newStatus) {
   const current = getPersistedData('tasks', []);
   const updatedLocal = current.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
   setPersistedData('tasks', updatedLocal);
+  notifySyncEvent('TOGGLE_TASK', { taskId, newStatus });
 
   if (supabase) {
     try {
@@ -598,6 +688,23 @@ export async function syncToggleTaskStatus(taskId, newStatus) {
       await supabase.from('tasks').update({ status: validTaskStatus }).eq('id', taskId);
     } catch (e) {
       console.error('Supabase toggle task exception:', e);
+    }
+    return await syncFetchTasks();
+  }
+  return updatedLocal;
+}
+
+export async function syncDeleteTask(taskId) {
+  const current = getPersistedData('tasks', []);
+  const updatedLocal = current.filter(t => t.id !== taskId);
+  setPersistedData('tasks', updatedLocal);
+  notifySyncEvent('DELETE_TASK', { taskId });
+
+  if (supabase) {
+    try {
+      await supabase.from('tasks').delete().eq('id', taskId);
+    } catch (e) {
+      console.error('Supabase delete task error:', e);
     }
     return await syncFetchTasks();
   }

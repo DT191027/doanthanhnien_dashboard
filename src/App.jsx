@@ -192,6 +192,7 @@ export default function App() {
       day: newAct.day || '25',
       month: newAct.month || 'THÁNG 5',
       title: newAct.title,
+      priority: newAct.priority || 'Bình thường',
       time: newAct.time || '08:00 - 11:30',
       location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam',
       description: newAct.description || '',
@@ -209,10 +210,17 @@ export default function App() {
     const targetText = newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp';
     const autoNoti = {
       id: `noti-${Date.now()}`,
-      title: `📢 Hoạt động mới: ${newAct.title}`,
-      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn phát động hoạt động "${newAct.title}" vào ${activityItem.time} ngày ${activityItem.day} ${activityItem.month} tại ${activityItem.location}. Đề nghị ${targetText} triển khai tham gia.`,
+      title: `Hoạt động mới: ${newAct.title}`,
+      content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn phát động hoạt động "${newAct.title}"`,
       target_scope: targetText,
-      priority: 'Trung bình',
+      priority: newAct.priority || 'Bình thường',
+      activity_details: {
+        time: activityItem.time,
+        day: activityItem.day,
+        month: activityItem.month,
+        location: activityItem.location,
+        notes: newAct.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
+      },
       time_ago: 'Vừa xong'
     };
     const updatedNotis = await syncSaveNotification(autoNoti);
@@ -294,13 +302,7 @@ export default function App() {
 
   const handleSaveNotification = async (notiData) => {
     if (editingNotification) {
-      const updatedNoti = {
-        ...editingNotification,
-        title: notiData.title,
-        content: notiData.content,
-        target_scope: notiData.target_scope,
-        priority: notiData.priority
-      };
+      const updatedNoti = { ...editingNotification, ...notiData };
       const updated = await syncUpdateNotification(updatedNoti);
       setNotificationsList(updated);
       setEditingNotification(null);

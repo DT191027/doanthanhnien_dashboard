@@ -8,6 +8,7 @@ import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 export function CreateActivityModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
     title: '',
+    priority: 'Bình thường',
     day: '',
     month: '',
     time: '',
@@ -68,9 +69,10 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
     onSave && onSave({
       ...formData,
+      priority: formData.priority || 'Bình thường',
       location: formData.location || OFFICIAL_ADDRESS
     });
-    setFormData({ title: '', day: '', month: '', time: '', location: '', description: '', notes: '', assigned_to: 'Tất cả 30 Chi đoàn Ấp', file_name: '', file_url: '' });
+    setFormData({ title: '', priority: 'Bình thường', day: '', month: '', time: '', location: '', description: '', notes: '', assigned_to: 'Tất cả 30 Chi đoàn Ấp', file_name: '', file_url: '' });
     setRawDate('');
     setIsPreview(false);
     onClose && onClose();
@@ -138,7 +140,19 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                 </div>
 
                 <div className="row g-2 mb-3">
-                  <div className="col-6">
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
+                    <select
+                      className="form-select"
+                      value={formData.priority || 'Bình thường'}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    >
+                      <option value="Khẩn cấp">🔥 Khẩn cấp (Cao)</option>
+                      <option value="Trung bình">⚡ Trung bình</option>
+                      <option value="Bình thường">🟢 Bình thường</option>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
                     <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -149,7 +163,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                       onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     />
                   </div>
-                  <div className="col-6">
+                  <div className="col-md-4">
                     <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày tổ chức <span className="text-danger">*</span></label>
                     <input
                       type="date"
@@ -654,9 +668,9 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
                   >
-                    <option value="Bình thường">Bình thường</option>
-                    <option value="Trung bình">Trung bình</option>
                     <option value="Khẩn cấp">🔥 Khẩn cấp (Cao)</option>
+                    <option value="Trung bình">⚡ Trung bình</option>
+                    <option value="Bình thường">🟢 Bình thường</option>
                   </select>
                 </div>
               </div>

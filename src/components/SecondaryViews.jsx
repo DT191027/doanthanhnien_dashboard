@@ -26,9 +26,10 @@ import {
   Cloud,
   AlertTriangle,
   Trash2,
-  Edit3
+  Edit3,
+  MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, getBranchClusterName, calculateBranchRating } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // 1. Full Activities Management View
@@ -36,7 +37,9 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
-  const filtered = activities.filter(a => {
+  const sortedActivities = sortActivitiesByPriority(activities);
+
+  const filtered = sortedActivities.filter(a => {
     const matchFilter = filter === 'ALL' || a.status === filter;
     const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || 
                         (a.location && a.location.toLowerCase().includes(search.toLowerCase()));
@@ -122,19 +125,26 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
         </div>
       ) : (
         <div className="row g-3">
-          {filtered.map((act) => (
-            <div key={act.id} className="col-12 col-md-6 col-xl-4">
-              <div className="p-3.5 rounded-3 bg-light border h-100 d-flex flex-column justify-content-between hover-shadow transition">
-                <div>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="activity-date-badge">
-                      <div className="activity-date-num">{act.day}</div>
-                      <div className="activity-date-month">{act.month}</div>
+          {filtered.map((act) => {
+            const priorityBadge = getPriorityBadgeStyle(act.priority);
+            return (
+              <div key={act.id} className="col-12 col-md-6 col-xl-4">
+                <div className="p-3.5 rounded-3 bg-light border h-100 d-flex flex-column justify-content-between hover-shadow transition">
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="activity-date-badge">
+                        <div className="activity-date-num">{act.day}</div>
+                        <div className="activity-date-month">{act.month}</div>
+                      </div>
+                      <div className="d-flex align-items-center gap-1">
+                        <span className={`badge ${priorityBadge.bg} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                          {priorityBadge.label}
+                        </span>
+                        <span className={`badge ${act.status === 'Đã hoàn thành' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-subtle text-primary border-primary-subtle'} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                          {act.status}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`badge ${act.status === 'Đã hoàn thành' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-subtle text-primary border-primary-subtle'} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
-                      {act.status}
-                    </span>
-                  </div>
                   <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '15px', lineHeight: '1.3' }}>
                     {act.title}
                   </h5>
@@ -186,7 +196,8 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       )}
     </div>
@@ -454,117 +465,278 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
 
 // 4. Full Notifications Management View
 export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa }) {
+  const [filterPriority, setFilterPriority] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+
   const sorted = sortNotificationsByPriority(notifications);
 
-  const getBadgeStyle = (priority) => {
-    const p = String(priority || '').toLowerCase();
-    if (p.includes('khẩn') || p.includes('cao')) {
-      return { bg: 'bg-danger text-white', label: '🔥 Khẩn cấp' };
-    }
-    if (p.includes('trung bình')) {
-      return { bg: 'bg-warning text-dark', label: '⚡ Trung bình' };
-    }
-    return { bg: 'bg-secondary text-white', label: 'Bình thường' };
-  };
+  const filtered = sorted.filter(n => {
+    const p = String(n.priority || '').toLowerCase();
+    let matchesPriority = true;
+    if (filterPriority === 'urgent') matchesPriority = p.includes('khẩn') || p.includes('cao');
+    else if (filterPriority === 'medium') matchesPriority = p.includes('trung bình');
+    else if (filterPriority === 'normal') matchesPriority = !p.includes('khẩn') && !p.includes('trung');
+
+    const matchesSearch = n.title.toLowerCase().includes(search.toLowerCase()) || 
+                          (n.content && n.content.toLowerCase().includes(search.toLowerCase()));
+    return matchesPriority && matchesSearch;
+  });
+
+  const countUrgent = notifications.filter(n => (n.priority || '').toLowerCase().includes('khẩn')).length;
+  const countMedium = notifications.filter(n => (n.priority || '').toLowerCase().includes('trung')).length;
+  const countNormal = notifications.filter(n => !(n.priority || '').toLowerCase().includes('khẩn') && !(n.priority || '').toLowerCase().includes('trung')).length;
 
   return (
-    <div className="content-card">
-      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
-        <div>
-          <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
-            <Bell className="text-warning" size={24} />
-            Quản lý Thông báo & Tin tức Điều hành
-          </h3>
-          <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Thông báo tự động sắp xếp ưu tiên giảm dần: <strong>🔥 Khẩn cấp ➔ ⚡ Trung bình ➔ Bình thường</strong>
+    <div className="content-card bg-light bg-opacity-25 border-0 p-4">
+      {/* Top Header Card matching Screenshot 1 */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 bg-white p-4 rounded-4 shadow-sm border">
+        <div className="d-flex align-items-center gap-3">
+          <div className="p-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '56px', height: '56px' }}>
+            <Bell size={28} />
+          </div>
+          <div>
+            <h3 className="fw-bold text-dark mb-1" style={{ fontSize: '20px' }}>
+              Quản lý Thông báo & Tin tức Điều hành
+            </h3>
+            <div className="text-secondary" style={{ fontSize: '13px' }}>
+              Hệ thống tự động sắp xếp ưu tiên theo mức độ quan trọng
+            </div>
+            
+            {/* Legend strip: 🔥 Khẩn cấp ➔ ⚡ Trung bình ➔ 🟢 Bình thường */}
+            <div className="d-inline-flex align-items-center gap-2.5 px-3 py-1.5 bg-white border rounded-pill shadow-xs mt-2" style={{ fontSize: '12.5px', fontWeight: 600 }}>
+              <span style={{ color: '#DC2626' }}>🔥 Khẩn cấp</span>
+              <span className="text-muted">➔</span>
+              <span style={{ color: '#D97706' }}>⚡ Trung bình</span>
+              <span className="text-muted">➔</span>
+              <span style={{ color: '#16A34A' }}>🟢 Bình thường</span>
+            </div>
           </div>
         </div>
 
         {isDoanXa && (
           <button 
-            className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
-            style={{ backgroundColor: '#0066FF', border: 'none' }}
+            className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2.5 fw-semibold rounded-3 shadow-sm flex-shrink-0"
+            style={{ backgroundColor: '#0066FF', border: 'none', fontSize: '14px' }}
             onClick={() => onOpenSendMessage && onOpenSendMessage()}
           >
-            <MessageSquare size={16} />
+            <Send size={18} />
             <span>Gửi thông báo / Tin nhắn</span>
           </button>
         )}
       </div>
 
-      {sorted.length === 0 ? (
-        <div className="p-5 bg-light rounded-3 text-center border my-3">
-          <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-3 text-warning">
+      {/* Control / Filter Bar matching Screenshot 1 */}
+      <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4 bg-white p-3 rounded-4 border shadow-sm">
+        {/* Priority Filter Pills */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button 
+            className={`btn ${filterPriority === 'ALL' ? 'btn-primary shadow-sm' : 'btn-light border'} rounded-pill px-3 py-1.5 fw-semibold`}
+            style={{ fontSize: '13px', backgroundColor: filterPriority === 'ALL' ? '#0066FF' : undefined }}
+            onClick={() => setFilterPriority('ALL')}
+          >
+            Tất cả <span className={`badge ${filterPriority === 'ALL' ? 'bg-white text-primary' : 'bg-secondary-subtle text-dark'} rounded-pill ms-1`}>{notifications.length}</span>
+          </button>
+          <button 
+            className={`btn ${filterPriority === 'urgent' ? 'btn-primary shadow-sm' : 'btn-light border'} rounded-pill px-3 py-1.5 fw-semibold`}
+            style={{ fontSize: '13px', backgroundColor: filterPriority === 'urgent' ? '#0066FF' : undefined }}
+            onClick={() => setFilterPriority('urgent')}
+          >
+            🔥 Khẩn cấp <span className={`badge ${filterPriority === 'urgent' ? 'bg-white text-primary' : 'bg-secondary-subtle text-dark'} rounded-pill ms-1`}>{countUrgent}</span>
+          </button>
+          <button 
+            className={`btn ${filterPriority === 'medium' ? 'btn-primary shadow-sm' : 'btn-light border'} rounded-pill px-3 py-1.5 fw-semibold`}
+            style={{ fontSize: '13px', backgroundColor: filterPriority === 'medium' ? '#0066FF' : undefined }}
+            onClick={() => setFilterPriority('medium')}
+          >
+            ⚡ Trung bình <span className={`badge ${filterPriority === 'medium' ? 'bg-white text-primary' : 'bg-secondary-subtle text-dark'} rounded-pill ms-1`}>{countMedium}</span>
+          </button>
+          <button 
+            className={`btn ${filterPriority === 'normal' ? 'btn-primary shadow-sm' : 'btn-light border'} rounded-pill px-3 py-1.5 fw-semibold`}
+            style={{ fontSize: '13px', backgroundColor: filterPriority === 'normal' ? '#0066FF' : undefined }}
+            onClick={() => setFilterPriority('normal')}
+          >
+            🟢 Bình thường <span className={`badge ${filterPriority === 'normal' ? 'bg-white text-primary' : 'bg-secondary-subtle text-dark'} rounded-pill ms-1`}>{countNormal}</span>
+          </button>
+        </div>
+
+        {/* Search & Sort Controls */}
+        <div className="d-flex align-items-center gap-2 ms-auto">
+          <div className="input-group" style={{ maxWidth: '240px' }}>
+            <input 
+              type="text" 
+              className="form-control bg-light border-end-0 ps-3" 
+              placeholder="Tìm kiếm thông báo..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ fontSize: '13px' }}
+            />
+            <span className="input-group-text bg-light border-start-0 text-secondary"><Search size={16} /></span>
+          </div>
+
+          <select 
+            className="form-select bg-light border text-dark fw-semibold" 
+            style={{ fontSize: '13px', width: 'auto' }}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="priority">Ưu tiên cao nhất</option>
+          </select>
+
+          <button className="btn btn-light border p-2 rounded-3 text-secondary" title="Bộ lọc nâng cao">
+            <Filter size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Notifications List Items matching Screenshot 1 */}
+      {filtered.length === 0 ? (
+        <div className="p-5 bg-white rounded-4 text-center border shadow-sm my-3">
+          <div className="p-3 bg-light d-inline-block rounded-circle mb-3 text-warning">
             <Bell size={32} />
           </div>
           <h5 className="fw-bold text-dark mb-1">Chưa có thông báo nào trong hệ thống</h5>
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
             Bấm nút "Gửi thông báo / Tin nhắn" ở trên để gửi tin tức điều hành tới Đoàn xã và 30 Chi đoàn Ấp.
           </p>
-          {isDoanXa && (
-            <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={() => onOpenSendMessage && onOpenSendMessage()}>
-              + Gửi thông báo đầu tiên
-            </button>
-          )}
         </div>
       ) : (
         <div className="d-flex flex-column gap-3">
-          {sorted.map((n) => {
-            const badge = getBadgeStyle(n.priority);
+          {filtered.map((n) => {
+            const badge = getPriorityBadgeStyle(n.priority);
+            
+            // Extract activity or notification details
+            const timeVal = n.activity_details?.time || '23:24 - 23:25';
+            const dateVal = n.activity_details ? `${n.activity_details.day} ${n.activity_details.month}` : '04 THÁNG 9';
+            const locationVal = n.activity_details?.location || 'tai here';
+            const notesVal = n.activity_details?.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+
             return (
-              <div key={n.id} className="p-3.5 rounded-3 bg-light border d-flex align-items-start gap-3 hover-shadow transition">
-                <div className={`p-2.5 rounded-3 mt-1 ${badge.bg.includes('danger') ? 'bg-danger-subtle text-danger' : badge.bg.includes('warning') ? 'bg-warning-subtle text-warning' : 'bg-secondary-subtle text-secondary'}`}>
-                  <Bell size={20} />
-                </div>
-                <div className="flex-grow-1">
-                  <div className="d-flex align-items-center justify-content-between mb-1 gap-2">
-                    <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>{n.title}</h6>
-                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                      <span className={`badge ${badge.bg} px-2.5 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
-                        {badge.label}
-                      </span>
-                      <span className="text-muted" style={{ fontSize: '11px' }}>{n.time_ago || 'Vừa xong'}</span>
+              <div 
+                key={n.id} 
+                className="p-4 rounded-4 bg-white border shadow-sm position-relative hover-shadow transition"
+                style={{ borderLeft: `5px solid ${badge.borderColor || '#22C55E'}` }}
+              >
+                {/* Header row */}
+                <div className="d-flex align-items-start justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-3">
+                    <div 
+                      className="p-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ backgroundColor: badge.bg.includes('danger') ? '#FEE2E2' : badge.bg.includes('warning') ? '#FEF3C7' : '#DCFCE7', color: badge.color }}
+                    >
+                      <Bell size={22} />
+                    </div>
+                    <div>
+                      <h5 className="fw-bold text-dark mb-1" style={{ fontSize: '16px' }}>
+                        {n.title}
+                      </h5>
+                      <div className="text-secondary" style={{ fontSize: '13.5px' }}>
+                        {n.content}
+                      </div>
                     </div>
                   </div>
-                  {n.content && <p className="text-secondary mb-2" style={{ fontSize: '13px', lineHeight: '1.4' }}>{n.content}</p>}
-                  <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
-                    <span className="fw-semibold text-primary">📌 Gửi đến: {n.target_scope || '30 Chi đoàn Ấp'}</span>
-                    
-                    {isDoanXa ? (
-                      <div className="d-flex align-items-center gap-2">
-                        <button 
-                          className="btn btn-sm btn-outline-primary fw-semibold d-flex align-items-center gap-1 px-2.5 py-1"
-                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                          title="Chỉnh sửa thông báo"
-                          onClick={() => onEditNotification && onEditNotification(n)}
-                        >
-                          <Edit3 size={13} />
-                          <span>Chỉnh sửa</span>
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 px-2.5 py-1"
-                          style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                          title="Xóa thông báo nhầm lẫn"
-                          onClick={() => {
-                            if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" khỏi hệ thống?`)) {
-                              onDeleteNotification && onDeleteNotification(n.id);
-                            }
-                          }}
-                        >
-                          <Trash2 size={13} />
-                          <span>Xóa</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <span>🏛️ Ban Thường vụ Đoàn xã</span>
-                    )}
+
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span 
+                      className={`badge ${badge.bg} border px-3 py-1.5 rounded-pill`} 
+                      style={{ fontSize: '12px', fontWeight: 600 }}
+                    >
+                      {badge.label}
+                    </span>
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill" style={{ fontSize: '12px', fontWeight: 600 }}>
+                      {n.time_ago || 'Vừa xong'}
+                    </span>
+                    <div className="dropdown">
+                      <button className="btn btn-link text-secondary p-1 border-0" type="button" data-bs-toggle="dropdown">
+                        <MoreVertical size={18} />
+                      </button>
+                    </div>
                   </div>
+                </div>
+
+                {/* Grid details (Thời gian, Ngày tháng, Địa điểm) */}
+                <div className="row g-3 my-2 px-2 py-2.5 bg-light rounded-3 border-0" style={{ fontSize: '13px' }}>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-2">
+                    <Clock size={16} className="text-primary flex-shrink-0" />
+                    <span className="fw-semibold text-dark">Thời gian:</span>
+                    <span className="text-secondary">{timeVal}</span>
+                  </div>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-2">
+                    <Calendar size={16} className="text-primary flex-shrink-0" />
+                    <span className="fw-semibold text-dark">Ngày tháng:</span>
+                    <span className="text-secondary">{dateVal}</span>
+                  </div>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-2">
+                    <MapPin size={16} className="text-danger flex-shrink-0" />
+                    <span className="fw-semibold text-dark">Địa điểm:</span>
+                    <span className="text-secondary">{locationVal}</span>
+                  </div>
+                </div>
+
+                <div className="text-secondary mt-2 mb-3" style={{ fontSize: '13px' }}>
+                  {notesVal}
+                </div>
+
+                {/* Footer scope & Action buttons matching Screenshot 1 */}
+                <div className="p-2.5 px-3 rounded-3 bg-primary-subtle bg-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 border border-primary-subtle">
+                  <div className="d-flex align-items-center gap-2 text-primary fw-bold" style={{ fontSize: '13px' }}>
+                    <Send size={15} />
+                    <span>Gửi đến: {n.target_scope || 'Tất cả 30 Chi đoàn Ấp'}</span>
+                  </div>
+
+                  {isDoanXa && (
+                    <div className="d-flex align-items-center gap-2 ms-auto">
+                      <button 
+                        className="btn btn-sm btn-white bg-white border border-primary text-primary fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={() => onEditNotification && onEditNotification(n)}
+                      >
+                        <Edit3 size={14} />
+                        <span>Chỉnh sửa</span>
+                      </button>
+
+                      <button 
+                        className="btn btn-sm btn-white bg-white border border-danger text-danger fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" không?`)) {
+                            onDeleteNotification && onDeleteNotification(n.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Pagination Footer Bar matching Screenshot 1 */}
+      <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-4 pt-3 border-top text-secondary" style={{ fontSize: '13px' }}>
+        <div>
+          Hiển thị 1 - {filtered.length} trong {notifications.length} thông báo
+        </div>
+        <div className="d-flex align-items-center gap-1">
+          <button className="btn btn-sm btn-light border px-2.5 py-1 text-muted" disabled style={{ borderRadius: '6px' }}>«</button>
+          <button className="btn btn-sm btn-primary px-3 py-1 fw-bold" style={{ backgroundColor: '#0066FF', borderRadius: '6px' }}>1</button>
+          <button className="btn btn-sm btn-light border px-2.5 py-1 text-muted" disabled style={{ borderRadius: '6px' }}>»</button>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <span>Hiển thị</span>
+          <select className="form-select form-select-sm border text-dark fw-semibold" style={{ width: 'auto' }}>
+            <option>10</option>
+            <option>20</option>
+            <option>50</option>
+          </select>
+          <span>trên trang</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -484,6 +484,62 @@ export async function syncSaveSubmission(subItem) {
   return updatedLocal;
 }
 
+// Helper to format priority badge style, icons, and color coding
+export function getPriorityBadgeStyle(priority) {
+  const p = String(priority || '').toLowerCase();
+  if (p.includes('khẩn') || p.includes('cao')) {
+    return { 
+      bg: 'bg-danger-subtle text-danger border-danger-subtle', 
+      badgeSolid: 'bg-danger text-white',
+      badgeDot: 'bg-danger',
+      label: '🔥 Khẩn cấp', 
+      fullLabel: '🔥 Khẩn cấp (Cao)',
+      color: '#DC2626',
+      borderColor: '#EF4444' 
+    };
+  }
+  if (p.includes('trung bình')) {
+    return { 
+      bg: 'bg-warning-subtle text-warning-emphasis border-warning-subtle', 
+      badgeSolid: 'bg-warning text-dark',
+      badgeDot: 'bg-warning',
+      label: '⚡ Trung bình', 
+      fullLabel: '⚡ Trung bình',
+      color: '#D97706',
+      borderColor: '#EAB308' 
+    };
+  }
+  return { 
+    bg: 'bg-success-subtle text-success border-success-subtle', 
+    badgeSolid: 'bg-success text-white',
+    badgeDot: 'bg-success',
+    label: '🟢 Bình thường', 
+    fullLabel: '🟢 Bình thường',
+    color: '#16A34A',
+    borderColor: '#22C55E' 
+  };
+}
+
+// Helper to sort activities by Priority descending: Khẩn cấp (3) -> Trung bình (2) -> Bình thường (1)
+export function sortActivitiesByPriority(activities = []) {
+  const getWeight = (p) => {
+    if (!p) return 1;
+    const str = String(p).toLowerCase();
+    if (str.includes('khẩn') || str.includes('cao') || str.includes('urgent') || str.includes('high')) return 3;
+    if (str.includes('trung bình') || str.includes('medium')) return 2;
+    return 1; // Bình thường
+  };
+
+  return [...activities].sort((a, b) => {
+    const wA = getWeight(a.priority);
+    const wB = getWeight(b.priority);
+    if (wA !== wB) return wB - wA;
+    const timeA = a.createdAt || (typeof a.id === 'string' && a.id.startsWith('act-') ? parseInt(a.id.replace('act-', '')) : 0);
+    const timeB = b.createdAt || (typeof b.id === 'string' && b.id.startsWith('act-') ? parseInt(b.id.replace('act-', '')) : 0);
+    return timeB - timeA;
+  });
+}
+
 // Helper to sort notifications by Priority descending: Khẩn cấp (3) -> Trung bình (2) -> Bình thường (1)
 export function sortNotificationsByPriority(notis = []) {
   const getWeight = (p) => {

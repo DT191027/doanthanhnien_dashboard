@@ -29,7 +29,7 @@ import {
   Edit3,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -707,7 +707,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
             
             // Extract activity or notification details
             const timeVal = n.activity_details?.time || n.time || '08:00 - 11:30';
-            const dateVal = n.activity_details?.date || (n.activity_details?.day ? `${n.activity_details.day} ${n.activity_details.month}` : false) || n.date || 'Chưa chọn ngày';
+            const dateVal = formatDateDDMMYYYY(n.activity_details || n.date);
             const locationVal = n.activity_details?.location || n.location || '';
             const notesVal = n.activity_details?.notes || n.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
 

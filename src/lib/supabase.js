@@ -146,6 +146,50 @@ export function getLiveVietnameseDate() {
   return `Hôm nay là ${dayName}, ngày ${day} tháng ${month} năm ${year}`;
 }
 
+// Universal Date Formatter to dd/mm/yyyy
+export function formatDateDDMMYYYY(dayOrObj, month, year) {
+  if (!dayOrObj && !month) return 'Chưa chọn ngày';
+  
+  if (typeof dayOrObj === 'object' && dayOrObj !== null) {
+    const obj = dayOrObj;
+    if (obj.formattedDate) return obj.formattedDate;
+    if (obj.date && typeof obj.date === 'string' && obj.date.includes('/')) {
+      const parts = obj.date.split('/');
+      if (parts.length === 3) return obj.date;
+    }
+    if (obj.dateIso) {
+      const [y, m, d] = obj.dateIso.split('-');
+      if (y && m && d) return `${d}/${m}/${y}`;
+    }
+    return formatDateDDMMYYYY(obj.day, obj.month, obj.year);
+  }
+  
+  if (typeof dayOrObj === 'string' && dayOrObj.includes('/')) {
+    const parts = dayOrObj.split('/');
+    if (parts.length === 3) return dayOrObj;
+    if (parts.length === 2 && month) {
+      const dPart = parts[0].padStart(2, '0');
+      const mPart = parts[1].padStart(2, '0');
+      return `${dPart}/${mPart}/${year || new Date().getFullYear()}`;
+    }
+  }
+  
+  const day = dayOrObj;
+  if (!day && !month) return 'Chưa chọn ngày';
+  
+  const d = String(day || '01').padStart(2, '0');
+  let mNum = month;
+  if (typeof month === 'string') {
+    const match = month.match(/\d+/);
+    if (match) {
+      mNum = match[0];
+    }
+  }
+  const m = String(mNum || '01').padStart(2, '0');
+  const y = year || new Date().getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
 // Persistent Storage Helpers (LocalStorage Backup)
 // Universal Realtime Broadcast Channel for Zero-Delay Atomic Synchronization
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
@@ -242,7 +286,8 @@ export async function syncFetchActivities() {
             id: item.id,
             title: item.title,
             day: String(d.getDate()).padStart(2, '0'),
-            month: months[d.getMonth()] || 'THÁNG 5',
+            month: String(d.getMonth() + 1).padStart(2, '0'),
+            year: d.getFullYear(),
             time: `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
             location: item.location || OFFICIAL_ADDRESS,
             status: item.status || 'Sắp diễn ra',

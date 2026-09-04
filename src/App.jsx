@@ -194,7 +194,8 @@ export default function App() {
     const activityItem = {
       id: `act-${Date.now()}`,
       day: newAct.day || String(new Date().getDate()).padStart(2, '0'),
-      month: newAct.month || `THÁNG ${new Date().getMonth() + 1}`,
+      month: newAct.month || String(new Date().getMonth() + 1).padStart(2, '0'),
+      year: newAct.year || new Date().getFullYear(),
       title: newAct.title,
       priority: newAct.priority || 'Bình thường',
       time: newAct.time || '08:00 - 11:30',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS } from '../lib/supabase';
+import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 
@@ -173,6 +173,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     priority: 'Bình thường',
     day: '',
     month: '',
+    year: '',
     time: '08:00 - 11:30',
     location: '',
     description: '',
@@ -211,7 +212,8 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       title: prev.title || cleanTitle || 'Hoạt động Thanh niên mới',
       time: prev.time || '07:30 - 11:30',
       day: prev.day || String(today.getDate()).padStart(2, '0'),
-      month: prev.month || months[today.getMonth()],
+      month: prev.month || String(today.getMonth() + 1).padStart(2, '0'),
+      year: prev.year || today.getFullYear(),
       location: prev.location || OFFICIAL_ADDRESS,
       notes: prev.notes || 'Đề nghị ĐVTN tham gia đúng giờ, trang phục áo màu xanh Thanh niên Việt Nam, mang dụng cụ lao động.',
       assigned_to: prev.assigned_to || ['Tất cả 30 Chi đoàn Ấp'],
@@ -399,11 +401,11 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                         setRawDate(e.target.value);
                         if (e.target.value) {
                           const d = new Date(e.target.value);
-                          const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
                           setFormData({ 
                             ...formData, 
                             day: String(d.getDate()).padStart(2, '0'),
-                            month: months[d.getMonth()]
+                            month: String(d.getMonth() + 1).padStart(2, '0'),
+                            year: d.getFullYear()
                           });
                         }
                       }}
@@ -657,7 +659,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                 <h6 className="fw-bold text-dark mb-2" style={{ fontSize: '15px' }}>📌 {formData.title || 'Hoạt động Thanh niên'}</h6>
                 <div className="row g-2 text-secondary mb-2" style={{ fontSize: '12.5px' }}>
                   <div className="col-6">⏰ Thời gian: <strong>{formData.time}</strong></div>
-                  <div className="col-6">📅 Ngày: <strong>{formData.day}/{formData.month}</strong></div>
+                  <div className="col-6">📅 Ngày: <strong>{formatDateDDMMYYYY(formData.day, formData.month, formData.year)}</strong></div>
                   <div className="col-12">📍 Địa điểm chung: <strong>{formData.location || OFFICIAL_ADDRESS}</strong></div>
                   <div className="col-12">📢 Phân công đơn vị: <strong>{Array.isArray(formData.assigned_to) ? formData.assigned_to.join(', ') : formData.assigned_to}</strong></div>
                 </div>
@@ -988,7 +990,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       setTargetScope(editData.target_scope === 'Tất cả 30 Chi đoàn Ấp' ? 'ALL' : editData.target_scope || 'ALL');
       setPriority(editData.priority || 'Bình thường');
       setTime(editData.activity_details?.time || editData.time || '');
-      setDateStr(editData.activity_details?.date || (editData.activity_details?.day ? `${editData.activity_details.day} ${editData.activity_details.month}` : false) || editData.date || '');
+      setDateStr(formatDateDDMMYYYY(editData.activity_details || editData.date));
       setLocation(editData.activity_details?.location || editData.location || '');
       setRawDate('');
     } else {
@@ -1122,9 +1124,9 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                       if (e.target.value) {
                         const d = new Date(e.target.value);
                         const dayStr = String(d.getDate()).padStart(2, '0');
-                        const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
-                        const monthStr = months[d.getMonth()];
-                        setDateStr(`${dayStr} ${monthStr}`);
+                        const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                        const yearStr = d.getFullYear();
+                        setDateStr(`${dayStr}/${monthStr}/${yearStr}`);
                       }
                     }}
                   />
@@ -1575,7 +1577,7 @@ export function ActivityDetailModal({
               <div className="row g-2 text-secondary" style={{ fontSize: '12.5px' }}>
                 <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
                   <Clock size={15} className="text-primary" />
-                  <span>Thời gian: <strong>{activity.time} ({activity.day}/{activity.month})</strong></span>
+                  <span>Thời gian: <strong>{activity.time} ({formatDateDDMMYYYY(activity.day, activity.month, activity.year)})</strong></span>
                 </div>
                 <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
                   <MapPin size={15} className="text-danger" />

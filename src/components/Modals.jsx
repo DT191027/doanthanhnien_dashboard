@@ -592,6 +592,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
   const [priority, setPriority] = useState('Bình thường');
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');
+  const [rawDate, setRawDate] = useState('');
   const [location, setLocation] = useState('');
 
   useEffect(() => {
@@ -603,6 +604,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       setTime(editData.activity_details?.time || editData.time || '');
       setDateStr(editData.activity_details?.date || (editData.activity_details?.day ? `${editData.activity_details.day} ${editData.activity_details.month}` : false) || editData.date || '');
       setLocation(editData.activity_details?.location || editData.location || '');
+      setRawDate('');
     } else {
       setTitle('');
       setContent('');
@@ -610,6 +612,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       setPriority('Bình thường');
       setTime('');
       setDateStr('');
+      setRawDate('');
       setLocation('');
     }
   }, [editData, show]);
@@ -621,9 +624,9 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
     
     const scopeText = targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope;
-    const finalTime = time.trim() || '23:24 - 23:25';
-    const finalDate = dateStr.trim() || '04 THÁNG 9';
-    const finalLocation = location.trim() || 'tai here';
+    const finalTime = time.trim() || '08:00 - 11:30';
+    const finalDate = dateStr.trim() || new Date().toLocaleDateString('vi-VN');
+    const finalLocation = location.trim() || 'Hội trường UBND xã';
 
     onSave && onSave({
       id: editData ? editData.id : `noti-${Date.now()}`,
@@ -649,6 +652,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     setPriority('Bình thường');
     setTime('');
     setDateStr('');
+    setRawDate('');
     setLocation('');
     onClose();
   };
@@ -723,7 +727,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Ví dụ: 23:24 - 23:25"
+                    placeholder="Ví dụ: 08:00 - 11:30"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
                   />
@@ -734,11 +738,19 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                     <span>Ngày tháng</span>
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     className="form-control"
-                    placeholder="Ví dụ: 04 THÁNG 9"
-                    value={dateStr}
-                    onChange={(e) => setDateStr(e.target.value)}
+                    value={rawDate}
+                    onChange={(e) => {
+                      setRawDate(e.target.value);
+                      if (e.target.value) {
+                        const d = new Date(e.target.value);
+                        const dayStr = String(d.getDate()).padStart(2, '0');
+                        const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
+                        const monthStr = months[d.getMonth()];
+                        setDateStr(`${dayStr} ${monthStr}`);
+                      }
+                    }}
                   />
                 </div>
                 <div className="col-md-4">
@@ -749,7 +761,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Ví dụ: tai here..."
+                    placeholder=""
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                   />

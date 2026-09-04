@@ -308,9 +308,9 @@ export default function App() {
         activity_details: {
           ...(editingNotification.activity_details || {}),
           ...(notiData.activity_details || {}),
-          time: notiData.time || notiData.activity_details?.time || editingNotification.activity_details?.time || '23:24 - 23:25',
-          date: notiData.date || notiData.activity_details?.date || editingNotification.activity_details?.date || '04 THÁNG 9',
-          location: notiData.location || notiData.activity_details?.location || editingNotification.activity_details?.location || 'tai here'
+          time: notiData.time || notiData.activity_details?.time || editingNotification.activity_details?.time || '08:00 - 11:30',
+          date: notiData.date || notiData.activity_details?.date || editingNotification.activity_details?.date || '',
+          location: notiData.location || notiData.activity_details?.location || editingNotification.activity_details?.location || ''
         }
       };
       const updated = await syncUpdateNotification(updatedNoti);
@@ -324,13 +324,13 @@ export default function App() {
         content: notiData.content,
         target_scope: notiData.target_scope || 'Tất cả 30 Chi đoàn Ấp',
         priority: notiData.priority || 'Bình thường',
-        time: notiData.time || '23:24 - 23:25',
-        date: notiData.date || '04 THÁNG 9',
-        location: notiData.location || 'tai here',
+        time: notiData.time || '08:00 - 11:30',
+        date: notiData.date || '',
+        location: notiData.location || '',
         activity_details: notiData.activity_details || {
-          time: notiData.time || '23:24 - 23:25',
-          date: notiData.date || '04 THÁNG 9',
-          location: notiData.location || 'tai here',
+          time: notiData.time || '08:00 - 11:30',
+          date: notiData.date || '',
+          location: notiData.location || '',
           notes: 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
         },
         time_ago: 'Vừa xong',

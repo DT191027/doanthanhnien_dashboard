@@ -228,6 +228,15 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '15px', lineHeight: '1.3' }}>
                     {act.title}
                   </h5>
+
+                  {act.hasSubTasks && act.subTasks && act.subTasks.length > 0 && (
+                    <div className="mb-2">
+                      <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1" style={{ fontSize: '10.5px' }}>
+                        👥 Có phân chia lực lượng ({act.subTasks.length} khu vực)
+                      </span>
+                    </div>
+                  )}
+
                   <div className="text-secondary d-flex flex-column gap-1 mb-3" style={{ fontSize: '12px' }}>
                     <span className="d-flex align-items-center gap-1.5"><Clock size={14} className="text-primary" /> {act.time}</span>
                     <span className="d-flex align-items-center gap-1.5"><MapPin size={14} className="text-danger" /> {act.location}</span>

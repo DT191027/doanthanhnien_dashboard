@@ -187,17 +187,23 @@ export default function App() {
   const outgoingDocsCount = userDocuments.filter(d => d.type === 'outgoing' || !d.type).length;
 
   const handleAddActivity = async (newAct) => {
+    const assignedText = Array.isArray(newAct.assigned_to) 
+      ? (newAct.assigned_to.length === 0 || newAct.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newAct.assigned_to.join(', '))
+      : (newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
+
     const activityItem = {
       id: `act-${Date.now()}`,
-      day: newAct.day || '25',
-      month: newAct.month || 'THÁNG 5',
+      day: newAct.day || String(new Date().getDate()).padStart(2, '0'),
+      month: newAct.month || `THÁNG ${new Date().getMonth() + 1}`,
       title: newAct.title,
       priority: newAct.priority || 'Bình thường',
       time: newAct.time || '08:00 - 11:30',
-      location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam',
+      location: newAct.location || 'Trụ sở Đảng ủy xã Xuân Thới Sơn',
       description: newAct.description || '',
       notes: newAct.notes || '',
-      assigned_to: newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+      assigned_to: assignedText,
+      hasSubTasks: Boolean(newAct.hasSubTasks),
+      subTasks: newAct.subTasks || [],
       file_name: newAct.file_name || '',
       file_url: newAct.file_url || '',
       status: 'Sắp diễn ra',
@@ -207,7 +213,7 @@ export default function App() {
     setActivitiesList(updated);
 
     // Tự động phát thông báo tới đúng đơn vị được giao
-    const targetText = newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp';
+    const targetText = assignedText;
     const autoNoti = {
       id: `noti-${Date.now()}`,
       title: `Hoạt động mới: ${newAct.title}`,

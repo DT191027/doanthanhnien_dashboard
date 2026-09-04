@@ -1,33 +1,193 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2 } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 
-// 1. Create Activity Modal
+// Component chọn nhiều đơn vị nhận / phân công
+export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công đơn vị' }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef(null);
+
+  const selectedList = Array.isArray(selected)
+    ? selected
+    : (selected && selected !== 'ALL' && selected !== 'Tất cả 30 Chi đoàn Ấp' ? [selected] : ['Tất cả 30 Chi đoàn Ấp']);
+
+  const isAllSelected = selectedList.includes('Tất cả 30 Chi đoàn Ấp') || selectedList.includes('ALL') || selectedList.length === INITIAL_BRANCHES.length;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleToggleAll = () => {
+    if (isAllSelected) {
+      onChange([]);
+    } else {
+      onChange(['Tất cả 30 Chi đoàn Ấp']);
+    }
+  };
+
+  const handleToggleCluster = (cluster) => {
+    const clusterBranchNames = cluster.branches || [];
+    let current = isAllSelected ? INITIAL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'ALL');
+    const hasAllCluster = clusterBranchNames.every(b => current.includes(b));
+
+    let updated;
+    if (hasAllCluster) {
+      updated = current.filter(b => !clusterBranchNames.includes(b));
+    } else {
+      updated = Array.from(new Set([...current, ...clusterBranchNames]));
+    }
+    if (updated.length === INITIAL_BRANCHES.length || updated.length === 0) {
+      updated = ['Tất cả 30 Chi đoàn Ấp'];
+    }
+    onChange(updated);
+  };
+
+  const handleToggleBranch = (branchName) => {
+    let current = isAllSelected ? INITIAL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'ALL');
+    if (current.includes(branchName)) {
+      current = current.filter(b => b !== branchName);
+    } else {
+      current = [...current, branchName];
+    }
+    if (current.length === INITIAL_BRANCHES.length || current.length === 0) {
+      current = ['Tất cả 30 Chi đoàn Ấp'];
+    }
+    onChange(current);
+  };
+
+  const renderDisplayText = () => {
+    if (isAllSelected || selectedList.length === 0) {
+      return '📢 Tất cả 30 Chi đoàn Ấp trực thuộc';
+    }
+    if (selectedList.length === 1) {
+      return `📍 ${selectedList[0]}`;
+    }
+    return `📌 Đã chọn (${selectedList.length} đơn vị): ${selectedList.slice(0, 2).join(', ')}${selectedList.length > 2 ? '...' : ''}`;
+  };
+
+  return (
+    <div className="position-relative" ref={dropdownRef}>
+      <button
+        type="button"
+        className="form-select text-start d-flex align-items-center justify-content-between bg-white border"
+        style={{ fontSize: '13px', minHeight: '38px' }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="text-truncate fw-medium">{renderDisplayText()}</span>
+      </button>
+
+      {isOpen && (
+        <div 
+          className="position-absolute start-0 end-0 mt-1 bg-white border rounded-3 shadow-lg p-2 text-dark" 
+          style={{ zIndex: 1085, maxHeight: '300px', overflowY: 'auto' }}
+        >
+          <div 
+            className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2 fw-bold text-primary border-bottom mb-1"
+            onClick={handleToggleAll}
+            style={{ fontSize: '12.5px' }}
+          >
+            <input 
+              type="checkbox" 
+              className="form-check-input mt-0 cursor-pointer" 
+              checked={isAllSelected}
+              onChange={() => {}}
+            />
+            <span>📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</span>
+          </div>
+
+          <div className="fw-bold text-secondary px-2 pt-1 pb-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
+            🏆 Cụm Thi Đua
+          </div>
+          {COMPETITION_CLUSTERS.map(cluster => {
+            const clusterBranchNames = cluster.branches || [];
+            const isClusterChecked = isAllSelected || clusterBranchNames.every(b => selectedList.includes(b));
+            return (
+              <div 
+                key={cluster.id}
+                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
+                onClick={() => handleToggleCluster(cluster)}
+                style={{ fontSize: '12px' }}
+              >
+                <input 
+                  type="checkbox" 
+                  className="form-check-input mt-0 cursor-pointer" 
+                  checked={isClusterChecked}
+                  onChange={() => {}}
+                />
+                <div>
+                  <span className="fw-semibold">🏆 {cluster.label}</span>
+                  <div className="text-muted" style={{ fontSize: '10.5px' }}>({cluster.branches?.join(', ')})</div>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="fw-bold text-secondary px-2 pt-2 pb-1 border-top mt-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
+            📍 Các Chi đoàn Ấp trực thuộc
+          </div>
+          {INITIAL_BRANCHES.map(branch => {
+            const isBranchChecked = isAllSelected || selectedList.includes(branch.name);
+            return (
+              <div 
+                key={branch.id}
+                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
+                onClick={() => handleToggleBranch(branch.name)}
+                style={{ fontSize: '12.5px' }}
+              >
+                <input 
+                  type="checkbox" 
+                  className="form-check-input mt-0 cursor-pointer" 
+                  checked={isBranchChecked}
+                  onChange={() => {}}
+                />
+                <span>📍 {branch.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 1. Create Activity Modal with 3-Step Wizard & Sub-task force division
 export function CreateActivityModal({ show, onClose, onSave }) {
+  const [step, setStep] = useState(1);
+  const [hasSubTasks, setHasSubTasks] = useState(true);
+  const [subTasks, setSubTasks] = useState([
+    { id: 'sub-1', branch: 'Chi đoàn Ấp Bùi Môn', time: '08:00 - 10:00', location: 'Đường Ấp 1, khu vực Nhà văn hóa', description: 'Trồng cây xanh & dọn vệ sinh tuyến đường' },
+    { id: 'sub-2', branch: 'Chi đoàn Ấp Dân Thắng', time: '08:00 - 10:00', location: 'Tuyến đường trước Trường Tiểu học Xuân Thới Sơn', description: 'Tuyên truyền phân loại rác thải' }
+  ]);
+
   const [formData, setFormData] = useState({
     title: '',
     priority: 'Bình thường',
     day: '',
     month: '',
-    time: '',
+    time: '08:00 - 11:30',
     location: '',
     description: '',
     notes: '',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    assigned_to: ['Tất cả 30 Chi đoàn Ấp'],
     file_name: '',
     file_url: ''
   });
   const [rawDate, setRawDate] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   if (!show) return null;
 
   const handleClose = () => {
-    setIsPreview(false);
+    setStep(1);
     onClose && onClose();
   };
 
@@ -36,8 +196,6 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     if (!file) return;
 
     setIsUploading(true);
-
-    // Auto-extract content from filename e.g. "Ke_hoach_Ra_quan_Ngay_Chu_nhat_xanh.pdf"
     let cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
     cleanTitle = cleanTitle.replace(/^(Ke hoach|Thong bao|Ke_hoach|Thong_bao)\s*/i, '');
     cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
@@ -56,7 +214,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       month: prev.month || months[today.getMonth()],
       location: prev.location || OFFICIAL_ADDRESS,
       notes: prev.notes || 'Đề nghị ĐVTN tham gia đúng giờ, trang phục áo màu xanh Thanh niên Việt Nam, mang dụng cụ lao động.',
-      assigned_to: prev.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+      assigned_to: prev.assigned_to || ['Tất cả 30 Chi đoàn Ấp'],
       file_name: uploaded.fileName || file.name,
       file_url: uploaded.url || '#'
     }));
@@ -65,44 +223,110 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     setIsUploading(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleAddSubTask = () => {
+    const newId = `sub-${Date.now()}`;
+    const defaultBranch = INITIAL_BRANCHES[subTasks.length % INITIAL_BRANCHES.length]?.name || 'Chi đoàn Ấp Bùi Môn';
+    setSubTasks([
+      ...subTasks,
+      {
+        id: newId,
+        branch: defaultBranch,
+        time: formData.time || '08:00 - 10:00',
+        location: formData.location || 'Khu vực Trung tâm Văn hóa Ấp',
+        description: 'Phụ trách công tác tổng vệ sinh và tuyên truyền'
+      }
+    ]);
+  };
+
+  const handleUpdateSubTask = (id, field, value) => {
+    setSubTasks(subTasks.map(st => st.id === id ? { ...st, [field]: value } : st));
+  };
+
+  const handleRemoveSubTask = (id) => {
+    setSubTasks(subTasks.filter(st => st.id !== id));
+  };
+
+  const handleSubmitFinal = (e) => {
     if (e) e.preventDefault();
-    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+
+    const assignedStr = Array.isArray(formData.assigned_to) 
+      ? (formData.assigned_to.length === 0 || formData.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : formData.assigned_to.join(', '))
+      : (formData.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
+
     onSave && onSave({
       ...formData,
+      assigned_to: assignedStr,
+      hasSubTasks: hasSubTasks,
+      subTasks: hasSubTasks ? subTasks : [],
       priority: formData.priority || 'Bình thường',
       location: formData.location || OFFICIAL_ADDRESS
     });
-    setFormData({ title: '', priority: 'Bình thường', day: '', month: '', time: '', location: '', description: '', notes: '', assigned_to: 'Tất cả 30 Chi đoàn Ấp', file_name: '', file_url: '' });
-    setRawDate('');
-    setIsPreview(false);
-    onClose && onClose();
-  };
 
-  const handleOpenPreview = (e) => {
-    e.preventDefault();
-    if (!formData.title || !formData.time || !formData.location) {
-      alert('Vui lòng điền đầy đủ các thông tin bắt buộc trước khi xem trước!');
-      return;
-    }
-    setIsPreview(true);
+    setFormData({
+      title: '',
+      priority: 'Bình thường',
+      day: '',
+      month: '',
+      time: '08:00 - 11:30',
+      location: '',
+      description: '',
+      notes: '',
+      assigned_to: ['Tất cả 30 Chi đoàn Ấp'],
+      file_name: '',
+      file_url: ''
+    });
+    setRawDate('');
+    setStep(1);
+    onClose && onClose();
   };
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
       <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content border-0 shadow-lg">
-          <div className="modal-header border-bottom">
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
+          <div className="modal-header border-bottom pb-2">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
-              {isPreview ? <Eye className="text-primary" size={20} /> : <Calendar className="text-primary" size={20} />}
-              {isPreview ? 'Xem Trước Giao Diện Hoạt Động' : 'Tạo Hoạt động Mới'}
+              <Calendar className="text-primary" size={20} />
+              Tạo Hoạt động Mới
             </h5>
             <button type="button" className="btn-close" onClick={handleClose}></button>
           </div>
 
-          {!isPreview ? (
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body p-4">
+          {/* 3-Step Wizard Navigation Header matching Screenshot 3 */}
+          <div className="px-4 pt-3">
+            <div className="d-flex align-items-center justify-content-center gap-2 py-2 px-3 bg-light rounded-3 border" style={{ fontSize: '12.5px' }}>
+              <div className={`d-flex align-items-center gap-1.5 fw-bold ${step === 1 ? 'text-primary' : 'text-success'}`}>
+                <span className={`badge ${step === 1 ? 'bg-primary text-white' : 'bg-success text-white'} rounded-circle p-1`} style={{ width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {step > 1 ? '✓' : '1'}
+                </span>
+                <span>Thông tin hoạt động</span>
+              </div>
+              <span className="text-muted">➔</span>
+              <div className={`d-flex align-items-center gap-1.5 fw-bold ${step === 2 ? 'text-primary' : step > 2 ? 'text-success' : 'text-muted'}`}>
+                <span className={`badge ${step === 2 ? 'bg-primary text-white' : step > 2 ? 'bg-success text-white' : 'bg-secondary-subtle text-secondary'} rounded-circle p-1`} style={{ width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {step > 2 ? '✓' : '2'}
+                </span>
+                <span>Phân công lực lượng</span>
+              </div>
+              <span className="text-muted">➔</span>
+              <div className={`d-flex align-items-center gap-1.5 fw-bold ${step === 3 ? 'text-primary' : 'text-muted'}`}>
+                <span className={`badge ${step === 3 ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary'} rounded-circle p-1`} style={{ width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  3
+                </span>
+                <span>Xác nhận & Thông báo</span>
+              </div>
+            </div>
+          </div>
+
+          {step === 1 && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!formData.title.trim()) { alert('Vui lòng nhập tên hoạt động!'); return; }
+              if (hasSubTasks) setStep(2);
+              else setStep(3);
+            }}>
+              <div className="modal-body p-4 pt-2">
                 {/* Document attachment & Auto-fill section */}
                 <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 mb-3">
                   <label className="form-label fw-bold text-primary mb-1 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
@@ -201,24 +425,11 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Phân công đơn vị thực hiện</label>
-                    <select 
-                      className="form-select"
-                      value={formData.assigned_to}
-                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                    >
-                      <option value="Tất cả 30 Chi đoàn Ấp">📢 Tất cả 30 Chi đoàn Ấp</option>
-                      <optgroup label="🏆 Cụm thi đua">
-                        {COMPETITION_CLUSTERS.map(c => (
-                          <option key={c.id} value={c.name}>🏆 {c.label}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="📍 Chi đoàn Ấp cụ thể">
-                        {INITIAL_BRANCHES.map(b => (
-                          <option key={b.id} value={b.name}>📍 {b.name}</option>
-                        ))}
-                      </optgroup>
-                    </select>
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Phân công đơn vị thực hiện (Có thể chọn nhiều)</label>
+                    <MultiUnitSelect 
+                      selected={formData.assigned_to} 
+                      onChange={(selectedArray) => setFormData({ ...formData, assigned_to: selectedArray })} 
+                    />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Lưu ý / Ghi chú quan trọng</label>
@@ -232,7 +443,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                   </div>
                 </div>
 
-                <div className="mb-2">
+                <div className="mb-3">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mô tả chi tiết nội dung chương trình</label>
                   <textarea
                     className="form-control"
@@ -242,62 +453,237 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   ></textarea>
                 </div>
+
+                {/* Force Sub-division choice matching Screenshot 3 left panel */}
+                <div className="mt-4 pt-3 border-top">
+                  <label className="fw-bold text-dark mb-2 d-flex align-items-center gap-2" style={{ fontSize: '13.5px' }}>
+                    <span>Phân chia lực lượng cho hoạt động này:</span>
+                  </label>
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6">
+                      <div 
+                        className={`p-3 rounded-3 border cursor-pointer transition d-flex align-items-start gap-2.5 ${hasSubTasks ? 'border-primary bg-primary-subtle bg-opacity-25 shadow-sm' : 'bg-white hover-bg-light'}`}
+                        onClick={() => setHasSubTasks(true)}
+                      >
+                        <input 
+                          type="radio" 
+                          name="subTaskOption" 
+                          className="form-check-input mt-1 cursor-pointer"
+                          checked={hasSubTasks} 
+                          onChange={() => setHasSubTasks(true)} 
+                        />
+                        <div>
+                          <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '13.5px' }}>
+                            <Users className="text-primary" size={16} />
+                            <span>Có phân chia lực lượng</span>
+                          </div>
+                          <div className="text-secondary mt-1" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
+                            Hoạt động này sẽ được phân công cho các Chi đoàn / khu vực / tổ đội cụ thể
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <div 
+                        className={`p-3 rounded-3 border cursor-pointer transition d-flex align-items-start gap-2.5 ${!hasSubTasks ? 'border-primary bg-primary-subtle bg-opacity-25 shadow-sm' : 'bg-white hover-bg-light'}`}
+                        onClick={() => setHasSubTasks(false)}
+                      >
+                        <input 
+                          type="radio" 
+                          name="subTaskOption" 
+                          className="form-check-input mt-1 cursor-pointer"
+                          checked={!hasSubTasks} 
+                          onChange={() => setHasSubTasks(false)} 
+                        />
+                        <div>
+                          <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '13.5px' }}>
+                            <UserCheck className="text-secondary" size={16} />
+                            <span>Không phân chia lực lượng</span>
+                          </div>
+                          <div className="text-secondary mt-1" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
+                            Hoạt động chung, không cần phân công lực lượng cụ thể
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="modal-footer border-top bg-light">
                 <button type="button" className="btn btn-light border px-4" onClick={handleClose}>Hủy</button>
-                <button type="button" className="btn btn-outline-primary px-3 fw-semibold d-flex align-items-center gap-1.5" onClick={handleOpenPreview}>
-                  <Eye size={16} />
-                  <span>Xem trước</span>
-                </button>
-                <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                  Tạo Hoạt Động
+                <button type="submit" className="btn btn-primary px-4 fw-semibold d-flex align-items-center gap-1.5" style={{ backgroundColor: '#0066FF' }}>
+                  <span>{hasSubTasks ? 'Tiếp tục phân công lực lượng →' : 'Tiếp tục xem lại →'}</span>
                 </button>
               </div>
             </form>
-          ) : (
-            <div>
-              <div className="modal-body p-4">
-                <div className="alert alert-primary d-flex align-items-center gap-2 py-2.5 px-3 mb-3" style={{ fontSize: '13px' }}>
-                  <Bell size={18} className="text-primary flex-shrink-0" />
-                  <div>
-                    <strong>Chế độ xem trước:</strong> Kiểm tra hiển thị của thẻ hoạt động trước khi đăng. Sau khi tạo, hệ thống sẽ <strong>tự động phát thông báo tới tất cả 30 Chi đoàn Ấp</strong>.
-                  </div>
-                </div>
+          )}
 
-                <div className="p-3.5 rounded-3 bg-light border shadow-sm" style={{ maxWidth: '450px', margin: '0 auto' }}>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="activity-date-badge">
-                      <div className="activity-date-num">{formData.day || '03'}</div>
-                      <div className="activity-date-month">{formData.month || 'THÁNG 9'}</div>
-                    </div>
-                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
-                      Sắp diễn ra
-                    </span>
-                  </div>
-                  <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '16px', lineHeight: '1.3' }}>
-                    {formData.title || 'Tên hoạt động chưa đặt'}
-                  </h5>
-                  <div className="text-secondary d-flex flex-column gap-1.5 mb-3" style={{ fontSize: '12.5px' }}>
-                    <span className="d-flex align-items-center gap-1.5"><Clock size={14} className="text-primary" /> {formData.time || '08:00 - 11:30'}</span>
-                    <span className="d-flex align-items-center gap-1.5"><MapPin size={14} className="text-danger" /> {formData.location || OFFICIAL_ADDRESS}</span>
-                    {formData.description && (
-                      <div className="p-2 bg-white rounded border text-dark mt-1" style={{ fontSize: '12px' }}>
-                        {formData.description}
-                      </div>
-                    )}
-                  </div>
-                  <div className="pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
-                    <span>🏛️ Ban Thường vụ Đoàn xã</span>
-                    <span className="fw-semibold text-primary">Chi tiết →</span>
+          {step === 2 && (
+            <div className="modal-body p-4 pt-2">
+              {/* Step 2 Header matching Screenshot 3 right panel */}
+              <div className="p-3 bg-primary-subtle bg-opacity-25 border border-primary-subtle rounded-3 mb-3 d-flex align-items-center gap-3">
+                <div className="p-2.5 bg-primary text-white rounded-circle flex-shrink-0">
+                  <Users size={22} />
+                </div>
+                <div>
+                  <h6 className="fw-bold text-dark mb-0.5" style={{ fontSize: '15px' }}>Phân công lực lượng</h6>
+                  <div className="text-secondary" style={{ fontSize: '12.5px' }}>
+                    Thiết lập phân công lực lượng, thời gian và địa điểm cho từng khu vực / Chi đoàn.
                   </div>
                 </div>
               </div>
-              <div className="modal-footer border-top bg-light">
-                <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={() => setIsPreview(false)}>
-                  ← Quay lại chỉnh sửa
+
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <label className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                  Thêm khu vực / Chi đoàn được phân công ({subTasks.length}):
+                </label>
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-outline-primary fw-semibold px-3 rounded-3 d-flex align-items-center gap-1"
+                  onClick={handleAddSubTask}
+                >
+                  <Plus size={15} />
+                  <span>Thêm mới</span>
                 </button>
-                <button type="button" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={handleSubmit}>
-                  Xác Nhận & Tạo Hoạt Động
+              </div>
+
+              <div className="d-flex flex-column gap-3 mb-3" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                {subTasks.map((sub, idx) => (
+                  <div key={sub.id} className="p-3 bg-white border rounded-3 shadow-xs position-relative hover-border-primary transition">
+                    <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                      <div className="fw-bold text-primary d-flex align-items-center gap-2" style={{ fontSize: '13.5px' }}>
+                        <Building size={16} />
+                        <span>Khu vực / Chi đoàn #{idx + 1}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-outline-danger border-0 p-1" 
+                        title="Xóa khu vực này"
+                        onClick={() => handleRemoveSubTask(sub.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <div className="row g-2.5">
+                      <div className="col-12 col-md-6">
+                        <label className="form-label text-dark fw-semibold mb-1" style={{ fontSize: '12px' }}>Chi đoàn / Đơn vị phụ trách</label>
+                        <select 
+                          className="form-select form-select-sm"
+                          value={sub.branch}
+                          onChange={(e) => handleUpdateSubTask(sub.id, 'branch', e.target.value)}
+                        >
+                          {INITIAL_BRANCHES.map(b => (
+                            <option key={b.id} value={b.name}>📍 {b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label text-dark fw-semibold mb-1" style={{ fontSize: '12px' }}>Thời gian thực hiện</label>
+                        <input 
+                          type="text" 
+                          className="form-control form-control-sm"
+                          placeholder="Ví dụ: 08:00 - 10:00"
+                          value={sub.time}
+                          onChange={(e) => handleUpdateSubTask(sub.id, 'time', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label text-dark fw-semibold mb-1" style={{ fontSize: '12px' }}>Địa điểm / Tuyến đường phụ trách</label>
+                        <input 
+                          type="text" 
+                          className="form-control form-control-sm"
+                          placeholder="Ví dụ: Đường Ấp 1, khu vực Nhà văn hóa..."
+                          value={sub.location}
+                          onChange={(e) => handleUpdateSubTask(sub.id, 'location', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label text-dark fw-semibold mb-1" style={{ fontSize: '12px' }}>Nhiệm vụ / Phần việc cụ thể</label>
+                        <input 
+                          type="text" 
+                          className="form-control form-control-sm"
+                          placeholder="Ví dụ: Trồng cây xanh, thu gom rác..."
+                          value={sub.description}
+                          onChange={(e) => handleUpdateSubTask(sub.id, 'description', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold d-flex align-items-center justify-content-center gap-1.5"
+                style={{ borderStyle: 'dashed' }}
+                onClick={handleAddSubTask}
+              >
+                <Plus size={16} />
+                <span>+ Thêm khu vực / Chi đoàn</span>
+              </button>
+
+              <div className="p-3 mt-3 bg-info-subtle border border-info-subtle rounded-3 text-info-emphasis d-flex align-items-center gap-2" style={{ fontSize: '12px' }}>
+                <Bell size={16} className="flex-shrink-0" />
+                <span>ℹ️ <strong>Lưu ý:</strong> Các Chi đoàn sẽ nhận được thông báo và nhiệm vụ đã được phân công.</span>
+              </div>
+
+              <div className="modal-footer border-top bg-light mt-3 px-0 pb-0">
+                <button type="button" className="btn btn-light border px-4" onClick={() => setStep(1)}>Quay lại</button>
+                <button type="button" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={() => setStep(3)}>
+                  Tiếp tục →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="modal-body p-4 pt-2">
+              <div className="p-3 bg-success-subtle bg-opacity-25 border border-success-subtle rounded-3 mb-3 text-center">
+                <div className="p-2 bg-success text-white rounded-circle d-inline-flex mb-1.5">
+                  <CheckCircle size={24} />
+                </div>
+                <h6 className="fw-bold text-dark mb-0.5" style={{ fontSize: '15px' }}>Xem lại & Ban hành Hoạt động</h6>
+                <div className="text-secondary" style={{ fontSize: '12px' }}>
+                  Kiểm tra thông tin trước khi phát động hoạt động tới các đơn vị.
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-white border rounded-3 mb-3">
+                <h6 className="fw-bold text-dark mb-2" style={{ fontSize: '15px' }}>📌 {formData.title || 'Hoạt động Thanh niên'}</h6>
+                <div className="row g-2 text-secondary mb-2" style={{ fontSize: '12.5px' }}>
+                  <div className="col-6">⏰ Thời gian: <strong>{formData.time}</strong></div>
+                  <div className="col-6">📅 Ngày: <strong>{formData.day}/{formData.month}</strong></div>
+                  <div className="col-12">📍 Địa điểm chung: <strong>{formData.location || OFFICIAL_ADDRESS}</strong></div>
+                  <div className="col-12">📢 Phân công đơn vị: <strong>{Array.isArray(formData.assigned_to) ? formData.assigned_to.join(', ') : formData.assigned_to}</strong></div>
+                </div>
+
+                {hasSubTasks && subTasks.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-top">
+                    <div className="fw-bold text-primary mb-2" style={{ fontSize: '13px' }}>
+                      👥 Phân công lực lượng chi tiết ({subTasks.length} khu vực):
+                    </div>
+                    <div className="d-flex flex-column gap-1.5">
+                      {subTasks.map((st, i) => (
+                        <div key={i} className="p-2 bg-light rounded border text-dark" style={{ fontSize: '12px' }}>
+                          <strong>📍 {st.branch}</strong> — {st.location} ({st.time})
+                          {st.description && <span className="text-muted d-block">📋 Nhiệm vụ: {st.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer border-top bg-light px-0 pb-0">
+                <button type="button" className="btn btn-light border px-4" onClick={() => setStep(hasSubTasks ? 2 : 1)}>Quay lại</button>
+                <button type="button" className="btn btn-primary px-4 fw-semibold d-flex align-items-center gap-1.5" style={{ backgroundColor: '#0066FF' }} onClick={handleSubmitFinal}>
+                  <Send size={16} />
+                  <span>🚀 Ban Hành Hoạt Động & Phát Thông Báo</span>
                 </button>
               </div>
             </div>
@@ -623,7 +1009,10 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     e.preventDefault();
     confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
     
-    const scopeText = targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope;
+    const scopeText = Array.isArray(targetScope)
+      ? (targetScope.length === 0 || targetScope.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : targetScope.join(', '))
+      : (targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope);
+
     const finalTime = time.trim() || '08:00 - 11:30';
     const finalDate = dateStr.trim() || new Date().toLocaleDateString('vi-VN');
     const finalLocation = location.trim() || 'Hội trường UBND xã';
@@ -672,24 +1061,11 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
             <div className="modal-body p-4">
               <div className="row g-2 mb-3">
                 <div className="col-md-7">
-                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Đơn vị nhận thông báo</label>
-                  <select 
-                    className="form-select"
-                    value={targetScope}
-                    onChange={(e) => setTargetScope(e.target.value)}
-                  >
-                    <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
-                    <optgroup label="🏆 Cụm Thi Đua">
-                      {COMPETITION_CLUSTERS.map(c => (
-                        <option key={c.id} value={c.name}>🏆 {c.label}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="📍 Các Chi đoàn Ấp trực thuộc">
-                      {INITIAL_BRANCHES.map(b => (
-                        <option key={b.id} value={b.name}>📍 {b.name}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Đơn vị nhận thông báo (Có thể chọn nhiều)</label>
+                  <MultiUnitSelect 
+                    selected={targetScope}
+                    onChange={setTargetScope}
+                  />
                 </div>
                 <div className="col-md-5">
                   <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
@@ -1207,6 +1583,56 @@ export function ActivityDetailModal({
                 </div>
               </div>
             </div>
+
+            {/* Force Sub-division Details Section if activity.hasSubTasks */}
+            {activity.hasSubTasks && activity.subTasks && activity.subTasks.length > 0 && (
+              <div className="mb-3 p-3 bg-primary-subtle bg-opacity-25 border border-primary-subtle rounded-3">
+                <div className="fw-bold text-primary d-flex align-items-center gap-2 mb-2" style={{ fontSize: '13.5px' }}>
+                  <Users size={18} />
+                  <span>Phân công lực lượng chi tiết theo khu vực ({activity.subTasks.length} vị trí / đơn vị)</span>
+                </div>
+
+                {!isDoanXa ? (
+                  (() => {
+                    const mySub = activity.subTasks.find(st => st.branch === userBranchName || userBranchName.includes(st.branch));
+                    if (mySub) {
+                      return (
+                        <div className="p-3 bg-white border border-primary rounded-3 text-dark shadow-xs">
+                          <div className="fw-bold text-success mb-1.5" style={{ fontSize: '13px' }}>
+                            📍 Phân công riêng cho đơn vị [{userBranchName}]:
+                          </div>
+                          <div className="row g-2" style={{ fontSize: '12.5px' }}>
+                            <div className="col-12 col-md-6">⏰ Thời gian: <strong>{mySub.time || activity.time}</strong></div>
+                            <div className="col-12 col-md-6">📍 Tuyến đường / Địa điểm: <strong>{mySub.location}</strong></div>
+                            {mySub.description && (
+                              <div className="col-12 text-secondary mt-1">📋 Nhiệm vụ cụ thể: <strong>{mySub.description}</strong></div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="p-2.5 bg-white border rounded-3 text-secondary" style={{ fontSize: '12px' }}>
+                        Đơn vị thực hiện theo vị trí tập trung chung do Ban Thường vụ phân công.
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="row g-2">
+                    {activity.subTasks.map((st, i) => (
+                      <div key={i} className="col-12 col-md-6">
+                        <div className="p-2.5 bg-white border rounded-3 text-dark shadow-xs" style={{ fontSize: '12px' }}>
+                          <div className="fw-bold text-primary mb-1">📍 {st.branch}</div>
+                          <div>⏰ Thời gian: <strong>{st.time || activity.time}</strong></div>
+                          <div>📍 Địa điểm: <strong>{st.location}</strong></div>
+                          {st.description && <div className="text-muted mt-1">📋 Nhiệm vụ: {st.description}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             {activity.description && (

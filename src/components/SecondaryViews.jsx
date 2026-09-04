@@ -33,7 +33,7 @@ import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
-export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt }) {
+export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const confirmedBy = item?.confirmedBy || [];
   const branchName = currentRole?.full_name || 'Chi đoàn Ấp';
@@ -43,11 +43,14 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
   if (!isDoanXa) {
     if (hasConfirmed) {
       return (
-        <div className="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 bg-success-subtle text-success border border-success-subtle rounded-3" style={{ fontSize: '12px', fontWeight: 600 }}>
-          <CheckCircle2 size={15} />
+        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-success-subtle text-success border border-success-subtle rounded-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+          <CheckCircle2 size={14} />
           <span>✓ Đã tiếp nhận ({myConfirmation?.time || 'Vừa xong'})</span>
         </div>
       );
+    }
+    if (!inModal) {
+      return null;
     }
     return (
       <button 
@@ -83,25 +86,30 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
       {showDropdown && (
         <div 
           className="position-absolute end-0 mt-1 bg-white border shadow-lg rounded-3 p-3 text-dark" 
-          style={{ zIndex: 1050, width: '280px', maxHeight: '240px', overflowY: 'auto' }}
+          style={{ zIndex: 1050, width: '310px', maxHeight: '280px', overflowY: 'auto' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-1">
+          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-1.5">
             <span className="fw-bold text-success" style={{ fontSize: '12.5px' }}>
-              Danh sách tiếp nhận ({confirmedBy.length})
+              Danh sách tiếp nhận ({confirmedBy.length}/30 Chi đoàn)
             </span>
             <button type="button" className="btn-close btn-sm" onClick={() => setShowDropdown(false)}></button>
           </div>
           {confirmedBy.length === 0 ? (
-            <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>
+            <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
               Chưa có chi đoàn nào xác nhận
             </div>
           ) : (
             <div className="d-flex flex-column gap-1.5">
               {confirmedBy.map((c, idx) => (
-                <div key={idx} className="d-flex align-items-center justify-content-between p-1.5 bg-light rounded" style={{ fontSize: '12px' }}>
-                  <span className="fw-semibold text-dark">✓ {c.branch}</span>
-                  <span className="text-muted" style={{ fontSize: '10.5px' }}>{c.time}</span>
+                <div key={idx} className="d-flex align-items-center justify-content-between p-2 bg-light rounded border text-dark" style={{ fontSize: '12px' }}>
+                  <span className="fw-semibold text-success d-flex align-items-center gap-1">
+                    <CheckCircle2 size={14} className="text-success flex-shrink-0" />
+                    <span>{c.branch}</span>
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
+                    {c.time ? `Lúc ${c.time}` : 'Vừa xong'}
+                  </span>
                 </div>
               ))}
             </div>

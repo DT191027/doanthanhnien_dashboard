@@ -1524,6 +1524,7 @@ export function ActivityDetailModal({
   const handleConfirmAttend = () => {
     confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
     onRespondAttendance && onRespondAttendance(activity.id, userBranchName, true, '');
+    onConfirmReceipt && onConfirmReceipt('activity', activity);
     setIsAbsenceMode(false);
     onClose();
   };
@@ -1568,6 +1569,7 @@ export function ActivityDetailModal({
                     currentRole={currentRole} 
                     isDoanXa={isDoanXa} 
                     onConfirmReceipt={onConfirmReceipt} 
+                    inModal={true}
                   />
                 </div>
               </div>

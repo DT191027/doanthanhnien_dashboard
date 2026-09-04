@@ -133,6 +133,11 @@ export default function App() {
     setNotificationsList(notis);
     setTasksList(tsks);
     setAttendanceRecords(atts || {});
+    setSelectedActivityDetail(prev => {
+      if (!prev) return null;
+      const updated = acts.find(a => a.id === prev.id);
+      return updated || prev;
+    });
   };
 
   useEffect(() => {
@@ -352,13 +357,17 @@ export default function App() {
 
   const handleConfirmReceipt = async (type, item) => {
     const branchName = currentUser?.full_name || 'Chi đoàn Ấp';
-    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const nowDate = new Date().toLocaleDateString('vi-VN');
-    const timeStr = `${nowTime} ${nowDate}`;
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
 
     const existingConfirmed = item.confirmedBy || [];
     if (existingConfirmed.some(c => c.branch === branchName)) {
-      triggerToast('Đơn vị đã xác nhận tiếp nhận nhiệm vụ trước đó!');
+      triggerToast('Đơn vị đã xác nhận tiếp nhận & tham gia hoạt động trước đó!');
       return;
     }
 
@@ -378,6 +387,20 @@ export default function App() {
       };
       const updatedList = await syncSaveActivity(updatedAct);
       setActivitiesList(updatedList);
+      setSelectedActivityDetail(prev => (prev && prev.id === item.id ? updatedAct : prev));
+
+      // Tự động tạo thông báo gửi về cho Quản trị viên (Đoàn xã)
+      const autoNoti = {
+        id: `noti-confirm-${Date.now()}`,
+        title: `✅ ${branchName} đã xác nhận tham gia hoạt động`,
+        content: `${branchName} đã đọc chi tiết văn bản và nhấn xác nhận tham gia hoạt động "${item.title}" vào lúc ${timeStr}.`,
+        target_scope: 'Đoàn xã Xuân Thới Sơn',
+        priority: 'Trung bình',
+        time_ago: 'Vừa xong',
+        createdAt: Date.now()
+      };
+      const updatedNotis = await syncSaveNotification(autoNoti);
+      setNotificationsList(updatedNotis);
     }
 
     try {
@@ -386,7 +409,7 @@ export default function App() {
       }
     } catch(e) {}
 
-    triggerToast(`Đã xác nhận tiếp nhận nhiệm vụ thành công!`);
+    triggerToast(`Đã xác nhận tiếp nhận thông báo & đăng ký tham gia hoạt động!`);
   };
 
   const handleEditNotification = (noti) => {

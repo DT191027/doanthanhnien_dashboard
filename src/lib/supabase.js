@@ -257,7 +257,19 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 export function getPersistedData(key, fallback = []) {
   try {
     const raw = localStorage.getItem(`xts_youth_${key}`);
-    return raw ? JSON.parse(raw) : fallback;
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const seen = new Set();
+      return parsed.filter(item => {
+        if (item && item.id) {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+        }
+        return true;
+      });
+    }
+    return parsed;
   } catch (e) {
     return fallback;
   }
@@ -306,7 +318,20 @@ export async function syncFetchActivities() {
 
 export async function syncSaveActivity(activityItem) {
   const current = getPersistedData('activities', []);
-  const updatedLocal = [activityItem, ...current];
+  const exists = current.some(item => item.id === activityItem.id);
+  const updatedRaw = exists
+    ? current.map(item => item.id === activityItem.id ? { ...item, ...activityItem } : item)
+    : [activityItem, ...current];
+
+  const seen = new Set();
+  const updatedLocal = updatedRaw.filter(item => {
+    if (item && item.id) {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+    }
+    return true;
+  });
+
   setPersistedData('activities', updatedLocal);
   notifySyncEvent('SAVE_ACTIVITY', activityItem);
 
@@ -642,7 +667,21 @@ export async function syncSaveNotification(notiItem) {
     priority: notiItem.priority || 'Bình thường',
     createdAt: notiItem.createdAt || Date.now()
   };
-  const updatedLocal = sortNotificationsByPriority([newItem, ...current]);
+  const exists = current.some(item => item.id === newItem.id);
+  const updatedRaw = exists
+    ? current.map(item => item.id === newItem.id ? { ...item, ...newItem } : item)
+    : [newItem, ...current];
+
+  const seen = new Set();
+  const cleanList = updatedRaw.filter(item => {
+    if (item && item.id) {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+    }
+    return true;
+  });
+
+  const updatedLocal = sortNotificationsByPriority(cleanList);
   setPersistedData('notifications', updatedLocal);
   notifySyncEvent('SAVE_NOTIFICATION', newItem);
 

@@ -388,19 +388,6 @@ export default function App() {
       const updatedList = await syncSaveActivity(updatedAct);
       setActivitiesList(updatedList);
       setSelectedActivityDetail(prev => (prev && prev.id === item.id ? updatedAct : prev));
-
-      // Tự động tạo thông báo gửi về cho Quản trị viên (Đoàn xã)
-      const autoNoti = {
-        id: `noti-confirm-${Date.now()}`,
-        title: `✅ ${branchName} đã xác nhận tham gia hoạt động`,
-        content: `${branchName} đã đọc chi tiết văn bản và nhấn xác nhận tham gia hoạt động "${item.title}" vào lúc ${timeStr}.`,
-        target_scope: 'Đoàn xã Xuân Thới Sơn',
-        priority: 'Trung bình',
-        time_ago: 'Vừa xong',
-        createdAt: Date.now()
-      };
-      const updatedNotis = await syncSaveNotification(autoNoti);
-      setNotificationsList(updatedNotis);
     }
 
     try {

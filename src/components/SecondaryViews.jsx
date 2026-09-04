@@ -49,23 +49,7 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
         </div>
       );
     }
-    if (!inModal) {
-      return null;
-    }
-    return (
-      <button 
-        type="button"
-        className="btn btn-success btn-sm fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-sm"
-        style={{ backgroundColor: '#16A34A', border: 'none', fontSize: '12px' }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onConfirmReceipt && onConfirmReceipt(type, item);
-        }}
-      >
-        <CheckCircle2 size={15} />
-        <span>Xác nhận đã nhận & tiếp nhận nhiệm vụ</span>
-      </button>
-    );
+    return null;
   }
 
   return (

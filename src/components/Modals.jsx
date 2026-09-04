@@ -184,11 +184,13 @@ export function CreateActivityModal({ show, onClose, onSave }) {
   });
   const [rawDate, setRawDate] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!show) return null;
 
   const handleClose = () => {
     setStep(1);
+    setIsSubmitting(false);
     onClose && onClose();
   };
 
@@ -250,6 +252,8 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
   const handleSubmitFinal = (e) => {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
 
     const assignedStr = Array.isArray(formData.assigned_to) 
@@ -280,6 +284,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     });
     setRawDate('');
     setStep(1);
+    setIsSubmitting(false);
     onClose && onClose();
   };
 

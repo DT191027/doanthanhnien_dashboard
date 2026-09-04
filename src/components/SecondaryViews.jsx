@@ -607,10 +607,10 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
             const badge = getPriorityBadgeStyle(n.priority);
             
             // Extract activity or notification details
-            const timeVal = n.activity_details?.time || '23:24 - 23:25';
-            const dateVal = n.activity_details ? `${n.activity_details.day} ${n.activity_details.month}` : '04 THÁNG 9';
-            const locationVal = n.activity_details?.location || 'tai here';
-            const notesVal = n.activity_details?.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+            const timeVal = n.activity_details?.time || n.time || '23:24 - 23:25';
+            const dateVal = n.activity_details?.date || (n.activity_details?.day ? `${n.activity_details.day} ${n.activity_details.month}` : false) || n.date || '04 THÁNG 9';
+            const locationVal = n.activity_details?.location || n.location || 'tai here';
+            const notesVal = n.activity_details?.notes || n.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
 
             return (
               <div 

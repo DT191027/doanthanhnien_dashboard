@@ -589,6 +589,9 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
   const [content, setContent] = useState('');
   const [targetScope, setTargetScope] = useState('ALL');
   const [priority, setPriority] = useState('Bình thường');
+  const [time, setTime] = useState('');
+  const [dateStr, setDateStr] = useState('');
+  const [location, setLocation] = useState('');
 
   useEffect(() => {
     if (editData) {
@@ -596,11 +599,17 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       setContent(editData.content || '');
       setTargetScope(editData.target_scope === 'Tất cả 30 Chi đoàn Ấp' ? 'ALL' : editData.target_scope || 'ALL');
       setPriority(editData.priority || 'Bình thường');
+      setTime(editData.activity_details?.time || editData.time || '');
+      setDateStr(editData.activity_details?.date || (editData.activity_details?.day ? `${editData.activity_details.day} ${editData.activity_details.month}` : false) || editData.date || '');
+      setLocation(editData.activity_details?.location || editData.location || '');
     } else {
       setTitle('');
       setContent('');
       setTargetScope('ALL');
       setPriority('Bình thường');
+      setTime('');
+      setDateStr('');
+      setLocation('');
     }
   }, [editData, show]);
 
@@ -611,12 +620,25 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
     
     const scopeText = targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope;
+    const finalTime = time.trim() || '23:24 - 23:25';
+    const finalDate = dateStr.trim() || '04 THÁNG 9';
+    const finalLocation = location.trim() || 'tai here';
+
     onSave && onSave({
       id: editData ? editData.id : `noti-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
       target_scope: scopeText,
       priority: priority,
+      time: finalTime,
+      date: finalDate,
+      location: finalLocation,
+      activity_details: {
+        time: finalTime,
+        date: finalDate,
+        location: finalLocation,
+        notes: 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
+      },
       time_ago: editData ? (editData.time_ago || 'Vừa xong') : 'Vừa xong',
       createdAt: editData ? (editData.createdAt || Date.now()) : Date.now()
     });
@@ -624,12 +646,15 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     setContent('');
     setTargetScope('ALL');
     setPriority('Bình thường');
+    setTime('');
+    setDateStr('');
+    setLocation('');
     onClose();
   };
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
           <div className="modal-header border-bottom-0 pb-0">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
@@ -685,6 +710,49 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
+              </div>
+
+              {/* Time, Date, Location fields requested by user */}
+              <div className="row g-2 mb-3">
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1" style={{ fontSize: '13px' }}>
+                    <Clock size={14} className="text-primary" />
+                    <span>Thời gian</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ví dụ: 23:24 - 23:25"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1" style={{ fontSize: '13px' }}>
+                    <Calendar size={14} className="text-primary" />
+                    <span>Ngày tháng</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ví dụ: 04 THÁNG 9"
+                    value={dateStr}
+                    onChange={(e) => setDateStr(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1" style={{ fontSize: '13px' }}>
+                    <MapPin size={14} className="text-danger" />
+                    <span>Địa điểm</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ví dụ: tai here..."
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="mb-3">

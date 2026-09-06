@@ -410,7 +410,8 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                             ...formData, 
                             day: String(d.getDate()).padStart(2, '0'),
                             month: String(d.getMonth() + 1).padStart(2, '0'),
-                            year: d.getFullYear()
+                            year: d.getFullYear(),
+                            dateIso: e.target.value
                           });
                         }
                       }}
@@ -1528,7 +1529,7 @@ export function ActivityDetailModal({
 
   const handleConfirmAttend = () => {
     confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
-    onRespondAttendance && onRespondAttendance(activity.id, userBranchName, true, '');
+    onRespondAttendance && onRespondAttendance(activity.id, userBranchName, true, '', activity.title);
     onConfirmReceipt && onConfirmReceipt('activity', activity);
     setIsAbsenceMode(false);
     onClose();
@@ -1540,7 +1541,8 @@ export function ActivityDetailModal({
       alert('Vui lòng nhập lý do chính đáng để gửi báo vắng!');
       return;
     }
-    onRespondAttendance && onRespondAttendance(activity.id, userBranchName, false, absenceReason.trim());
+    onRespondAttendance && onRespondAttendance(activity.id, userBranchName, false, absenceReason.trim(), activity.title);
+    onConfirmReceipt && onConfirmReceipt('activity', activity);
     setIsAbsenceMode(false);
     setAbsenceReason('');
     onClose();

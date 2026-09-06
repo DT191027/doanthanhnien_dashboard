@@ -292,14 +292,17 @@ export async function syncFetchActivities() {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
         const mapped = data.map(item => {
-          const d = item.start_date ? new Date(item.start_date) : new Date();
-          const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
+          const d = item.start_date ? new Date(item.start_date) : null;
+          const day = item.day || (d ? String(d.getDate()).padStart(2, '0') : '01');
+          const month = item.month || (d ? String(d.getMonth() + 1).padStart(2, '0') : '01');
+          const year = item.year || (d ? d.getFullYear() : 2026);
           return {
             id: item.id,
             title: item.title,
-            day: String(d.getDate()).padStart(2, '0'),
-            month: String(d.getMonth() + 1).padStart(2, '0'),
-            year: d.getFullYear(),
+            day: day,
+            month: month,
+            year: year,
+            dateIso: item.start_date || `${year}-${month}-${day}`,
             time: `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
             location: item.location || OFFICIAL_ADDRESS,
             status: item.status || 'Sắp diễn ra',

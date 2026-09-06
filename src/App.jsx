@@ -196,11 +196,16 @@ export default function App() {
       ? (newAct.assigned_to.length === 0 || newAct.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newAct.assigned_to.join(', '))
       : (newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
 
+    const dayVal = String(newAct.day || new Date().getDate()).padStart(2, '0');
+    const monthVal = String(newAct.month || (new Date().getMonth() + 1)).padStart(2, '0');
+    const yearVal = newAct.year || new Date().getFullYear();
+    const fixedDateIso = newAct.dateIso || `${yearVal}-${monthVal}-${dayVal}`;
+
     const activityItem = {
       id: `act-${Date.now()}`,
-      day: newAct.day || String(new Date().getDate()).padStart(2, '0'),
-      month: newAct.month || String(new Date().getMonth() + 1).padStart(2, '0'),
-      year: newAct.year || new Date().getFullYear(),
+      day: dayVal,
+      month: monthVal,
+      year: yearVal,
       title: newAct.title,
       priority: newAct.priority || 'Bình thường',
       time: newAct.time || '08:00 - 11:30',
@@ -213,7 +218,8 @@ export default function App() {
       file_name: newAct.file_name || '',
       file_url: newAct.file_url || '',
       status: 'Sắp diễn ra',
-      dateIso: new Date().toISOString().split('T')[0]
+      dateIso: fixedDateIso,
+      postedAt: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${dayVal}/${monthVal}/${yearVal}`
     };
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
@@ -480,7 +486,7 @@ export default function App() {
     triggerToast('Đã lưu kết quả điểm danh & đánh giá tham gia hoạt động!');
   };
 
-  const handleRespondAttendance = async (activityId, branchName, attended, reason) => {
+  const handleRespondAttendance = async (activityId, branchName, attended, reason, activityTitle = '') => {
     const currentActivityRec = attendanceRecords[activityId] || {};
     const updatedRec = {
       ...currentActivityRec,
@@ -488,10 +494,43 @@ export default function App() {
     };
     const updated = await syncSaveAttendance(activityId, updatedRec);
     setAttendanceRecords(updated);
+
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
+
+    // Deterministic notification ID per (activityId + branchName) to prevent duplicate notification spam
+    const cleanBranchCode = branchName.replace(/[^a-zA-Z0-9]/g, '_');
+    const notiId = `noti-resp-${activityId}-${cleanBranchCode}`;
+
+    const targetActivity = activitiesList.find(a => a.id === activityId);
+    const actTitle = activityTitle || targetActivity?.title || 'Hoạt động Thanh niên';
+
+    const autoNoti = {
+      id: notiId,
+      title: attended 
+        ? `✅ ${branchName} xác nhận tham gia hoạt động`
+        : `❌ ${branchName} báo vắng mặt hoạt động`,
+      content: attended
+        ? `${branchName} đã xem chi tiết văn bản và nhấn xác nhận tham gia hoạt động "${actTitle}" vào lúc ${timeStr}.`
+        : `${branchName} đã báo VẮNG MẶT đối với hoạt động "${actTitle}". Lý do: "${reason}" (Vào lúc ${timeStr}).`,
+      target_scope: 'Đoàn xã Xuân Thới Sơn',
+      priority: 'Bình thường',
+      time_ago: 'Vừa xong',
+      createdAt: Date.now()
+    };
+
+    const updatedNotis = await syncSaveNotification(autoNoti);
+    setNotificationsList(updatedNotis);
+
     if (attended) {
-      triggerToast(`Đã xác nhận THAM GIA hoạt động cho ${branchName}!`);
+      triggerToast(`Đã xác nhận THAM GIA và gửi thông báo tới Ban Thường vụ Đoàn xã!`);
     } else {
-      triggerToast(`Đã gửi báo VẮNG MẶT cho ${branchName}!`);
+      triggerToast(`Đã gửi báo VẮNG MẶT tới Ban Thường vụ Đoàn xã!`);
     }
   };
 

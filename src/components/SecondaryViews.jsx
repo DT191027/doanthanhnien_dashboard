@@ -29,7 +29,7 @@ import {
   Edit3,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -109,7 +109,8 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
-  const sortedActivities = sortActivitiesByPriority(activities);
+  const cleanActivities = deduplicateActivities(activities);
+  const sortedActivities = sortActivitiesByPriority(cleanActivities);
 
   const filtered = sortedActivities.filter(a => {
     const matchFilter = filter === 'ALL' || a.status === filter;

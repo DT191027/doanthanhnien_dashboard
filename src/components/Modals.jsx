@@ -1527,6 +1527,29 @@ export function ActivityDetailModal({
   
   const savedReason = typeof currentBranchRecord === 'object' ? currentBranchRecord.reason : '';
 
+  const confirmedBy = activity.confirmedBy || [];
+  const participatingBranches = [];
+  const absentBranches = [];
+
+  Object.entries(activityAttendance).forEach(([branch, record]) => {
+    if (typeof record === 'boolean' && record) {
+      const matchConf = confirmedBy.find(c => c.branch === branch);
+      participatingBranches.push({ name: branch, time: matchConf?.time || 'Đã xác nhận' });
+    } else if (typeof record === 'object' && record !== null) {
+      if (record.attended) {
+        participatingBranches.push({ name: branch, time: record.time || 'Đã xác nhận' });
+      } else {
+        absentBranches.push({ name: branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
+      }
+    }
+  });
+
+  confirmedBy.forEach(c => {
+    if (!participatingBranches.some(p => p.name === c.branch)) {
+      participatingBranches.push({ name: c.branch, time: c.time || 'Đã xác nhận' });
+    }
+  });
+
   const handleConfirmAttend = () => {
     confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
     onRespondAttendance && onRespondAttendance(activity.id, userBranchName, true, '', activity.title);
@@ -1702,73 +1725,134 @@ export function ActivityDetailModal({
               )}
             </div>
 
-            {/* Participation Response Box for Chi Đoàn */}
-            <div className="p-3.5 bg-light rounded-3 border">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>
-                  🏛️ Trạng thái tham gia của đơn vị: <span className="text-primary">{userBranchName}</span>
+            {/* Attendance & Participation Summary Box for Admin vs Chi Đoàn */}
+            {isDoanXa ? (
+              <div className="p-3.5 bg-light rounded-3 border">
+                <div className="fw-bold text-dark mb-2.5 d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ fontSize: '14px' }}>
+                  <span>📊 Thống kê Phản hồi của 30 Chi đoàn Ấp:</span>
+                  <div className="d-flex align-items-center gap-2" style={{ fontSize: '12px' }}>
+                    <span className="badge bg-success text-white px-2.5 py-1">
+                      ✅ Tham gia: {participatingBranches.length}/30
+                    </span>
+                    <span className="badge bg-danger text-white px-2.5 py-1">
+                      ❌ Báo vắng: {absentBranches.length}/30
+                    </span>
+                  </div>
                 </div>
-                {hasAttended === true && (
-                  <span className="badge bg-success text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
-                    ✅ Đã xác nhận THAM GIA
-                  </span>
-                )}
-                {hasAttended === false && (
-                  <span className="badge bg-danger text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
-                    ❌ Đã báo VẮNG MẶT
-                  </span>
-                )}
+
+                <div className="row g-2">
+                  <div className="col-12 col-md-6">
+                    <div className="p-2.5 bg-white border rounded-3 h-100">
+                      <div className="fw-bold text-success mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
+                        ✅ Chi đoàn xác nhận tham gia ({participatingBranches.length})
+                      </div>
+                      {participatingBranches.length === 0 ? (
+                        <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Chưa có đơn vị xác nhận</div>
+                      ) : (
+                        <div className="d-flex flex-column gap-1" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                          {participatingBranches.map((b, idx) => (
+                            <div key={idx} className="d-flex align-items-center justify-content-between p-1.5 bg-success-subtle bg-opacity-25 rounded border border-success-subtle" style={{ fontSize: '11.5px' }}>
+                              <span className="fw-semibold text-dark">✓ {b.name}</span>
+                              <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <div className="p-2.5 bg-white border rounded-3 h-100">
+                      <div className="fw-bold text-danger mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
+                        ❌ Chi đoàn báo vắng mặt ({absentBranches.length})
+                      </div>
+                      {absentBranches.length === 0 ? (
+                        <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Không có đơn vị báo vắng</div>
+                      ) : (
+                        <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                          {absentBranches.map((b, idx) => (
+                            <div key={idx} className="p-2 bg-danger-subtle bg-opacity-25 border border-danger-subtle rounded" style={{ fontSize: '11.5px' }}>
+                              <div className="d-flex align-items-center justify-content-between mb-0.5">
+                                <span className="fw-bold text-danger">❌ {b.name}</span>
+                                <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
+                              </div>
+                              <div className="text-secondary">💬 Lý do: <strong>{b.reason}</strong></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              {!isAbsenceMode ? (
-                <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
-                  <button 
-                    type="button" 
-                    className="btn btn-success fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
-                    style={{ backgroundColor: '#16A34A', border: 'none' }}
-                    onClick={handleConfirmAttend}
-                  >
-                    <CheckCircle size={18} />
-                    <span>Xác Nhận THAM GIA</span>
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-danger fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
-                    onClick={() => setIsAbsenceMode(true)}
-                  >
-                    <Trash2 size={16} />
-                    <span>Báo VẮNG (Không tham gia)</span>
-                  </button>
+            ) : (
+              <div className="p-3.5 bg-light rounded-3 border">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>
+                    🏛️ Trạng thái tham gia của đơn vị: <span className="text-primary">{userBranchName}</span>
+                  </div>
+                  {hasAttended === true && (
+                    <span className="badge bg-success text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                      ✅ Đã xác nhận THAM GIA
+                    </span>
+                  )}
+                  {hasAttended === false && (
+                    <span className="badge bg-danger text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                      ❌ Đã báo VẮNG MẶT
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <form onSubmit={handleSubmitAbsence} className="mt-3 p-3 bg-white rounded-3 border border-danger-subtle">
-                  <label className="form-label fw-bold text-danger mb-1" style={{ fontSize: '13px' }}>
-                    Nhập lý do chính đáng không thể tham gia: <span className="text-danger">*</span>
-                  </label>
-                  <textarea 
-                    className="form-control mb-2"
-                    rows="3"
-                    placeholder="Ví dụ: Bí thư và đoàn viên chi đoàn bận trùng lịch công tác đột xuất cấp ủy chỉ đạo..."
-                    required
-                    value={absenceReason}
-                    onChange={(e) => setAbsenceReason(e.target.value)}
-                  ></textarea>
-                  <div className="d-flex justify-content-end gap-2">
-                    <button type="button" className="btn btn-sm btn-light border" onClick={() => setIsAbsenceMode(false)}>Hủy</button>
-                    <button type="submit" className="btn btn-sm btn-danger px-3 fw-semibold">
-                      Gửi Báo Vắng
+
+                {!isAbsenceMode ? (
+                  <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
+                    <button 
+                      type="button" 
+                      className="btn btn-success fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
+                      style={{ backgroundColor: '#16A34A', border: 'none' }}
+                      onClick={handleConfirmAttend}
+                    >
+                      <CheckCircle size={18} />
+                      <span>Xác Nhận THAM GIA</span>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-danger fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
+                      onClick={() => setIsAbsenceMode(true)}
+                    >
+                      <Trash2 size={16} />
+                      <span>Báo VẮNG (Không tham gia)</span>
                     </button>
                   </div>
-                </form>
-              )}
+                ) : (
+                  <form onSubmit={handleSubmitAbsence} className="mt-3 p-3 bg-white rounded-3 border border-danger-subtle">
+                    <label className="form-label fw-bold text-danger mb-1" style={{ fontSize: '13px' }}>
+                      Nhập lý do chính đáng không thể tham gia: <span className="text-danger">*</span>
+                    </label>
+                    <textarea 
+                      className="form-control mb-2"
+                      rows="3"
+                      placeholder="Ví dụ: Bí thư và đoàn viên chi đoàn bận trùng lịch công tác đột xuất cấp ủy chỉ đạo..."
+                      required
+                      value={absenceReason}
+                      onChange={(e) => setAbsenceReason(e.target.value)}
+                    ></textarea>
+                    <div className="d-flex justify-content-end gap-2">
+                      <button type="button" className="btn btn-sm btn-light border" onClick={() => setIsAbsenceMode(false)}>Hủy</button>
+                      <button type="submit" className="btn btn-sm btn-danger px-3 fw-semibold">
+                        Gửi Báo Vắng
+                      </button>
+                    </div>
+                  </form>
+                )}
 
-              {savedReason && (
-                <div className="mt-2.5 p-2 bg-white rounded-2 border text-danger" style={{ fontSize: '11.5px' }}>
-                  <strong>Lý do vắng mặt đã ghi nhận:</strong> {savedReason}
-                </div>
-              )}
-            </div>
+                {savedReason && (
+                  <div className="mt-2.5 p-2 bg-white rounded-2 border text-danger" style={{ fontSize: '11.5px' }}>
+                    <strong>Lý do vắng mặt đã ghi nhận:</strong> {savedReason}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="modal-footer border-top pt-2">
             <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={onClose}>Đóng Cửa Sổ</button>

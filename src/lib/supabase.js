@@ -146,6 +146,25 @@ export function getLiveVietnameseDate() {
   return `Hôm nay là ${dayName}, ngày ${day} tháng ${month} năm ${year}`;
 }
 
+// Helper to strictly deduplicate activities by ID or Title+Date
+export function deduplicateActivities(activities) {
+  if (!Array.isArray(activities)) return [];
+  const seenIds = new Set();
+  const seenKeys = new Set();
+  return activities.filter(act => {
+    if (!act) return false;
+    if (act.id && seenIds.has(act.id)) return false;
+    
+    const dateKey = act.dateIso || `${act.year || ''}-${act.month || ''}-${act.day || ''}`;
+    const comboKey = `${(act.title || '').trim().toLowerCase()}_${dateKey}`;
+    if (seenKeys.has(comboKey)) return false;
+    
+    if (act.id) seenIds.add(act.id);
+    seenKeys.add(comboKey);
+    return true;
+  });
+}
+
 // Universal Date Formatter to dd/mm/yyyy
 export function formatDateDDMMYYYY(dayOrObj, month, year) {
   if (!dayOrObj && !month) return 'Chưa chọn ngày';
@@ -309,14 +328,15 @@ export async function syncFetchActivities() {
             description: item.description || ''
           };
         });
-        setPersistedData('activities', mapped);
-        return mapped;
+        const cleanMapped = deduplicateActivities(mapped);
+        setPersistedData('activities', cleanMapped);
+        return cleanMapped;
       }
     } catch (e) {
       console.warn('Supabase fetch activities error, using local storage fallback:', e);
     }
   }
-  return getPersistedData('activities', []);
+  return deduplicateActivities(getPersistedData('activities', []));
 }
 
 export async function syncSaveActivity(activityItem) {
@@ -326,16 +346,8 @@ export async function syncSaveActivity(activityItem) {
     ? current.map(item => item.id === activityItem.id ? { ...item, ...activityItem } : item)
     : [activityItem, ...current];
 
-  const seen = new Set();
-  const updatedLocal = updatedRaw.filter(item => {
-    if (item && item.id) {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-    }
-    return true;
-  });
-
-  setPersistedData('activities', updatedLocal);
+  const cleanList = deduplicateActivities(updatedRaw);
+  setPersistedData('activities', cleanList);
   notifySyncEvent('SAVE_ACTIVITY', activityItem);
 
   if (supabase) {

@@ -57,7 +57,8 @@ import {
   syncFetchAttendance,
   syncSaveAttendance,
   COMPETITION_CLUSTERS,
-  isItemTargetedToUser
+  isItemTargetedToUser,
+  deduplicateActivities
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -127,7 +128,7 @@ export default function App() {
       syncFetchTasks(),
       syncFetchAttendance()
     ]);
-    setActivitiesList(acts);
+    setActivitiesList(deduplicateActivities(acts));
     setDocumentsList(docs);
     setSubmissionsList(subs);
     setNotificationsList(notis);
@@ -487,14 +488,6 @@ export default function App() {
   };
 
   const handleRespondAttendance = async (activityId, branchName, attended, reason, activityTitle = '') => {
-    const currentActivityRec = attendanceRecords[activityId] || {};
-    const updatedRec = {
-      ...currentActivityRec,
-      [branchName]: attended ? true : { attended: false, reason }
-    };
-    const updated = await syncSaveAttendance(activityId, updatedRec);
-    setAttendanceRecords(updated);
-
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -503,34 +496,34 @@ export default function App() {
     const year = now.getFullYear();
     const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
 
-    // Deterministic notification ID per (activityId + branchName) to prevent duplicate notification spam
-    const cleanBranchCode = branchName.replace(/[^a-zA-Z0-9]/g, '_');
-    const notiId = `noti-resp-${activityId}-${cleanBranchCode}`;
-
-    const targetActivity = activitiesList.find(a => a.id === activityId);
-    const actTitle = activityTitle || targetActivity?.title || 'Hoạt động Thanh niên';
-
-    const autoNoti = {
-      id: notiId,
-      title: attended 
-        ? `✅ ${branchName} xác nhận tham gia hoạt động`
-        : `❌ ${branchName} báo vắng mặt hoạt động`,
-      content: attended
-        ? `${branchName} đã xem chi tiết văn bản và nhấn xác nhận tham gia hoạt động "${actTitle}" vào lúc ${timeStr}.`
-        : `${branchName} đã báo VẮNG MẶT đối với hoạt động "${actTitle}". Lý do: "${reason}" (Vào lúc ${timeStr}).`,
-      target_scope: 'Đoàn xã Xuân Thới Sơn',
-      priority: 'Bình thường',
-      time_ago: 'Vừa xong',
-      createdAt: Date.now()
+    const currentActivityRec = attendanceRecords[activityId] || {};
+    const updatedRec = {
+      ...currentActivityRec,
+      [branchName]: attended ? { attended: true, time: timeStr } : { attended: false, reason, time: timeStr }
     };
+    const updated = await syncSaveAttendance(activityId, updatedRec);
+    setAttendanceRecords(updated);
 
-    const updatedNotis = await syncSaveNotification(autoNoti);
-    setNotificationsList(updatedNotis);
+    // If attended, also add branch to confirmedBy list on activity item
+    if (attended) {
+      const targetAct = activitiesList.find(a => a.id === activityId);
+      if (targetAct) {
+        const existingConfirmed = targetAct.confirmedBy || [];
+        if (!existingConfirmed.some(c => c.branch === branchName)) {
+          const updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
+          const updatedAct = { ...targetAct, confirmedBy: updatedConfirmedBy };
+          const updatedActs = await syncSaveActivity(updatedAct);
+          setActivitiesList(deduplicateActivities(updatedActs));
+        }
+      }
+    }
+
+    notifySyncEvent('RESPOND_ATTENDANCE', { activityId, branchName, attended, reason, timeStr });
 
     if (attended) {
-      triggerToast(`Đã xác nhận THAM GIA và gửi thông báo tới Ban Thường vụ Đoàn xã!`);
+      triggerToast(`Đã xác nhận THAM GIA hoạt động thành công!`);
     } else {
-      triggerToast(`Đã gửi báo VẮNG MẶT tới Ban Thường vụ Đoàn xã!`);
+      triggerToast(`Đã ghi nhận báo VẮNG MẶT thành công!`);
     }
   };
 

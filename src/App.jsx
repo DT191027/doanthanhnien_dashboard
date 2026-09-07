@@ -504,18 +504,35 @@ export default function App() {
     const updated = await syncSaveAttendance(activityId, updatedRec);
     setAttendanceRecords(updated);
 
-    // If attended, also add branch to confirmedBy list on activity item
-    if (attended) {
-      const targetAct = activitiesList.find(a => a.id === activityId);
-      if (targetAct) {
-        const existingConfirmed = targetAct.confirmedBy || [];
+    // Update targetAct on activitiesList so confirmedBy and absentBy are immediately in sync
+    const targetAct = activitiesList.find(a => a.id === activityId);
+    if (targetAct) {
+      const existingConfirmed = targetAct.confirmedBy || [];
+      const existingAbsent = targetAct.absentBy || [];
+
+      let updatedConfirmedBy = existingConfirmed;
+      let updatedAbsentBy = existingAbsent;
+
+      if (attended) {
+        // Remove from absentBy if present, add to confirmedBy if not present
+        updatedAbsentBy = existingAbsent.filter(c => c.branch !== branchName);
         if (!existingConfirmed.some(c => c.branch === branchName)) {
-          const updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
-          const updatedAct = { ...targetAct, confirmedBy: updatedConfirmedBy };
-          const updatedActs = await syncSaveActivity(updatedAct);
-          setActivitiesList(deduplicateActivities(updatedActs));
+          updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
         }
+      } else {
+        // Remove from confirmedBy if present, add/update in absentBy
+        updatedConfirmedBy = existingConfirmed.filter(c => c.branch !== branchName);
+        const filteredAbsent = existingAbsent.filter(c => c.branch !== branchName);
+        updatedAbsentBy = [...filteredAbsent, { branch: branchName, reason, time: timeStr }];
       }
+
+      const updatedAct = { 
+        ...targetAct, 
+        confirmedBy: updatedConfirmedBy,
+        absentBy: updatedAbsentBy
+      };
+      const updatedActs = await syncSaveActivity(updatedAct);
+      setActivitiesList(deduplicateActivities(updatedActs));
     }
 
     notifySyncEvent('RESPOND_ATTENDANCE', { activityId, branchName, attended, reason, timeStr });
@@ -715,6 +732,7 @@ export default function App() {
               onOpenActivityDetail={handleOpenActivityDetail}
               onConfirmReceipt={handleConfirmReceipt}
               currentUser={currentUser}
+              attendanceRecords={attendanceRecords}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */

@@ -7,6 +7,8 @@ import {
   FileText, 
   Download, 
   CheckCircle2, 
+  XCircle,
+  X,
   Circle, 
   Send, 
   Bell, 
@@ -33,12 +35,53 @@ import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
-export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false }) {
+export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false, attendanceRecords = {} }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState('confirmed'); // 'confirmed' | 'absent'
+
+  const activityAttendance = (attendanceRecords && item?.id && attendanceRecords[item.id]) ? attendanceRecords[item.id] : {};
   const confirmedBy = item?.confirmedBy || [];
+  const absentBy = item?.absentBy || [];
   const branchName = currentRole?.full_name || 'Chi đoàn Ấp';
-  const hasConfirmed = confirmedBy.some(c => c.branch === branchName);
-  const myConfirmation = confirmedBy.find(c => c.branch === branchName);
+
+  const participatingBranches = [];
+  const absentBranches = [];
+
+  // 1. Process attendanceRecords map
+  Object.entries(activityAttendance).forEach(([branch, record]) => {
+    if (typeof record === 'boolean') {
+      if (record) {
+        const matchConf = confirmedBy.find(c => c.branch === branch);
+        participatingBranches.push({ branch, time: matchConf?.time || 'Đã xác nhận' });
+      }
+    } else if (typeof record === 'object' && record !== null) {
+      if (record.attended) {
+        participatingBranches.push({ branch, time: record.time || 'Đã xác nhận' });
+      } else {
+        absentBranches.push({ branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
+      }
+    }
+  });
+
+  // 2. Add from confirmedBy list if not present
+  confirmedBy.forEach(c => {
+    if (!participatingBranches.some(p => p.branch === c.branch)) {
+      participatingBranches.push({ branch: c.branch, time: c.time || 'Đã xác nhận' });
+    }
+  });
+
+  // 3. Add from absentBy list if not present
+  absentBy.forEach(a => {
+    if (!absentBranches.some(p => p.branch === a.branch)) {
+      absentBranches.push({ branch: a.branch, reason: a.reason || 'Báo vắng', time: a.time || 'Vừa xong' });
+    }
+  });
+
+  const hasConfirmed = participatingBranches.some(c => c.branch === branchName);
+  const myConfirmation = participatingBranches.find(c => c.branch === branchName);
+
+  const hasAbsent = absentBranches.some(a => a.branch === branchName);
+  const myAbsent = absentBranches.find(a => a.branch === branchName);
 
   if (!isDoanXa) {
     if (hasConfirmed) {
@@ -49,54 +92,127 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
         </div>
       );
     }
+    if (hasAbsent) {
+      return (
+        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-danger-subtle text-danger border border-danger-subtle rounded-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+          <XCircle size={14} />
+          <span>✕ Đã báo vắng ({myAbsent?.time || 'Vừa xong'})</span>
+        </div>
+      );
+    }
     return null;
   }
 
   return (
-    <div className="position-relative d-inline-block">
+    <div className="position-relative d-inline-flex align-items-center gap-1.5 flex-wrap">
+      {/* Button 1: Confirmed count */}
       <button 
         type="button"
-        className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3"
+        className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3 shadow-xs"
         style={{ fontSize: '11.5px' }}
         onClick={(e) => {
           e.stopPropagation();
-          setShowDropdown(!showDropdown);
+          setActiveTab('confirmed');
+          setShowDropdown(!showDropdown || activeTab !== 'confirmed');
         }}
       >
         <CheckCircle2 size={14} />
-        <span>Đã có {confirmedBy.length}/30 Chi đoàn tiếp nhận</span>
+        <span>Đã có {participatingBranches.length}/30 Chi đoàn tiếp nhận</span>
+      </button>
+
+      {/* Button 2: Absent count */}
+      <button 
+        type="button"
+        className={`btn btn-sm ${absentBranches.length > 0 ? 'btn-outline-danger bg-danger-subtle text-danger border-danger-subtle' : 'btn-outline-secondary'} fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3 shadow-xs`}
+        style={{ fontSize: '11.5px' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setActiveTab('absent');
+          setShowDropdown(!showDropdown || activeTab !== 'absent');
+        }}
+      >
+        <XCircle size={14} />
+        <span>{absentBranches.length} Chi đoàn báo vắng</span>
       </button>
 
       {showDropdown && (
         <div 
           className="position-absolute end-0 mt-1 bg-white border shadow-lg rounded-3 p-3 text-dark" 
-          style={{ zIndex: 1050, width: '310px', maxHeight: '280px', overflowY: 'auto' }}
+          style={{ zIndex: 1050, width: '340px', maxHeight: '340px', overflowY: 'auto', top: '100%' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-1.5">
-            <span className="fw-bold text-success" style={{ fontSize: '12.5px' }}>
-              Danh sách tiếp nhận ({confirmedBy.length}/30 Chi đoàn)
+          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
+            <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+              📊 Thống kê Phản hồi ({participatingBranches.length + absentBranches.length}/30 Chi đoàn)
             </span>
             <button type="button" className="btn-close btn-sm" onClick={() => setShowDropdown(false)}></button>
           </div>
-          {confirmedBy.length === 0 ? (
-            <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
-              Chưa có chi đoàn nào xác nhận
-            </div>
+
+          {/* Sub-header Tabs */}
+          <div className="d-flex align-items-center gap-1 mb-2.5 bg-light p-1 rounded-2 border">
+            <button 
+              type="button"
+              className={`btn btn-xs flex-fill fw-bold py-1 ${activeTab === 'confirmed' ? 'btn-success text-white' : 'btn-light text-secondary'}`}
+              style={{ fontSize: '11px' }}
+              onClick={() => setActiveTab('confirmed')}
+            >
+              ✓ Tiếp nhận ({participatingBranches.length})
+            </button>
+            <button 
+              type="button"
+              className={`btn btn-xs flex-fill fw-bold py-1 ${activeTab === 'absent' ? 'btn-danger text-white' : 'btn-light text-secondary'}`}
+              style={{ fontSize: '11px' }}
+              onClick={() => setActiveTab('absent')}
+            >
+              ✕ Báo vắng ({absentBranches.length})
+            </button>
+          </div>
+
+          {activeTab === 'confirmed' ? (
+            participatingBranches.length === 0 ? (
+              <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
+                Chưa có Chi đoàn nào xác nhận tham gia
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-1.5">
+                {participatingBranches.map((c, idx) => (
+                  <div key={idx} className="d-flex align-items-center justify-content-between p-2 bg-success-subtle bg-opacity-25 rounded border border-success-subtle text-dark" style={{ fontSize: '12px' }}>
+                    <span className="fw-semibold text-success d-flex align-items-center gap-1">
+                      <CheckCircle2 size={14} className="text-success flex-shrink-0" />
+                      <span>{c.branch}</span>
+                    </span>
+                    <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
+                      {c.time ? `Lúc ${c.time}` : 'Vừa xong'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="d-flex flex-column gap-1.5">
-              {confirmedBy.map((c, idx) => (
-                <div key={idx} className="d-flex align-items-center justify-content-between p-2 bg-light rounded border text-dark" style={{ fontSize: '12px' }}>
-                  <span className="fw-semibold text-success d-flex align-items-center gap-1">
-                    <CheckCircle2 size={14} className="text-success flex-shrink-0" />
-                    <span>{c.branch}</span>
-                  </span>
-                  <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
-                    {c.time ? `Lúc ${c.time}` : 'Vừa xong'}
-                  </span>
-                </div>
-              ))}
-            </div>
+            absentBranches.length === 0 ? (
+              <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
+                Không có Chi đoàn nào báo vắng
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-2">
+                {absentBranches.map((a, idx) => (
+                  <div key={idx} className="p-2.5 bg-danger-subtle bg-opacity-25 rounded border border-danger-subtle text-dark" style={{ fontSize: '12px' }}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="fw-bold text-danger d-flex align-items-center gap-1">
+                        <XCircle size={14} className="text-danger flex-shrink-0" />
+                        <span>{a.branch}</span>
+                      </span>
+                      <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
+                        {a.time ? `Lúc ${a.time}` : 'Vừa xong'}
+                      </span>
+                    </div>
+                    <div className="p-1.5 bg-white rounded border border-danger-subtle text-danger-emphasis" style={{ fontSize: '11.5px' }}>
+                      <strong>💬 Lý do vắng mặt:</strong> {a.reason || 'Không ghi rõ lý do'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}
@@ -105,7 +221,7 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
 }
 
 // 1. Full Activities Management View
-export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser }) {
+export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser, attendanceRecords = {} }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
@@ -255,6 +371,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                       currentRole={currentUser} 
                       isDoanXa={isDoanXa} 
                       onConfirmReceipt={onConfirmReceipt} 
+                      attendanceRecords={attendanceRecords}
                     />
 
                     {isDoanXa && (

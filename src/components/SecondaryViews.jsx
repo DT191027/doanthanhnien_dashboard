@@ -449,9 +449,10 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   style={{ fontSize: '13.5px' }}
                   onClick={() => {
                     const idToDelete = deleteConfirmTarget.id;
+                    const titleToDelete = deleteConfirmTarget.title;
                     setDeleteConfirmTarget(null);
                     if (onDeleteActivity) {
-                      onDeleteActivity(idToDelete);
+                      onDeleteActivity(idToDelete, titleToDelete);
                     }
                   }}
                 >

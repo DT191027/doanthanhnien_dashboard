@@ -401,19 +401,27 @@ export async function syncToggleActivityStatus(activityId, newStatus) {
   return updatedLocal;
 }
 
-export async function syncDeleteActivity(activityId) {
+export async function syncDeleteActivity(activityId, targetTitle = '') {
   const current = getPersistedData('activities', []);
-  const updatedLocal = current.filter(a => a.id !== activityId);
+  const updatedLocal = current.filter(a => String(a.id) !== String(activityId) && (!targetTitle || a.title !== targetTitle));
   setPersistedData('activities', updatedLocal);
-  notifySyncEvent('DELETE_ACTIVITY', { activityId });
 
   if (supabase) {
     try {
       await supabase.from('activities').delete().eq('id', activityId);
+      if (targetTitle) {
+        await supabase.from('activities').delete().eq('title', targetTitle);
+      }
     } catch (e) {
       console.error('Supabase delete activity error:', e);
     }
-    return await syncFetchActivities();
+  }
+
+  notifySyncEvent('DELETE_ACTIVITY', { activityId, targetTitle });
+
+  if (supabase) {
+    const fetched = await syncFetchActivities();
+    return fetched.filter(a => String(a.id) !== String(activityId) && (!targetTitle || a.title !== targetTitle));
   }
   return updatedLocal;
 }
@@ -494,9 +502,8 @@ export async function syncSaveDocument(docItem) {
 
 export async function syncDeleteDocument(docId) {
   const current = getPersistedData('documents', []);
-  const updatedLocal = current.filter(d => d.id !== docId);
+  const updatedLocal = current.filter(d => String(d.id) !== String(docId));
   setPersistedData('documents', updatedLocal);
-  notifySyncEvent('DELETE_DOCUMENT', { docId });
 
   if (supabase) {
     try {
@@ -504,7 +511,13 @@ export async function syncDeleteDocument(docId) {
     } catch (e) {
       console.error('Supabase delete document error:', e);
     }
-    return await syncFetchDocuments();
+  }
+
+  notifySyncEvent('DELETE_DOCUMENT', { docId });
+
+  if (supabase) {
+    const fetched = await syncFetchDocuments();
+    return fetched.filter(d => String(d.id) !== String(docId));
   }
   return updatedLocal;
 }

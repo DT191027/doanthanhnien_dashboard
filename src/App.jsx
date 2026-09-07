@@ -254,10 +254,14 @@ export default function App() {
     triggerToast(newStatus === 'Đã hoàn thành' ? 'Đã đánh dấu hoàn thành hoạt động!' : 'Đã chuyển hoạt động về sắp diễn ra!');
   };
 
-  const handleDeleteActivity = async (activityId) => {
-    const updated = await syncDeleteActivity(activityId);
-    setActivitiesList(updated);
-    triggerToast('Đã thu hồi & xóa hoạt động đồng bộ trên toàn hệ thống!');
+  const handleDeleteActivity = async (activityId, activityTitle = '') => {
+    setActivitiesList(prev => prev.filter(a => String(a.id) !== String(activityId) && (!activityTitle || a.title !== activityTitle)));
+    triggerToast('Đã thu hồi & xóa hoạt động thành công!');
+
+    const updated = await syncDeleteActivity(activityId, activityTitle);
+    const cleanUpdated = deduplicateActivities(updated);
+    const filtered = cleanUpdated.filter(a => String(a.id) !== String(activityId) && (!activityTitle || a.title !== activityTitle));
+    setActivitiesList(filtered);
   };
 
   const handleIssueDocument = async (newDoc) => {

@@ -224,6 +224,7 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
 export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser, attendanceRecords = {} }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
   const cleanActivities = deduplicateActivities(activities);
   const sortedActivities = sortActivitiesByPriority(cleanActivities);
@@ -389,12 +390,8 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                         <button 
                           className="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 py-1 px-2.5"
                           style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                          title="Xóa hoạt động khi sai thông tin"
-                          onClick={() => {
-                            if (window.confirm(`Bạn có chắc chắn muốn xóa hoạt động "${act.title}" không?`)) {
-                              onDeleteActivity && onDeleteActivity(act.id);
-                            }
-                          }}
+                          title="Xóa hoạt động"
+                          onClick={() => setDeleteConfirmTarget(act)}
                         >
                           <Trash2 size={13} />
                           <span>Xóa</span>
@@ -407,6 +404,62 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
             </div>
           );
         })}
+        </div>
+      )}
+
+      {/* Modal Thông Báo Xác Nhận Xóa Hoạt Động (Không Delay, Đồng bộ ngay lập tức) */}
+      {deleteConfirmTarget && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-50" 
+          style={{ zIndex: 1080 }}
+          onClick={() => setDeleteConfirmTarget(null)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered shadow-lg" 
+            style={{ maxWidth: '420px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 rounded-4 text-center p-4">
+              <div className="d-flex justify-content-center mb-3">
+                <div className="p-3 bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center">
+                  <AlertTriangle size={36} />
+                </div>
+              </div>
+
+              <h5 className="fw-bold text-danger mb-2" style={{ fontSize: '18px' }}>
+                bạn xác nhận xóa hoạt động này!!!
+              </h5>
+
+              <p className="text-secondary mb-4" style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                Hoạt động <strong className="text-dark">"{deleteConfirmTarget.title}"</strong> sẽ được xóa ngay lập tức và đồng bộ tự động trên toàn hệ thống.
+              </p>
+
+              <div className="d-flex align-items-center justify-content-center gap-2.5">
+                <button 
+                  type="button" 
+                  className="btn btn-light border text-secondary fw-semibold px-4 py-2 rounded-3 flex-fill"
+                  style={{ fontSize: '13.5px' }}
+                  onClick={() => setDeleteConfirmTarget(null)}
+                >
+                  quay lại
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger fw-bold px-4 py-2 rounded-3 flex-fill shadow-sm"
+                  style={{ fontSize: '13.5px' }}
+                  onClick={() => {
+                    const idToDelete = deleteConfirmTarget.id;
+                    setDeleteConfirmTarget(null);
+                    if (onDeleteActivity) {
+                      onDeleteActivity(idToDelete);
+                    }
+                  }}
+                >
+                  xác nhận
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

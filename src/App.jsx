@@ -779,10 +779,10 @@ export default function App() {
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */
             <ReportsView 
-              activitiesCount={userActivities.length}
+              activitiesCount={activitiesList.length}
               docsCount={userDocuments.length}
               submissionsCount={submissionsList.length}
-              activities={userActivities}
+              activities={activitiesList}
               attendanceRecords={attendanceRecords}
               onOpenAttendanceModal={() => setShowAttendanceModal(true)}
               onRespondAttendance={handleRespondAttendance}

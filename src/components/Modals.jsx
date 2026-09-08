@@ -1342,10 +1342,17 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
 
   useEffect(() => {
     if (selectedActivityId) {
-      const record = attendanceRecords[selectedActivityId] || {};
+      const record = attendanceRecords[selectedActivityId] || attendanceRecords[String(selectedActivityId)] || {};
       const initialMap = {};
       INITIAL_BRANCHES.forEach(b => {
-        initialMap[b.name] = record[b.name] !== undefined ? record[b.name] : true;
+        const item = record[b.name];
+        if (typeof item === 'boolean') {
+          initialMap[b.name] = item;
+        } else if (typeof item === 'object' && item !== null) {
+          initialMap[b.name] = Boolean(item.attended);
+        } else {
+          initialMap[b.name] = true;
+        }
       });
       setAttendanceData(initialMap);
       setIsUrgentTask(record.isUrgentTask || false);
@@ -1373,10 +1380,17 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
     e.preventDefault();
     confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
     if (selectedActivityId) {
-      onSaveAttendance && onSaveAttendance(selectedActivityId, {
-        ...attendanceData,
-        isUrgentTask
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()}`;
+      const formatted = { isUrgentTask };
+
+      Object.entries(attendanceData).forEach(([bName, isAttended]) => {
+        formatted[bName] = isAttended 
+          ? { attended: true, time: timeStr } 
+          : { attended: false, reason: 'Vắng mặt theo điểm danh của Admin', time: timeStr };
       });
+
+      onSaveAttendance && onSaveAttendance(selectedActivityId, formatted);
     }
     onClose();
   };

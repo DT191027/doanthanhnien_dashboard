@@ -1176,37 +1176,90 @@ export function ReportsView({
   activities = [],
   attendanceRecords = {},
   onOpenAttendanceModal,
+  onRespondAttendance,
   isDoanXa
 }) {
   const [selectedCluster, setSelectedCluster] = useState('ALL');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedBranchDetail, setSelectedBranchDetail] = useState(null);
 
-  // Calculate participation & evaluation rating per Hamlet branch
+  // Calculate participation & evaluation rating per Hamlet branch dynamically based on activities issued by Admin
   const branchStats = INITIAL_BRANCHES.map(branch => {
     const clusterName = getBranchClusterName(branch.name);
 
     let attendedCount = 0;
+    let absentCount = 0;
+    let unrespondedCount = 0;
     let totalAssigned = 0;
 
-    if (activities.length > 0) {
-      activities.forEach(act => {
-        totalAssigned += 1;
-        const record = attendanceRecords[act.id];
-        if (record) {
-          if (record[branch.name] === true) attendedCount += 1;
-        } else {
-          attendedCount += 1; // Default attended
+    const assignedActivities = activities.filter(act => 
+      isItemTargetedToUser(act.assigned_to, { role: 'chi_doan', branch_name: branch.name })
+    );
+
+    totalAssigned = assignedActivities.length;
+
+    const activityDetailsList = assignedActivities.map(act => {
+      const actAttendance = attendanceRecords[act.id] || {};
+      const branchRec = actAttendance[branch.name];
+
+      const confirmedList = act.confirmedBy || [];
+      const absentList = act.absentBy || [];
+
+      let status = 'UNRESPONDED'; // 'ATTENDED' | 'ABSENT' | 'UNRESPONDED'
+      let time = '';
+      let reason = '';
+
+      if (branchRec !== undefined) {
+        if (typeof branchRec === 'boolean') {
+          if (branchRec) {
+            status = 'ATTENDED';
+            const matchConf = confirmedList.find(c => c.branch === branch.name);
+            time = matchConf?.time || 'Đã xác nhận';
+          } else {
+            status = 'ABSENT';
+            reason = 'Báo vắng';
+          }
+        } else if (typeof branchRec === 'object' && branchRec !== null) {
+          if (branchRec.attended) {
+            status = 'ATTENDED';
+            time = branchRec.time || 'Đã xác nhận';
+          } else {
+            status = 'ABSENT';
+            time = branchRec.time || 'Vừa xong';
+            reason = branchRec.reason || 'Báo vắng';
+          }
         }
-      });
-    } else {
-      totalAssigned = 10;
-      // Default initial mock distribution for initial presentation
-      const lastDigit = parseInt(branch.id.replace('ap-', '')) || 1;
-      if (lastDigit % 5 === 0) attendedCount = 7; // 70%
-      else if (lastDigit % 7 === 0) attendedCount = 4; // 40%
-      else if (lastDigit % 3 === 0) attendedCount = 8; // 85%
-      else attendedCount = 10; // 100%
-    }
+      } else {
+        const matchConf = confirmedList.find(c => c.branch === branch.name);
+        const matchAbs = absentList.find(a => a.branch === branch.name);
+
+        if (matchConf) {
+          status = 'ATTENDED';
+          time = matchConf.time || 'Đã xác nhận';
+        } else if (matchAbs) {
+          status = 'ABSENT';
+          time = matchAbs.time || 'Vừa xong';
+          reason = matchAbs.reason || 'Báo vắng';
+        }
+      }
+
+      if (status === 'ATTENDED') attendedCount += 1;
+      else if (status === 'ABSENT') absentCount += 1;
+      else unrespondedCount += 1;
+
+      return {
+        id: act.id,
+        title: act.title,
+        day: act.day,
+        month: act.month,
+        year: act.year,
+        timeStr: act.time,
+        location: act.location,
+        status,
+        time,
+        reason
+      };
+    });
 
     const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : 100;
     const rating = calculateBranchRating(percentage);
@@ -1215,7 +1268,10 @@ export function ReportsView({
       ...branch,
       clusterName,
       attendedCount,
+      absentCount,
+      unrespondedCount,
       totalAssigned,
+      activityDetailsList,
       percentage,
       rating
     };
@@ -1226,6 +1282,8 @@ export function ReportsView({
     const matchesSearch = b.name.toLowerCase().includes(searchKeyword.toLowerCase()) || b.secretary_name.toLowerCase().includes(searchKeyword.toLowerCase());
     return matchesCluster && matchesSearch;
   });
+
+  const activeBranchDetail = selectedBranchDetail ? branchStats.find(b => b.name === selectedBranchDetail.name) : null;
 
   const countExcellent = branchStats.filter(b => b.percentage >= 90).length;
   const countGood = branchStats.filter(b => b.percentage >= 80 && b.percentage < 90).length;
@@ -1242,7 +1300,7 @@ export function ReportsView({
             Báo cáo Thống kê & Đánh giá Thi đua 30 Chi đoàn Ấp
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Hệ thống tính toán tỷ lệ % tham gia hoạt động, kiểm tra điểm danh và xếp loại nhiệm vụ khách quan.
+            Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành.
           </div>
         </div>
 
@@ -1385,15 +1443,19 @@ export function ReportsView({
               <th>Hoạt động tham gia</th>
               <th style={{ width: '180px' }}>Tỷ lệ % tham gia</th>
               <th>Kết quả Xếp loại</th>
-              {isDoanXa && <th className="text-end">Thao tác</th>}
+              <th className="text-end">Chi tiết Hoạt động</th>
             </tr>
           </thead>
           <tbody>
             {filteredBranchStats.map((item, index) => (
-              <tr key={item.id}>
+              <tr 
+                key={item.id} 
+                className="cursor-pointer hover-bg-light transition"
+                onClick={() => setSelectedBranchDetail(item)}
+              >
                 <td className="fw-bold text-muted" style={{ fontSize: '12px' }}>{index + 1}</td>
                 <td>
-                  <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>{item.name}</div>
+                  <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
                   <div className="text-muted" style={{ fontSize: '11px' }}>{item.code}</div>
                 </td>
                 <td>
@@ -1405,10 +1467,17 @@ export function ReportsView({
                   {item.secretary_name}
                 </td>
                 <td>
-                  <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-                    {item.attendedCount} / {item.totalAssigned}
-                  </span>
-                  <span className="text-muted ms-1" style={{ fontSize: '11px' }}>HĐ</span>
+                  <div className="d-flex flex-column gap-0.5">
+                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                      {item.attendedCount} / {item.totalAssigned} HĐ
+                    </span>
+                    <div className="d-flex align-items-center gap-1.5" style={{ fontSize: '11px' }}>
+                      <span className="text-success fw-semibold">✓ {item.attendedCount} tham gia</span>
+                      {item.absentCount > 0 && (
+                        <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
+                      )}
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <div className="d-flex align-items-center gap-2">
@@ -1433,24 +1502,197 @@ export function ReportsView({
                     <span>{item.rating.label}</span>
                   </span>
                 </td>
-                {isDoanXa && (
-                  <td className="text-end">
-                    <button 
-                      className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1"
-                      style={{ fontSize: '11px', borderRadius: '6px' }}
-                      onClick={onOpenAttendanceModal}
-                      title="Điểm danh cho Chi đoàn này"
-                    >
-                      <CheckCircle2 size={13} />
-                      <span>Điểm danh</span>
-                    </button>
-                  </td>
-                )}
+                <td className="text-end">
+                  <button 
+                    type="button"
+                    className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
+                    style={{ fontSize: '11.5px' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBranchDetail(item);
+                    }}
+                    title="Xem chi tiết từng hoạt động tham gia / vắng kèm lý do"
+                  >
+                    <FileText size={13} />
+                    <span>Xem chi tiết</span>
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Modal Chi Tiết Thống Kê Hoạt Động & Lý Do Vắng Mặt Của Chi Đoàn */}
+      {activeBranchDetail && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-50" 
+          style={{ zIndex: 1070 }}
+          onClick={() => setSelectedBranchDetail(null)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered modal-lg shadow-lg" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 rounded-4">
+              <div className="modal-header border-bottom pb-3">
+                <div>
+                  <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
+                    <BarChart2 className="text-primary" size={22} />
+                    Báo cáo Chi tiết Hoạt động - {activeBranchDetail.name}
+                  </h5>
+                  <div className="text-secondary mt-0.5" style={{ fontSize: '12px' }}>
+                    Bí thư: <strong>{activeBranchDetail.secretary_name}</strong> • 🏆 <strong>{activeBranchDetail.clusterName}</strong>
+                  </div>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setSelectedBranchDetail(null)}></button>
+              </div>
+
+              <div className="modal-body p-4">
+                {/* Metric Summary Cards */}
+                <div className="row g-2 mb-4">
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-primary-subtle bg-opacity-30 border border-primary-subtle rounded-3 text-center">
+                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>TỔNG SỐ HĐ BAN HÀNH</div>
+                      <div className="fw-extrabold text-primary" style={{ fontSize: '20px' }}>{activeBranchDetail.totalAssigned} HĐ</div>
+                    </div>
+                  </div>
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-success-subtle bg-opacity-30 border border-success-subtle rounded-3 text-center">
+                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>ĐÃ XÁC NHẬN THAM GIA</div>
+                      <div className="fw-extrabold text-success" style={{ fontSize: '20px' }}>{activeBranchDetail.attendedCount} HĐ</div>
+                    </div>
+                  </div>
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-danger-subtle bg-opacity-30 border border-danger-subtle rounded-3 text-center">
+                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>BÁO VẮNG MẶT</div>
+                      <div className="fw-extrabold text-danger" style={{ fontSize: '20px' }}>{activeBranchDetail.absentCount} HĐ</div>
+                    </div>
+                  </div>
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-light border rounded-3 text-center">
+                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>TỶ LỆ % THAM GIA</div>
+                      <div className="fw-extrabold" style={{ fontSize: '20px', color: activeBranchDetail.rating.color }}>
+                        {activeBranchDetail.percentage}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating Badge */}
+                <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 border mb-3 flex-wrap gap-2">
+                  <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                    📊 Kết quả Đánh giá Thi đua:
+                  </span>
+                  <span className={`badge ${activeBranchDetail.rating.badgeClass} border px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '12.5px', fontWeight: 700 }}>
+                    <span>{activeBranchDetail.rating.icon}</span>
+                    <span>{activeBranchDetail.rating.label}</span>
+                  </span>
+                </div>
+
+                {/* Detailed Activities List */}
+                <h6 className="fw-bold text-dark mb-2.5 d-flex align-items-center justify-content-between" style={{ fontSize: '13.5px' }}>
+                  <span>📋 Danh sách từng Hoạt động do Quản trị viên ban hành:</span>
+                  <span className="badge bg-secondary text-white" style={{ fontSize: '11px' }}>
+                    {activeBranchDetail.activityDetailsList.length} Hoạt động
+                  </span>
+                </h6>
+
+                {activeBranchDetail.activityDetailsList.length === 0 ? (
+                  <div className="p-4 bg-light border rounded-3 text-center text-muted" style={{ fontSize: '12.5px' }}>
+                    Chưa có hoạt động nào được ban hành cho Chi đoàn này.
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-2.5" style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                    {activeBranchDetail.activityDetailsList.map((act) => (
+                      <div 
+                        key={act.id} 
+                        className={`p-3 rounded-3 border ${
+                          act.status === 'ATTENDED' 
+                            ? 'bg-success-subtle bg-opacity-15 border-success-subtle' 
+                            : act.status === 'ABSENT' 
+                              ? 'bg-danger-subtle bg-opacity-15 border-danger-subtle' 
+                              : 'bg-light border'
+                        }`}
+                      >
+                        <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-1.5">
+                          <div>
+                            <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>📌 {act.title}</div>
+                            <div className="text-secondary d-flex align-items-center gap-3 mt-1" style={{ fontSize: '11.5px' }}>
+                              <span>⏰ {act.timeStr} ({act.day}/{act.month}/{act.year})</span>
+                              <span>📍 {act.location}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            {act.status === 'ATTENDED' ? (
+                              <span className="badge bg-success text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                                <CheckCircle2 size={13} />
+                                <span>Đã tham gia ({act.time})</span>
+                              </span>
+                            ) : act.status === 'ABSENT' ? (
+                              <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                                <XCircle size={13} />
+                                <span>Báo vắng ({act.time})</span>
+                              </span>
+                            ) : (
+                              <span className="badge bg-secondary text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                                <Clock size={13} />
+                                <span>Chưa phản hồi</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Reason Box if ABSENT */}
+                        {act.status === 'ABSENT' && (
+                          <div className="mt-2 p-2 bg-white rounded border border-danger-subtle text-danger-emphasis" style={{ fontSize: '12px' }}>
+                            <strong>💬 Lý do vắng mặt:</strong> {act.reason || 'Không ghi rõ lý do'}
+                          </div>
+                        )}
+
+                        {/* Admin Action Toggle */}
+                        {isDoanXa && onRespondAttendance && (
+                          <div className="mt-2.5 pt-2 border-top d-flex align-items-center justify-content-end gap-2">
+                            <span className="text-muted me-auto" style={{ fontSize: '11px' }}>Thao tác Điểm danh Admin:</span>
+                            <button 
+                              type="button" 
+                              className={`btn btn-xs ${act.status === 'ATTENDED' ? 'btn-success text-white' : 'btn-outline-success'} fw-semibold px-2 py-1`}
+                              style={{ fontSize: '11px' }}
+                              onClick={() => onRespondAttendance(act.id, activeBranchDetail.name, true, '', act.title)}
+                            >
+                              ✓ Điểm danh Tham gia
+                            </button>
+                            <button 
+                              type="button" 
+                              className={`btn btn-xs ${act.status === 'ABSENT' ? 'btn-danger text-white' : 'btn-outline-danger'} fw-semibold px-2 py-1`}
+                              style={{ fontSize: '11px' }}
+                              onClick={() => {
+                                const reason = prompt('Nhập lý do vắng mặt cho Chi đoàn:', act.reason || 'Vắng có lý do');
+                                if (reason !== null) {
+                                  onRespondAttendance(act.id, activeBranchDetail.name, false, reason || 'Báo vắng', act.title);
+                                }
+                              }}
+                            >
+                              ✕ Điểm danh Báo vắng
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer border-top pt-2">
+                <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={() => setSelectedBranchDetail(null)}>
+                  Đóng cửa sổ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

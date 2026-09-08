@@ -785,6 +785,7 @@ export default function App() {
               activities={userActivities}
               attendanceRecords={attendanceRecords}
               onOpenAttendanceModal={() => setShowAttendanceModal(true)}
+              onRespondAttendance={handleRespondAttendance}
               isDoanXa={isDoanXa}
             />
           ) : activeTab === 'storage' ? (

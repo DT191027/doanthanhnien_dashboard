@@ -31,7 +31,7 @@ import {
   Edit3,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên

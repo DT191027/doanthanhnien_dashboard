@@ -47,6 +47,9 @@ export default function Sidebar({
     { id: 'branch_tasks', label: 'Công việc của chi đoàn', icon: CheckSquare },
     { id: 'notifications', label: 'Thông báo', icon: Bell },
     { id: 'submission_history', label: 'Lịch sử nộp văn bản', icon: FileSpreadsheet },
+    { id: 'reports', label: 'Báo cáo thống kê', icon: BarChart2 },
+    { id: 'storage', label: 'Lưu trữ văn bản', icon: Folder },
+    { id: 'settings', label: 'Cài đặt hệ thống', icon: Settings },
     { id: 'contact', label: 'Liên hệ Đoàn xã', icon: PhoneCall },
   ];
 

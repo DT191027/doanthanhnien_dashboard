@@ -230,14 +230,14 @@ export function notifySyncEvent(type, payload) {
 // Precise Target Unit Filtering Helper for 30 Chi đoàn Ấp and Cụm thi đua
 export function isItemTargetedToUser(targetScope, currentUser) {
   if (!currentUser) return true;
-  if (currentUser.role === 'doan_xa') return true; // Administrator sees all items
+  if (currentUser.role === 'doan_xa' || currentUser.role === 'admin') return true;
 
   if (!targetScope) return true;
 
   const userBranch = String(currentUser?.branch_name || currentUser?.full_name || currentUser?.title || '');
   if (!userBranch) return true;
 
-  const cleanUserBranch = typeof userBranch === 'string' ? userBranch.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim() : '';
+  const cleanUserBranch = userBranch.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
 
   // Handle Array of target scopes (when multiple units are selected)
   if (Array.isArray(targetScope)) {
@@ -246,10 +246,12 @@ export function isItemTargetedToUser(targetScope, currentUser) {
     }
     return targetScope.some(scope => {
       if (typeof scope !== 'string') return false;
+      const cleanScope = scope.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
       return scope === userBranch || 
         scope.includes(userBranch) || 
         userBranch.includes(scope) || 
-        (cleanUserBranch && scope.includes(cleanUserBranch));
+        (cleanUserBranch && scope.includes(cleanUserBranch)) ||
+        (cleanUserBranch && cleanScope && (cleanScope.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScope)));
     });
   }
 
@@ -260,12 +262,15 @@ export function isItemTargetedToUser(targetScope, currentUser) {
     return true;
   }
 
+  const cleanScopeStr = scopeStr.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+
   // 1. Direct match with branch name or code
   if (
     scopeStr === userBranch || 
     scopeStr.includes(userBranch) || 
     userBranch.includes(scopeStr) || 
-    (cleanUserBranch && scopeStr.includes(cleanUserBranch))
+    (cleanUserBranch && scopeStr.includes(cleanUserBranch)) ||
+    (cleanUserBranch && cleanScopeStr && (cleanScopeStr.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScopeStr)))
   ) {
     return true;
   }
@@ -279,12 +284,14 @@ export function isItemTargetedToUser(targetScope, currentUser) {
       scopeStr.includes(c.name)
     );
     if (cluster) {
-      const isInCluster = cluster.branches.some(b => 
-        b === userBranch || 
-        b.includes(userBranch) || 
-        userBranch.includes(b) || 
-        (cleanUserBranch && b.includes(cleanUserBranch))
-      );
+      const isInCluster = cluster.branches.some(b => {
+        const cleanB = b.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+        return b === userBranch || 
+          b.includes(userBranch) || 
+          userBranch.includes(b) || 
+          (cleanUserBranch && b.includes(cleanUserBranch)) ||
+          (cleanUserBranch && cleanB && cleanB === cleanUserBranch);
+      });
       if (isInCluster) return true;
     }
   }

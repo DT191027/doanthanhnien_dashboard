@@ -108,20 +108,20 @@ export default function QuickActions({
       onClick: onOpenSubmitDoc
     },
     { 
-      id: 'branch-tasks', 
-      title: 'Công việc chi đoàn', 
-      icon: CheckSquare, 
-      color: '#059669', 
-      bgColor: '#D1FAE5',
-      onClick: () => setActiveTab('branch_tasks')
+      id: 'reports', 
+      title: 'Báo cáo thống kê', 
+      icon: BarChart2, 
+      color: '#7C3AED', 
+      bgColor: '#F5F3FF',
+      onClick: () => setActiveTab('reports')
     },
     { 
-      id: 'contact-dx', 
-      title: 'Liên hệ Đoàn xã', 
-      icon: PhoneCall, 
-      color: '#D97706', 
-      bgColor: '#FEF3C7',
-      onClick: () => setActiveTab('contact')
+      id: 'settings', 
+      title: 'Cài đặt hệ thống', 
+      icon: Settings, 
+      color: '#059669', 
+      bgColor: '#D1FAE5',
+      onClick: () => setActiveTab('settings')
     }
   ];
 

@@ -903,8 +903,10 @@ export async function syncDeleteTask(taskId) {
 // ============================================================================
 
 export function getBranchClusterName(branchName) {
+  if (!branchName || typeof branchName !== 'string') return 'Chưa phân cụm';
+  const cleanName = branchName.replace('Chi đoàn Ấp ', '');
   const cluster = COMPETITION_CLUSTERS.find(c => 
-    c.branches.some(b => b === branchName || b.includes(branchName.replace('Chi đoàn Ấp ', '')))
+    c.branches && c.branches.some(b => typeof b === 'string' && (b === branchName || b.includes(cleanName)))
   );
   return cluster ? cluster.name : 'Chưa phân cụm';
 }

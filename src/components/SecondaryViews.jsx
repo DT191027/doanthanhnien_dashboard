@@ -1187,7 +1187,9 @@ export function ReportsView({
 
   // Calculate participation & evaluation rating per Hamlet branch dynamically based on activities issued by Admin
   const branchStats = (INITIAL_BRANCHES || []).map(branch => {
-    const clusterName = getBranchClusterName(branch.name);
+    if (!branch) return null;
+    const branchName = branch.name || '';
+    const clusterName = getBranchClusterName(branchName);
 
     let attendedCount = 0;
     let absentCount = 0;
@@ -1195,7 +1197,7 @@ export function ReportsView({
     let totalAssigned = 0;
 
     const assignedActivities = safeActivities.filter(act => 
-      act && isItemTargetedToUser(act.assigned_to, { role: 'chi_doan', branch_name: branch.name })
+      act && isItemTargetedToUser(act.assigned_to, { role: 'chi_doan', branch_name: branchName })
     );
 
     totalAssigned = assignedActivities.length;
@@ -1205,7 +1207,7 @@ export function ReportsView({
       const actAttendance = (attendanceRecords && act.id) 
         ? (attendanceRecords[act.id] || attendanceRecords[String(act.id)] || {}) 
         : {};
-      const branchRec = actAttendance[branch.name];
+      const branchRec = actAttendance[branchName];
 
       const confirmedList = Array.isArray(act.confirmedBy) ? act.confirmedBy : [];
       const absentList = Array.isArray(act.absentBy) ? act.absentBy : [];
@@ -1218,7 +1220,7 @@ export function ReportsView({
         if (typeof branchRec === 'boolean') {
           if (branchRec) {
             status = 'ATTENDED';
-            const matchConf = confirmedList.find(c => c && c.branch === branch.name);
+            const matchConf = confirmedList.find(c => c && c.branch === branchName);
             time = matchConf?.time || 'Đã xác nhận';
           } else {
             status = 'ABSENT';
@@ -1235,8 +1237,8 @@ export function ReportsView({
           }
         }
       } else {
-        const matchConf = confirmedList.find(c => c && c.branch === branch.name);
-        const matchAbs = absentList.find(a => a && a.branch === branch.name);
+        const matchConf = confirmedList.find(c => c && c.branch === branchName);
+        const matchAbs = absentList.find(a => a && a.branch === branchName);
 
         if (matchConf) {
           status = 'ATTENDED';
@@ -1267,10 +1269,13 @@ export function ReportsView({
     }).filter(Boolean);
 
     const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : 100;
-    const rating = calculateBranchRating(percentage);
+    const rating = calculateBranchRating(percentage) || calculateBranchRating(100);
 
     return {
       ...branch,
+      id: branch.id || branchName,
+      name: branchName,
+      secretary_name: branch.secretary_name || 'Bí thư Chi đoàn',
       clusterName,
       attendedCount,
       absentCount,
@@ -1280,20 +1285,24 @@ export function ReportsView({
       percentage,
       rating
     };
-  });
+  }).filter(Boolean);
 
   const filteredBranchStats = branchStats.filter(b => {
+    if (!b) return false;
     const matchesCluster = selectedCluster === 'ALL' || b.clusterName === selectedCluster;
-    const matchesSearch = b.name.toLowerCase().includes(searchKeyword.toLowerCase()) || b.secretary_name.toLowerCase().includes(searchKeyword.toLowerCase());
+    const nameStr = String(b.name || '').toLowerCase();
+    const secStr = String(b.secretary_name || '').toLowerCase();
+    const kw = String(searchKeyword || '').toLowerCase();
+    const matchesSearch = nameStr.includes(kw) || secStr.includes(kw);
     return matchesCluster && matchesSearch;
   });
 
-  const activeBranchDetail = selectedBranchDetail ? branchStats.find(b => b.name === selectedBranchDetail.name) : null;
+  const activeBranchDetail = selectedBranchDetail ? branchStats.find(b => b && b.name === selectedBranchDetail.name) : null;
 
-  const countExcellent = branchStats.filter(b => b.percentage >= 90).length;
-  const countGood = branchStats.filter(b => b.percentage >= 80 && b.percentage < 90).length;
-  const countFair = branchStats.filter(b => b.percentage >= 50 && b.percentage < 80).length;
-  const countFailed = branchStats.filter(b => b.percentage < 50).length;
+  const countExcellent = branchStats.filter(b => b && b.percentage >= 90).length;
+  const countGood = branchStats.filter(b => b && b.percentage >= 80 && b.percentage < 90).length;
+  const countFair = branchStats.filter(b => b && b.percentage >= 50 && b.percentage < 80).length;
+  const countFailed = branchStats.filter(b => b && b.percentage < 50).length;
 
   return (
     <div className="content-card">
@@ -1452,78 +1461,86 @@ export function ReportsView({
             </tr>
           </thead>
           <tbody>
-            {filteredBranchStats.map((item, index) => (
-              <tr 
-                key={item.id} 
-                className="cursor-pointer hover-bg-light transition"
-                onClick={() => setSelectedBranchDetail(item)}
-              >
-                <td className="fw-bold text-muted" style={{ fontSize: '12px' }}>{index + 1}</td>
-                <td>
-                  <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
-                  <div className="text-muted" style={{ fontSize: '11px' }}>{item.code}</div>
-                </td>
-                <td>
-                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
-                    🏆 {item.clusterName}
-                  </span>
-                </td>
-                <td className="text-dark" style={{ fontSize: '12.5px' }}>
-                  {item.secretary_name}
-                </td>
-                <td>
-                  <div className="d-flex flex-column gap-0.5">
-                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-                      {item.attendedCount} / {item.totalAssigned} HĐ
-                    </span>
-                    <div className="d-flex align-items-center gap-1.5" style={{ fontSize: '11px' }}>
-                      <span className="text-success fw-semibold">✓ {item.attendedCount} tham gia</span>
-                      {item.absentCount > 0 && (
-                        <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div className="d-flex align-items-center gap-2">
-                    <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
-                      <div 
-                        className="progress-bar transition" 
-                        role="progressbar" 
-                        style={{ 
-                          width: `${item.percentage}%`,
-                          backgroundColor: item.rating.color 
-                        }}
-                      ></div>
-                    </div>
-                    <span className="fw-bold" style={{ fontSize: '12px', color: item.rating.color, minWidth: '38px' }}>
-                      {item.percentage}%
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <span className={`badge ${item.rating.badgeClass} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
-                    <span>{item.rating.icon}</span>
-                    <span>{item.rating.label}</span>
-                  </span>
-                </td>
-                <td className="text-end">
-                  <button 
-                    type="button"
-                    className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
-                    style={{ fontSize: '11.5px' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBranchDetail(item);
-                    }}
-                    title="Xem chi tiết từng hoạt động tham gia / vắng kèm lý do"
-                  >
-                    <FileText size={13} />
-                    <span>Xem chi tiết</span>
-                  </button>
+            {filteredBranchStats.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center py-4 text-muted" style={{ fontSize: '13px' }}>
+                  Không tìm thấy Chi đoàn nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredBranchStats.map((item, index) => (
+                <tr 
+                  key={item.id || index} 
+                  className="cursor-pointer hover-bg-light transition"
+                  onClick={() => setSelectedBranchDetail(item)}
+                >
+                  <td className="fw-bold text-muted" style={{ fontSize: '12px' }}>{index + 1}</td>
+                  <td>
+                    <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
+                    <div className="text-muted" style={{ fontSize: '11px' }}>{item.code}</div>
+                  </td>
+                  <td>
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
+                      🏆 {item.clusterName}
+                    </span>
+                  </td>
+                  <td className="text-dark" style={{ fontSize: '12.5px' }}>
+                    {item.secretary_name}
+                  </td>
+                  <td>
+                    <div className="d-flex flex-column gap-0.5">
+                      <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                        {item.attendedCount} / {item.totalAssigned} HĐ
+                      </span>
+                      <div className="d-flex align-items-center gap-1.5" style={{ fontSize: '11px' }}>
+                        <span className="text-success fw-semibold">✓ {item.attendedCount} tham gia</span>
+                        {item.absentCount > 0 && (
+                          <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
+                        <div 
+                          className="progress-bar transition" 
+                          role="progressbar" 
+                          style={{ 
+                            width: `${item.percentage}%`,
+                            backgroundColor: item.rating?.color || '#0066FF'
+                          }}
+                        ></div>
+                      </div>
+                      <span className="fw-bold" style={{ fontSize: '12px', color: item.rating?.color || '#0066FF', minWidth: '38px' }}>
+                        {item.percentage}%
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${item.rating?.badgeClass || 'bg-light text-dark'} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      <span>{item.rating?.icon || '📊'}</span>
+                      <span>{item.rating?.label || 'Hoàn thành'}</span>
+                    </span>
+                  </td>
+                  <td className="text-end">
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
+                      style={{ fontSize: '11.5px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBranchDetail(item);
+                      }}
+                      title="Xem chi tiết từng hoạt động tham gia / vắng kèm lý do"
+                    >
+                      <FileText size={13} />
+                      <span>Xem chi tiết</span>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

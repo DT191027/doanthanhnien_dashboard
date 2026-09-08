@@ -832,6 +832,46 @@ export default function App() {
                 ))}
               </div>
             </div>
+          ) : activeTab === 'contact' ? (
+            /* CONTACT VIEW FOR CHI DOAN */
+            <div className="content-card">
+              <h3 className="card-title-header mb-3 d-flex align-items-center gap-2">
+                <span className="text-primary" style={{ fontSize: '20px' }}>📞</span>
+                Thông tin Liên hệ Ban Thường vụ Đoàn xã Xuân Thới Sơn
+              </h3>
+              <div className="p-4 bg-light rounded-3 border mb-4">
+                <div className="fw-bold text-primary mb-2" style={{ fontSize: '15px' }}>🏛️ Trụ sở làm việc:</div>
+                <div className="text-dark mb-3" style={{ fontSize: '13px' }}>
+                  {OFFICIAL_ADDRESS}
+                </div>
+                <div className="row g-3">
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 bg-white rounded-3 border">
+                      <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>👤 Bí thư Đoàn xã</div>
+                      <div className="text-primary fw-semibold mt-1" style={{ fontSize: '13px' }}>Đồng chí Nguyễn Văn A</div>
+                      <div className="text-secondary mt-1" style={{ fontSize: '12px' }}>📱 Hotline: 090x.xxx.xxx</div>
+                      <div className="text-secondary" style={{ fontSize: '12px' }}>✉️ doanxa@xuanthoison.gov.vn</div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 bg-white rounded-3 border">
+                      <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>👤 Phó Bí thư Đoàn xã</div>
+                      <div className="text-primary fw-semibold mt-1" style={{ fontSize: '13px' }}>Đồng chí Trần Thị B</div>
+                      <div className="text-secondary mt-1" style={{ fontSize: '12px' }}>📱 Hotline: 091x.xxx.xxx</div>
+                      <div className="text-secondary" style={{ fontSize: '12px' }}>✉️ phobithu@xuanthoison.gov.vn</div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 bg-white rounded-3 border">
+                      <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>🎧 Bộ phận Hỗ trợ Kỹ thuật</div>
+                      <div className="text-primary fw-semibold mt-1" style={{ fontSize: '13px' }}>Văn phòng Đoàn xã</div>
+                      <div className="text-secondary mt-1" style={{ fontSize: '12px' }}>📱 Tổng đài: (028) 38xx.xxxx</div>
+                      <div className="text-secondary" style={{ fontSize: '12px' }}>⏰ Giờ làm việc: 07:30 - 17:00</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             /* FALLBACK DEFAULT VIEW */
             <div className="content-card p-5 text-center">

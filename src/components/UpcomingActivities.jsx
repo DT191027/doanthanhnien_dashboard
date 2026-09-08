@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, MapPin, Calendar, Plus } from 'lucide-react';
+import { getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 
 export default function UpcomingActivities({ activities = [], setActiveTab, onOpenCreateActivity, onOpenActivityDetail }) {
   return (
@@ -36,44 +37,51 @@ export default function UpcomingActivities({ activities = [], setActiveTab, onOp
         </div>
       ) : (
         <div className="d-flex flex-column gap-3">
-          {activities.map((act) => (
-            <div 
-              key={act.id}
-              className="p-2 rounded-3 bg-light border d-flex align-items-center justify-content-between cursor-pointer hover-bg-white transition"
-              onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
-            >
-              <div className="d-flex align-items-center gap-3">
-                <div className="activity-date-badge">
-                  <div className="activity-date-num">{act.day}</div>
-                  <div className="activity-date-month">{act.month}</div>
+          {activities.map((act) => {
+            const priorityBadge = getPriorityBadgeStyle(act.priority);
+            const timeStatus = getActivityTimeStatus(act);
+            return (
+              <div 
+                key={act.id}
+                className="p-2 rounded-3 bg-light border d-flex align-items-center justify-content-between cursor-pointer hover-bg-white transition flex-wrap gap-2"
+                onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div className="activity-date-badge flex-shrink-0">
+                    <div className="activity-date-num">{act.day}</div>
+                    <div className="activity-date-month">{act.month}</div>
+                  </div>
+                  <div>
+                    <div className="fw-bold text-primary mb-1" style={{ fontSize: '13.5px' }}>
+                      {act.title}
+                    </div>
+                    <div className="d-flex align-items-center gap-3 text-secondary" style={{ fontSize: '11.5px' }}>
+                      <span className="d-flex align-items-center gap-1"><Clock size={13} /> {act.time}</span>
+                      <span className="d-flex align-items-center gap-1"><MapPin size={13} /> {act.location}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="fw-bold text-primary mb-1" style={{ fontSize: '13.5px' }}>
-                    {act.title}
-                  </div>
-                  <div className="d-flex align-items-center gap-3 text-secondary" style={{ fontSize: '11.5px' }}>
-                    <span className="d-flex align-items-center gap-1"><Clock size={13} /> {act.time}</span>
-                    <span className="d-flex align-items-center gap-1"><MapPin size={13} /> {act.location}</span>
-                  </div>
+                <div className="d-flex align-items-center gap-1.5 ms-auto flex-wrap justify-content-end">
+                  <span className={`badge ${priorityBadge.bg} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                    {priorityBadge.label}
+                  </span>
+                  <span className={`badge ${timeStatus.badgeClass} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                    {timeStatus.statusText}
+                  </span>
+                  <button 
+                    className="btn btn-sm btn-outline-primary fw-semibold px-2 py-1"
+                    style={{ fontSize: '11px' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenActivityDetail && onOpenActivityDetail(act);
+                    }}
+                  >
+                    Chi tiết
+                  </button>
                 </div>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  {act.status}
-                </span>
-                <button 
-                  className="btn btn-sm btn-outline-primary fw-semibold px-2 py-1"
-                  style={{ fontSize: '11px' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenActivityDetail && onOpenActivityDetail(act);
-                  }}
-                >
-                  Chi tiết
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

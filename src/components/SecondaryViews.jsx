@@ -230,7 +230,12 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
   const sortedActivities = sortActivitiesByPriority(cleanActivities);
 
   const filtered = sortedActivities.filter(a => {
-    const matchFilter = filter === 'ALL' || a.status === filter;
+    const timeStatus = getActivityTimeStatus(a);
+    let matchFilter = true;
+    if (filter === 'ONGOING') matchFilter = timeStatus.code === 'ONGOING';
+    else if (filter === 'UPCOMING') matchFilter = timeStatus.code === 'UPCOMING' || timeStatus.code === 'FUTURE_DATE';
+    else if (filter === 'FINISHED') matchFilter = timeStatus.code === 'FINISHED' || a.status === 'Đã hoàn thành';
+
     const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || 
                         (a.location && a.location.toLowerCase().includes(search.toLowerCase()));
     return matchFilter && matchSearch;
@@ -263,7 +268,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
 
       {/* Filter and Search Bar */}
       <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <button 
             className={`btn btn-sm ${filter === 'ALL' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
             onClick={() => setFilter('ALL')}
@@ -271,16 +276,22 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
             Tất cả ({activities.length})
           </button>
           <button 
-            className={`btn btn-sm ${filter === 'Sắp diễn ra' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
-            onClick={() => setFilter('Sắp diễn ra')}
+            className={`btn btn-sm ${filter === 'ONGOING' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
+            onClick={() => setFilter('ONGOING')}
           >
-            Sắp diễn ra ({activities.filter(a => a.status === 'Sắp diễn ra').length})
+            ⚡ Đang diễn ra ({activities.filter(a => getActivityTimeStatus(a).code === 'ONGOING').length})
           </button>
           <button 
-            className={`btn btn-sm ${filter === 'Đã hoàn thành' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
-            onClick={() => setFilter('Đã hoàn thành')}
+            className={`btn btn-sm ${filter === 'UPCOMING' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
+            onClick={() => setFilter('UPCOMING')}
           >
-            Đã hoàn thành ({activities.filter(a => a.status === 'Đã hoàn thành').length})
+            ⏳ Sắp diễn ra ({activities.filter(a => ['UPCOMING', 'FUTURE_DATE'].includes(getActivityTimeStatus(a).code)).length})
+          </button>
+          <button 
+            className={`btn btn-sm ${filter === 'FINISHED' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3`}
+            onClick={() => setFilter('FINISHED')}
+          >
+            ✓ Đã kết thúc ({activities.filter(a => getActivityTimeStatus(a).code === 'FINISHED' || a.status === 'Đã hoàn thành').length})
           </button>
         </div>
 
@@ -317,6 +328,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
         <div className="row g-3">
           {filtered.map((act) => {
             const priorityBadge = getPriorityBadgeStyle(act.priority);
+            const timeStatus = getActivityTimeStatus(act);
             return (
               <div key={act.id} className="col-12 col-md-6 col-xl-4">
                 <div className="p-3.5 rounded-3 bg-light border h-100 d-flex flex-column justify-content-between hover-shadow transition">
@@ -326,12 +338,12 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                         <div className="activity-date-num">{act.day}</div>
                         <div className="activity-date-month">{act.month}</div>
                       </div>
-                      <div className="d-flex align-items-center gap-1">
+                      <div className="d-flex align-items-center gap-1 flex-wrap justify-content-end">
                         <span className={`badge ${priorityBadge.bg} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
                           {priorityBadge.label}
                         </span>
-                        <span className={`badge ${act.status === 'Đã hoàn thành' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-subtle text-primary border-primary-subtle'} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
-                          {act.status}
+                        <span className={`badge ${timeStatus.badgeClass} border px-2 py-1`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                          {timeStatus.statusText}
                         </span>
                       </div>
                     </div>

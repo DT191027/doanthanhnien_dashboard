@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY } from '../lib/supabase';
+import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 
@@ -1535,6 +1535,9 @@ export function ActivityDetailModal({
   const activityAttendance = attendanceRecords[activity.id] || {};
   const currentBranchRecord = activityAttendance[userBranchName];
   
+  const priorityBadge = getPriorityBadgeStyle(activity.priority);
+  const timeStatus = getActivityTimeStatus(activity);
+
   const hasAttended = typeof currentBranchRecord === 'boolean' 
     ? currentBranchRecord 
     : (currentBranchRecord?.attended !== undefined ? currentBranchRecord.attended : null);
@@ -1603,9 +1606,12 @@ export function ActivityDetailModal({
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
                   📌 Phân công: {activity.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}
                 </span>
-                <div className="d-flex align-items-center gap-2">
-                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
-                    {activity.status || 'Sắp diễn ra'}
+                <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                  <span className={`badge ${priorityBadge.bg} border px-2.5 py-1 fw-bold`} style={{ fontSize: '11.5px' }}>
+                    {priorityBadge.label}
+                  </span>
+                  <span className={`badge ${timeStatus.badgeClass} border px-2.5 py-1 fw-bold`} style={{ fontSize: '11.5px' }}>
+                    {timeStatus.statusText}
                   </span>
                   <ReceiptConfirmationBox 
                     type="activity" 

@@ -322,9 +322,130 @@ export function setPersistedData(key, data) {
 }
 
 // ============================================================================
+// Real-time Dynamic Activity Time & Status Calculation Helper
+export function getActivityTimeStatus(act) {
+  if (!act) return { statusText: 'Chưa xác định', badgeClass: 'bg-secondary text-white', code: 'UNKNOWN' };
+
+  if (act.status === 'Đã hoàn thành') {
+    return {
+      statusText: 'Đã kết thúc',
+      badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle',
+      code: 'FINISHED'
+    };
+  }
+
+  const now = new Date();
+  
+  let year = parseInt(act.year, 10);
+  let month = parseInt(act.month, 10);
+  let day = parseInt(act.day, 10);
+
+  if (act.dateIso && (!year || !month || !day)) {
+    const parts = String(act.dateIso).split('T')[0].split('-');
+    if (parts.length === 3) {
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    }
+  }
+
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+
+  if (!year) year = currentYear;
+  if (!month) month = currentMonth;
+  if (!day) day = currentDay;
+
+  let startHour = 8, startMin = 0;
+  let endHour = 11, endMin = 30;
+
+  if (act.time && typeof act.time === 'string' && act.time.includes('-')) {
+    const timeParts = act.time.split('-').map(s => s.trim());
+    if (timeParts[0]) {
+      const [h, m] = timeParts[0].split(':').map(Number);
+      if (!isNaN(h)) startHour = h;
+      if (!isNaN(m)) startMin = m;
+    }
+    if (timeParts[1]) {
+      const [h, m] = timeParts[1].split(':').map(Number);
+      if (!isNaN(h)) endHour = h;
+      if (!isNaN(m)) endMin = m;
+    }
+  }
+
+  const startDate = new Date(year, month - 1, day, startHour, startMin, 0);
+  const endDate = new Date(year, month - 1, day, endHour, endMin, 0);
+
+  const tomorrowStart = new Date(currentYear, currentMonth - 1, currentDay + 1, 0, 0, 0);
+  const actDayStart = new Date(year, month - 1, day, 0, 0, 0);
+
+  // 1. Past date or past time today
+  if (now > endDate) {
+    return {
+      statusText: 'Đã kết thúc',
+      badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle',
+      code: 'FINISHED'
+    };
+  }
+
+  // 2. Currently ongoing
+  if (now >= startDate && now <= endDate) {
+    return {
+      statusText: 'Đang diễn ra',
+      badgeClass: 'bg-success text-white border-success shadow-xs',
+      code: 'ONGOING'
+    };
+  }
+
+  // 3. Tomorrow or future days
+  if (actDayStart >= tomorrowStart) {
+    const dayStr = String(day).padStart(2, '0');
+    const monthStr = String(month).padStart(2, '0');
+    return {
+      statusText: `Ngày ${dayStr}/${monthStr}`,
+      badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
+      code: 'FUTURE_DATE'
+    };
+  }
+
+  // 4. Later today (same day, start time in future)
+  if (now < startDate) {
+    const diffMs = startDate.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+
+    let timeUntilStr = '';
+    if (hours > 0 && mins > 0) {
+      timeUntilStr = `Sắp diễn ra trong ${hours} tiếng ${mins} phút nữa`;
+    } else if (hours > 0) {
+      timeUntilStr = `Sắp diễn ra trong ${hours} tiếng nữa`;
+    } else if (mins > 0) {
+      timeUntilStr = `Sắp diễn ra trong ${mins} phút nữa`;
+    } else {
+      timeUntilStr = 'Sắp diễn ra';
+    }
+
+    return {
+      statusText: timeUntilStr,
+      badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
+      code: 'UPCOMING'
+    };
+  }
+
+  return {
+    statusText: 'Sắp diễn ra',
+    badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
+    code: 'UPCOMING'
+  };
+}
+
+// ============================================================================
 // 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
 // ============================================================================
 export async function syncFetchActivities() {
+  const localList = getPersistedData('activities', []);
   if (supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
@@ -334,17 +455,30 @@ export async function syncFetchActivities() {
           const day = item.day || (d ? String(d.getDate()).padStart(2, '0') : '01');
           const month = item.month || (d ? String(d.getMonth() + 1).padStart(2, '0') : '01');
           const year = item.year || (d ? d.getFullYear() : 2026);
+          const matchedLocal = localList.find(l => String(l.id) === String(item.id)) || {};
+
           return {
+            ...matchedLocal,
+            ...item,
             id: item.id,
             title: item.title,
+            priority: item.priority || matchedLocal.priority || 'Bình thường',
             day: day,
             month: month,
             year: year,
             dateIso: item.start_date || `${year}-${month}-${day}`,
-            time: `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
+            time: item.time || `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
             location: item.location || OFFICIAL_ADDRESS,
             status: item.status || 'Sắp diễn ra',
-            description: item.description || ''
+            description: item.description || matchedLocal.description || '',
+            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+            hasSubTasks: item.hasSubTasks !== undefined ? item.hasSubTasks : (matchedLocal.hasSubTasks || false),
+            subTasks: item.subTasks || matchedLocal.subTasks || [],
+            file_name: item.file_name || matchedLocal.file_name || '',
+            file_url: item.file_url || matchedLocal.file_url || '',
+            notes: item.notes || matchedLocal.notes || '',
+            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || [],
+            absentBy: item.absentBy || matchedLocal.absentBy || []
           };
         });
         const cleanMapped = deduplicateActivities(mapped);
@@ -355,7 +489,7 @@ export async function syncFetchActivities() {
       console.warn('Supabase fetch activities error, using local storage fallback:', e);
     }
   }
-  return deduplicateActivities(getPersistedData('activities', []));
+  return deduplicateActivities(localList);
 }
 
 export async function syncSaveActivity(activityItem) {
@@ -381,6 +515,7 @@ export async function syncSaveActivity(activityItem) {
 
       const { data, error } = await supabase.from('activities').insert([{
         title: activityItem.title,
+        priority: activityItem.priority || 'Bình thường',
         description: activityItem.description || '',
         start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
         start_time: startTime,
@@ -398,9 +533,8 @@ export async function syncSaveActivity(activityItem) {
     } catch (e) {
       console.error('Supabase save activity exception:', e);
     }
-    return await syncFetchActivities();
   }
-  return updatedLocal;
+  return cleanList;
 }
 
 export async function syncToggleActivityStatus(activityId, newStatus) {

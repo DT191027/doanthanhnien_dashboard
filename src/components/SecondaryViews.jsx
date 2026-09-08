@@ -1824,6 +1824,7 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
 
 // 8. Full Settings & Hybrid Storage System View
 export function SettingsView({ currentRole }) {
+  const roleObj = currentRole || { full_name: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn', email: 'doanxa@xuanthoison.gov.vn', role: 'doan_xa' };
   const [metrics, setMetrics] = useState({
     usedMb: '0.50',
     totalQuotaMb: 1024,
@@ -1908,19 +1909,19 @@ export function SettingsView({ currentRole }) {
 
             <div className="mb-2">
               <label className="text-muted" style={{ fontSize: '11px' }}>Đơn vị / Tên hiển thị</label>
-              <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>{currentRole.full_name}</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>{roleObj.full_name || 'Ban Thường vụ Đoàn xã'}</div>
             </div>
 
             <div className="mb-2">
               <label className="text-muted" style={{ fontSize: '11px' }}>Email đăng nhập</label>
-              <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>{currentRole.email}</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>{roleObj.email || 'doanxa@xuanthoison.gov.vn'}</div>
             </div>
 
             <div className="mb-2">
               <label className="text-muted" style={{ fontSize: '11px' }}>Chức vụ & Phân quyền</label>
               <div>
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2 py-1">
-                  {currentRole.role === 'doan_xa' ? 'Quản trị viên Đoàn xã' : 'Bí thư Chi đoàn Ấp'}
+                  {roleObj.role === 'doan_xa' || roleObj.role === 'admin' ? 'Quản trị viên Đoàn xã' : 'Bí thư Chi đoàn Ấp'}
                 </span>
               </div>
             </div>

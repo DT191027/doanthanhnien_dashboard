@@ -24,7 +24,7 @@ export default function Sidebar({
   mobileMenuOpen = false,
   onCloseMobile
 }) {
-  const isDoanXa = currentRole.role === 'doan_xa';
+  const isDoanXa = currentRole?.role === 'doan_xa' || currentRole?.role === 'admin' || !currentRole;
 
   const menuDoanXa = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },

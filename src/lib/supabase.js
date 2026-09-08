@@ -234,10 +234,10 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 
   if (!targetScope) return true;
 
-  const userBranch = currentUser.branch_name || currentUser.full_name || currentUser.title || '';
+  const userBranch = String(currentUser?.branch_name || currentUser?.full_name || currentUser?.title || '');
   if (!userBranch) return true;
 
-  const cleanUserBranch = userBranch.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+  const cleanUserBranch = typeof userBranch === 'string' ? userBranch.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim() : '';
 
   // Handle Array of target scopes (when multiple units are selected)
   if (Array.isArray(targetScope)) {

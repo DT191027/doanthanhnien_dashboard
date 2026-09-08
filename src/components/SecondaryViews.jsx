@@ -1183,8 +1183,10 @@ export function ReportsView({
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState(null);
 
+  const safeActivities = Array.isArray(activities) ? activities : [];
+
   // Calculate participation & evaluation rating per Hamlet branch dynamically based on activities issued by Admin
-  const branchStats = INITIAL_BRANCHES.map(branch => {
+  const branchStats = (INITIAL_BRANCHES || []).map(branch => {
     const clusterName = getBranchClusterName(branch.name);
 
     let attendedCount = 0;
@@ -1192,18 +1194,21 @@ export function ReportsView({
     let unrespondedCount = 0;
     let totalAssigned = 0;
 
-    const assignedActivities = activities.filter(act => 
-      isItemTargetedToUser(act.assigned_to, { role: 'chi_doan', branch_name: branch.name })
+    const assignedActivities = safeActivities.filter(act => 
+      act && isItemTargetedToUser(act.assigned_to, { role: 'chi_doan', branch_name: branch.name })
     );
 
     totalAssigned = assignedActivities.length;
 
     const activityDetailsList = assignedActivities.map(act => {
-      const actAttendance = attendanceRecords[act.id] || {};
+      if (!act) return null;
+      const actAttendance = (attendanceRecords && act.id) 
+        ? (attendanceRecords[act.id] || attendanceRecords[String(act.id)] || {}) 
+        : {};
       const branchRec = actAttendance[branch.name];
 
-      const confirmedList = act.confirmedBy || [];
-      const absentList = act.absentBy || [];
+      const confirmedList = Array.isArray(act.confirmedBy) ? act.confirmedBy : [];
+      const absentList = Array.isArray(act.absentBy) ? act.absentBy : [];
 
       let status = 'UNRESPONDED'; // 'ATTENDED' | 'ABSENT' | 'UNRESPONDED'
       let time = '';
@@ -1213,7 +1218,7 @@ export function ReportsView({
         if (typeof branchRec === 'boolean') {
           if (branchRec) {
             status = 'ATTENDED';
-            const matchConf = confirmedList.find(c => c.branch === branch.name);
+            const matchConf = confirmedList.find(c => c && c.branch === branch.name);
             time = matchConf?.time || 'Đã xác nhận';
           } else {
             status = 'ABSENT';
@@ -1230,8 +1235,8 @@ export function ReportsView({
           }
         }
       } else {
-        const matchConf = confirmedList.find(c => c.branch === branch.name);
-        const matchAbs = absentList.find(a => a.branch === branch.name);
+        const matchConf = confirmedList.find(c => c && c.branch === branch.name);
+        const matchAbs = absentList.find(a => a && a.branch === branch.name);
 
         if (matchConf) {
           status = 'ATTENDED';
@@ -1249,17 +1254,17 @@ export function ReportsView({
 
       return {
         id: act.id,
-        title: act.title,
-        day: act.day,
-        month: act.month,
-        year: act.year,
-        timeStr: act.time,
-        location: act.location,
+        title: act.title || 'Hoạt động',
+        day: act.day || '01',
+        month: act.month || '01',
+        year: act.year || 2026,
+        timeStr: act.time || '08:00 - 11:30',
+        location: act.location || 'Trụ sở UBND Xã',
         status,
         time,
         reason
       };
-    });
+    }).filter(Boolean);
 
     const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : 100;
     const rating = calculateBranchRating(percentage);

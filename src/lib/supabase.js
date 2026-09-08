@@ -232,32 +232,51 @@ export function isItemTargetedToUser(targetScope, currentUser) {
   if (!currentUser) return true;
   if (currentUser.role === 'doan_xa') return true; // Administrator sees all items
 
-  if (!targetScope || targetScope === 'ALL' || targetScope === 'Tất cả 30 Chi đoàn Ấp' || targetScope.includes('30 Chi đoàn') || targetScope === 'Tất cả') {
-    return true;
-  }
+  if (!targetScope) return true;
 
-  const userBranch = currentUser.branch_name || currentUser.title || '';
+  const userBranch = currentUser.branch_name || currentUser.full_name || currentUser.title || '';
   if (!userBranch) return true;
 
   const cleanUserBranch = userBranch.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
 
+  // Handle Array of target scopes (when multiple units are selected)
+  if (Array.isArray(targetScope)) {
+    if (targetScope.length === 0 || targetScope.includes('ALL') || targetScope.includes('Tất cả 30 Chi đoàn Ấp') || targetScope.includes('Tất cả')) {
+      return true;
+    }
+    return targetScope.some(scope => {
+      if (typeof scope !== 'string') return false;
+      return scope === userBranch || 
+        scope.includes(userBranch) || 
+        userBranch.includes(scope) || 
+        (cleanUserBranch && scope.includes(cleanUserBranch));
+    });
+  }
+
+  // Ensure targetScope is string
+  const scopeStr = String(targetScope);
+
+  if (scopeStr === 'ALL' || scopeStr === 'Tất cả 30 Chi đoàn Ấp' || scopeStr.includes('30 Chi đoàn') || scopeStr === 'Tất cả') {
+    return true;
+  }
+
   // 1. Direct match with branch name or code
   if (
-    targetScope === userBranch || 
-    targetScope.includes(userBranch) || 
-    userBranch.includes(targetScope) || 
-    (cleanUserBranch && targetScope.includes(cleanUserBranch))
+    scopeStr === userBranch || 
+    scopeStr.includes(userBranch) || 
+    userBranch.includes(scopeStr) || 
+    (cleanUserBranch && scopeStr.includes(cleanUserBranch))
   ) {
     return true;
   }
 
   // 2. Check if targetScope is a Competition Cluster (Cụm thi đua số 1 - 6)
-  if (targetScope.startsWith('Cụm thi đua') || targetScope.startsWith('cum-')) {
+  if (scopeStr.startsWith('Cụm thi đua') || scopeStr.startsWith('cum-')) {
     const cluster = COMPETITION_CLUSTERS.find(c => 
-      c.name === targetScope || 
-      c.id === targetScope || 
-      c.label.includes(targetScope) ||
-      targetScope.includes(c.name)
+      c.name === scopeStr || 
+      c.id === scopeStr || 
+      (c.label && c.label.includes(scopeStr)) ||
+      scopeStr.includes(c.name)
     );
     if (cluster) {
       const isInCluster = cluster.branches.some(b => 

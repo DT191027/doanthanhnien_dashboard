@@ -919,8 +919,8 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================
 export async function syncFetchDocuments() {
-  let localList = getPersistedData('documents', INITIAL_DOCUMENTS);
-  if (!localList || localList.length === 0) {
+  let localList = getPersistedData('documents', null);
+  if (localList === null) {
     localList = INITIAL_DOCUMENTS;
     setPersistedData('documents', INITIAL_DOCUMENTS);
   }
@@ -1001,24 +1001,27 @@ export async function syncSaveDocument(docItem) {
   return updatedLocal;
 }
 
-export async function syncDeleteDocument(docId) {
-  const current = getPersistedData('documents', INITIAL_DOCUMENTS);
-  const updatedLocal = current.filter(d => String(d.id) !== String(docId));
+export async function syncDeleteDocument(docId, docTitle = '') {
+  const current = getPersistedData('documents', []);
+  const updatedLocal = current.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
   setPersistedData('documents', updatedLocal);
 
   if (supabase) {
     try {
       await supabase.from('documents').delete().eq('id', docId);
+      if (docTitle) {
+        await supabase.from('documents').delete().eq('title', docTitle);
+      }
     } catch (e) {
       console.error('Supabase delete document error:', e);
     }
   }
 
-  notifySyncEvent('DELETE_DOCUMENT', { docId });
+  notifySyncEvent('DELETE_DOCUMENT', { docId, docTitle });
 
   if (supabase) {
     const fetched = await syncFetchDocuments();
-    return fetched.filter(d => String(d.id) !== String(docId));
+    return fetched.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
   }
   return updatedLocal;
 }

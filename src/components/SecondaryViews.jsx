@@ -629,7 +629,7 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
                         title="Thu hồi văn bản tức thì"
                         onClick={() => {
                           if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${doc.title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 30 Chi đoàn.`)) {
-                            onDeleteDocument && onDeleteDocument(doc.id);
+                            onDeleteDocument && onDeleteDocument(doc.id, doc.title);
                           }
                         }}
                       >

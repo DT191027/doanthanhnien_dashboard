@@ -319,10 +319,13 @@ export default function App() {
     triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới đúng các đơn vị được phân công!`);
   };
 
-  const handleDeleteDocument = async (docId) => {
-    const updated = await syncDeleteDocument(docId);
-    setDocumentsList(updated);
+  const handleDeleteDocument = async (docId, docTitle = '') => {
+    setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle)));
     triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 30 Chi đoàn!');
+
+    const updated = await syncDeleteDocument(docId, docTitle);
+    const filtered = (updated || []).filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
+    setDocumentsList(filtered);
   };
 
   const handleSubmitDocument = async (newSub) => {

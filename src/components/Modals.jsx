@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
@@ -1544,26 +1544,44 @@ export function ActivityDetailModal({
   
   const savedReason = typeof currentBranchRecord === 'object' ? currentBranchRecord.reason : '';
 
-  const confirmedBy = activity.confirmedBy || [];
+  const confirmedBy = Array.isArray(activity.confirmedBy) ? activity.confirmedBy : [];
+  const absentBy = Array.isArray(activity.absentBy) ? activity.absentBy : [];
   const participatingBranches = [];
   const absentBranches = [];
 
-  Object.entries(activityAttendance).forEach(([branch, record]) => {
-    if (typeof record === 'boolean' && record) {
-      const matchConf = confirmedBy.find(c => c.branch === branch);
-      participatingBranches.push({ name: branch, time: matchConf?.time || 'Đã xác nhận' });
-    } else if (typeof record === 'object' && record !== null) {
-      if (record.attended) {
-        participatingBranches.push({ name: branch, time: record.time || 'Đã xác nhận' });
-      } else {
-        absentBranches.push({ name: branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
+  if (typeof activityAttendance === 'object' && activityAttendance !== null) {
+    Object.entries(activityAttendance).forEach(([branch, record]) => {
+      if (typeof record === 'boolean') {
+        if (record) {
+          const matchConf = confirmedBy.find(c => (typeof c === 'string' ? c : c?.branch) === branch);
+          participatingBranches.push({ name: branch, time: (typeof matchConf === 'object' ? matchConf?.time : null) || 'Đã xác nhận' });
+        }
+      } else if (typeof record === 'object' && record !== null) {
+        if (record.attended) {
+          participatingBranches.push({ name: branch, time: record.time || 'Đã xác nhận' });
+        } else {
+          absentBranches.push({ name: branch, reason: record.reason || 'Báo vắng mặt', time: record.time || 'Vừa xong' });
+        }
       }
+    });
+  }
+
+  confirmedBy.forEach(c => {
+    if (!c) return;
+    const bName = typeof c === 'string' ? c : (c.branch || c.name || '');
+    const bTime = typeof c === 'object' ? (c.time || 'Đã xác nhận') : 'Đã xác nhận';
+    if (bName && !participatingBranches.some(p => p.name === bName)) {
+      participatingBranches.push({ name: bName, time: bTime });
     }
   });
 
-  confirmedBy.forEach(c => {
-    if (!participatingBranches.some(p => p.name === c.branch)) {
-      participatingBranches.push({ name: c.branch, time: c.time || 'Đã xác nhận' });
+  absentBy.forEach(a => {
+    if (!a) return;
+    const bName = typeof a === 'string' ? a : (a.branch || a.name || '');
+    const bReason = typeof a === 'object' ? (a.reason || 'Báo vắng mặt') : 'Báo vắng mặt';
+    const bTime = typeof a === 'object' ? (a.time || 'Vừa xong') : 'Vừa xong';
+    if (bName && !absentBranches.some(p => p.name === bName)) {
+      absentBranches.push({ name: bName, reason: bReason, time: bTime });
     }
   });
 
@@ -1783,20 +1801,33 @@ export function ActivityDetailModal({
 
                   <div className="col-12 col-md-6">
                     <div className="p-2.5 bg-white border rounded-3 h-100">
-                      <div className="fw-bold text-danger mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
-                        ❌ Chi đoàn báo vắng mặt ({absentBranches.length})
+                      <div className="fw-bold text-danger mb-2 border-bottom pb-1 d-flex align-items-center justify-content-between" style={{ fontSize: '12.5px' }}>
+                        <span>❌ Chi đoàn báo vắng mặt ({absentBranches.length})</span>
+                        {absentBranches.length > 0 && (
+                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5" style={{ fontSize: '10.5px' }}>
+                            Cần nắm lý do
+                          </span>
+                        )}
                       </div>
                       {absentBranches.length === 0 ? (
-                        <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Không có đơn vị báo vắng</div>
+                        <div className="text-muted py-3 text-center" style={{ fontSize: '11.5px' }}>Không có đơn vị báo vắng</div>
                       ) : (
-                        <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                        <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                           {absentBranches.map((b, idx) => (
-                            <div key={idx} className="p-2 bg-danger-subtle bg-opacity-25 border border-danger-subtle rounded" style={{ fontSize: '11.5px' }}>
-                              <div className="d-flex align-items-center justify-content-between mb-0.5">
-                                <span className="fw-bold text-danger">❌ {b.name}</span>
-                                <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
+                            <div key={idx} className="p-2.5 bg-danger-subtle bg-opacity-25 border border-danger-subtle rounded-3" style={{ fontSize: '11.5px' }}>
+                              <div className="d-flex align-items-center justify-content-between mb-1.5 flex-wrap gap-1">
+                                <span className="fw-bold text-danger d-flex align-items-center gap-1">
+                                  <XCircle size={14} className="text-danger flex-shrink-0" />
+                                  <span>{b.name}</span>
+                                </span>
+                                <span className="badge bg-white text-muted border fw-normal" style={{ fontSize: '10.5px' }}>
+                                  ⏰ {b.time}
+                                </span>
                               </div>
-                              <div className="text-secondary">💬 Lý do: <strong>{b.reason}</strong></div>
+                              <div className="p-2 bg-white rounded border border-danger-subtle text-dark" style={{ fontSize: '11.5px' }}>
+                                <span className="text-danger fw-bold me-1">💬 Lý do vắng mặt:</span>
+                                <span className="text-secondary">{b.reason}</span>
+                              </div>
                             </div>
                           ))}
                         </div>

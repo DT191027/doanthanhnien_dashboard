@@ -437,10 +437,13 @@ export default function App() {
     setShowSendMessageModal(true);
   };
 
-  const handleDeleteNotification = async (notiId) => {
-    const updated = await syncDeleteNotification(notiId);
-    setNotificationsList(updated);
+  const handleDeleteNotification = async (notiId, notiTitle = '') => {
+    setNotificationsList(prev => prev.filter(n => String(n.id) !== String(notiId) && (!notiTitle || n.title !== notiTitle)));
     triggerToast('Đã xóa thông báo khỏi hệ thống!');
+
+    const updated = await syncDeleteNotification(notiId, notiTitle);
+    const filtered = (updated || []).filter(n => String(n.id) !== String(notiId) && (!notiTitle || n.title !== notiTitle));
+    setNotificationsList(filtered);
   };
 
   const handleAddTask = async (newTask) => {

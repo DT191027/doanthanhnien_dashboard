@@ -1004,7 +1004,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
                           style={{ fontSize: '12.5px' }}
                           onClick={() => {
                             if (window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${n.title}" không?`)) {
-                              onDeleteNotification && onDeleteNotification(n.id);
+                              onDeleteNotification && onDeleteNotification(n.id, n.title);
                             }
                           }}
                         >

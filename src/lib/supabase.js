@@ -645,6 +645,25 @@ export function setPersistedData(key, data) {
   }
 }
 
+export function getDeletedItems(key) {
+  try {
+    const raw = localStorage.getItem(`xts_deleted_${key}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function addDeletedItem(key, id, title = '') {
+  try {
+    const current = getDeletedItems(key);
+    const updated = [...new Set([...current, String(id), ...(title ? [title] : [])])];
+    localStorage.setItem(`xts_deleted_${key}`, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to add deleted item:', e);
+  }
+}
+
 // ============================================================================
 // Real-time Dynamic Activity Time & Status Calculation Helper
 export function getActivityTimeStatus(act) {
@@ -769,11 +788,14 @@ export function getActivityTimeStatus(act) {
 // 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
 // ============================================================================
 export async function syncFetchActivities() {
+  const deleted = getDeletedItems('activities');
   let localList = getPersistedData('activities', null);
   if (localList === null) {
     localList = INITIAL_ACTIVITIES;
-    setPersistedData('activities', INITIAL_ACTIVITIES);
   }
+  localList = (localList || []).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
+  setPersistedData('activities', localList);
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
@@ -809,7 +831,8 @@ export async function syncFetchActivities() {
             absentBy: item.absentBy || matchedLocal.absentBy || []
           };
         });
-        const cleanMapped = deduplicateActivities(mapped);
+        const combined = [...mapped, ...localList];
+        const cleanMapped = deduplicateActivities(combined).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
         setPersistedData('activities', cleanMapped);
         return cleanMapped;
       }
@@ -883,8 +906,11 @@ export async function syncToggleActivityStatus(activityId, newStatus) {
 }
 
 export async function syncDeleteActivity(activityId, targetTitle = '') {
+  addDeletedItem('activities', activityId, targetTitle);
+  const deleted = getDeletedItems('activities');
+
   const current = getPersistedData('activities', []);
-  const updatedLocal = current.filter(a => String(a.id) !== String(activityId) && (!targetTitle || a.title !== targetTitle));
+  const updatedLocal = current.filter(a => a && !deleted.includes(String(a.id)) && (!targetTitle || a.title !== targetTitle));
   setPersistedData('activities', updatedLocal);
 
   if (supabase) {
@@ -902,7 +928,7 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
 
   if (supabase) {
     const fetched = await syncFetchActivities();
-    return fetched.filter(a => String(a.id) !== String(activityId) && (!targetTitle || a.title !== targetTitle));
+    return fetched.filter(a => a && !deleted.includes(String(a.id)) && (!targetTitle || a.title !== targetTitle));
   }
   return updatedLocal;
 }
@@ -911,11 +937,14 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================
 export async function syncFetchDocuments() {
+  const deleted = getDeletedItems('documents');
   let localList = getPersistedData('documents', null);
   if (localList === null) {
     localList = INITIAL_DOCUMENTS;
-    setPersistedData('documents', INITIAL_DOCUMENTS);
   }
+  localList = (localList || []).filter(d => d && !deleted.includes(String(d.id)) && (!d.title || !deleted.includes(d.title)));
+  setPersistedData('documents', localList);
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
@@ -938,6 +967,7 @@ export async function syncFetchDocuments() {
         const seen = new Set();
         const clean = combined.filter(d => {
           if (!d || !d.id || seen.has(d.id)) return false;
+          if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
           seen.add(d.id);
           return true;
         });
@@ -994,8 +1024,11 @@ export async function syncSaveDocument(docItem) {
 }
 
 export async function syncDeleteDocument(docId, docTitle = '') {
+  addDeletedItem('documents', docId, docTitle);
+  const deleted = getDeletedItems('documents');
+
   const current = getPersistedData('documents', []);
-  const updatedLocal = current.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
+  const updatedLocal = current.filter(d => d && !deleted.includes(String(d.id)) && (!docTitle || d.title !== docTitle));
   setPersistedData('documents', updatedLocal);
 
   if (supabase) {
@@ -1013,7 +1046,7 @@ export async function syncDeleteDocument(docId, docTitle = '') {
 
   if (supabase) {
     const fetched = await syncFetchDocuments();
-    return fetched.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
+    return fetched.filter(d => d && !deleted.includes(String(d.id)) && (!docTitle || d.title !== docTitle));
   }
   return updatedLocal;
 }
@@ -1170,11 +1203,14 @@ export function sortNotificationsByPriority(notis = []) {
 // 4. NOTIFICATIONS SYNC (BẢNG THÔNG BÁO & CHỈ ĐẠO)
 // ============================================================================
 export async function syncFetchNotifications() {
-  let localList = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
-  if (!localList || localList.length === 0) {
+  const deleted = getDeletedItems('notifications');
+  let localList = getPersistedData('notifications', null);
+  if (localList === null) {
     localList = INITIAL_NOTIFICATIONS;
-    setPersistedData('notifications', INITIAL_NOTIFICATIONS);
   }
+  localList = (localList || []).filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
+  setPersistedData('notifications', localList);
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
@@ -1190,7 +1226,8 @@ export async function syncFetchNotifications() {
           createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now()
         }));
         const combined = [...mapped, ...localList];
-        const sorted = sortNotificationsByPriority(combined);
+        const cleanCombined = combined.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
+        const sorted = sortNotificationsByPriority(cleanCombined);
         setPersistedData('notifications', sorted);
         return sorted;
       }
@@ -1274,19 +1311,26 @@ export async function syncUpdateNotification(updatedNoti) {
   return updatedLocal;
 }
 
-export async function syncDeleteNotification(notificationId) {
-  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
-  const updatedLocal = current.filter(n => n.id !== notificationId);
+export async function syncDeleteNotification(notificationId, notificationTitle = '') {
+  addDeletedItem('notifications', notificationId, notificationTitle);
+  const deleted = getDeletedItems('notifications');
+
+  const current = getPersistedData('notifications', []);
+  const updatedLocal = current.filter(n => n && !deleted.includes(String(n.id)) && (!notificationTitle || n.title !== notificationTitle));
   setPersistedData('notifications', updatedLocal);
-  notifySyncEvent('DELETE_NOTIFICATION', { notificationId });
+  notifySyncEvent('DELETE_NOTIFICATION', { notificationId, notificationTitle });
 
   if (supabase) {
     try {
       await supabase.from('notifications').delete().eq('id', notificationId);
+      if (notificationTitle) {
+        await supabase.from('notifications').delete().eq('title', notificationTitle);
+      }
     } catch (e) {
       console.error('Supabase delete notification exception:', e);
     }
-    return await syncFetchNotifications();
+    const fetched = await syncFetchNotifications();
+    return fetched.filter(n => n && !deleted.includes(String(n.id)) && (!notificationTitle || n.title !== notificationTitle));
   }
   return updatedLocal;
 }
@@ -1295,11 +1339,14 @@ export async function syncDeleteNotification(notificationId) {
 // 5. TASKS SYNC (BẢNG CÔNG VIỆC / TODO LIST)
 // ============================================================================
 export async function syncFetchTasks() {
-  let localList = getPersistedData('tasks', INITIAL_TASKS);
-  if (!localList || localList.length === 0) {
+  const deleted = getDeletedItems('tasks');
+  let localList = getPersistedData('tasks', null);
+  if (localList === null) {
     localList = INITIAL_TASKS;
-    setPersistedData('tasks', INITIAL_TASKS);
   }
+  localList = (localList || []).filter(t => t && !deleted.includes(String(t.id)) && (!t.title || !deleted.includes(t.title)));
+  setPersistedData('tasks', localList);
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
@@ -1316,6 +1363,7 @@ export async function syncFetchTasks() {
         const seen = new Set();
         const clean = combined.filter(t => {
           if (!t || !t.id || seen.has(t.id)) return false;
+          if (deleted.includes(String(t.id)) || (t.title && deleted.includes(t.title))) return false;
           seen.add(t.id);
           return true;
         });

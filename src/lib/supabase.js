@@ -260,17 +260,191 @@ export const INITIAL_MEMBERS = [
   { id: 'dv-15', full_name: 'Phan Bảo Ngọc', branch_name: 'Chi đoàn Ấp Thới Sơn', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2001-05-19', join_date: '2017-03-26', phone: '0945678903', email: 'phanbaongoc@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' }
 ];
 
-export const INITIAL_DOCUMENTS_DOAN_XA = [];
-export const INITIAL_DOCUMENTS_CHI_DOAN = [];
-export const INITIAL_REQUIRED_SUBMISSIONS = [];
-export const INITIAL_SUBMISSION_HISTORY = [];
+export const INITIAL_DOCUMENTS = [
+  {
+    id: 'doc-seed-1',
+    doc_number: '15-KH/ĐX-XTS',
+    title: 'Kế hoạch Tổ chức Chiến dịch Thanh niên Tình nguyện Mùa Hè Xanh năm 2026',
+    summary: 'Ban hành ngày 10/08/2026 - Kế hoạch triển khai công trình thanh niên tại 30 Chi đoàn Ấp',
+    sender: 'Đoàn xã Xuân Thới Sơn',
+    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    status: 'Đã đọc',
+    type: 'outgoing',
+    date: '10/08/2026',
+    file_name: 'Ke_hoach_15_KH_DX_Mua_He_Xanh_2026.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    storage_provider: 'supabase'
+  },
+  {
+    id: 'doc-seed-2',
+    doc_number: '28-TB/ĐX-XTS',
+    title: 'Thông báo Triệu tập Đại biểu tham dự Hội nghị Học tập & Quán triệt Nghị quyết Đoàn xã',
+    summary: 'Ban hành ngày 01/09/2026 - Triệu tập Bí thư, Phó Bí thư và Đoàn viên ưu tú 30 Ấp',
+    sender: 'Đoàn xã Xuân Thới Sơn',
+    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    status: 'Chưa đọc',
+    type: 'incoming',
+    date: '01/09/2026',
+    file_name: 'Thong_bao_28_TB_Trieu_tap_Hoi_nghi.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    storage_provider: 'supabase'
+  },
+  {
+    id: 'doc-seed-3',
+    doc_number: '42-QĐ/ĐX-XTS',
+    title: 'Quyết định Phê duyệt Kế hoạch Ra quân Đồng loạt "Ngày Chủ nhật Xanh" Quý III/2026',
+    summary: 'Ban hành ngày 05/09/2026 - Quy định nội dung và chỉ tiêu triển khai cho 6 Cụm thi đua',
+    sender: 'Đoàn xã Xuân Thới Sơn',
+    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    status: 'Chưa đọc',
+    type: 'incoming',
+    date: '05/09/2026',
+    file_name: 'Quyet_dinh_42_QD_Ngay_Chu_Nhat_Xanh.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    storage_provider: 'supabase'
+  },
+  {
+    id: 'doc-seed-4',
+    doc_number: '09-HD/ĐX-XTS',
+    title: 'Hướng dẫn Công tác Quản lý Đoàn viên và Thu nộp Đoàn phí năm 2026',
+    summary: 'Ban hành ngày 15/05/2026 - Quy trình cập nhật sổ đoàn viên và báo cáo đoàn phí 30 Ấp',
+    sender: 'Đoàn xã Xuân Thới Sơn',
+    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    status: 'Đã đọc',
+    type: 'outgoing',
+    date: '15/05/2026',
+    file_name: 'Huong_dan_09_HD_Quan_ly_Doan_vien.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    storage_provider: 'supabase'
+  }
+];
+
+export const INITIAL_DOCUMENTS_DOAN_XA = INITIAL_DOCUMENTS;
+export const INITIAL_DOCUMENTS_CHI_DOAN = INITIAL_DOCUMENTS;
+
+export const INITIAL_SUBMISSION_HISTORY = [
+  {
+    id: 'sub-seed-1',
+    doc_title: 'Báo cáo Kết quả Hoạt động Tháng 8/2026 và Phương hướng Nhiệm vụ Tháng 9/2026',
+    branch_name: 'Chi đoàn Ấp Mỹ Hoà 2',
+    sender: 'Bí thư Chi đoàn Ấp Mỹ Hoà 2',
+    submitted_at: '28/08/2026 15:30',
+    status: 'Đã tiếp nhận',
+    file_name: 'Bao_cao_Thang_8_Chi_doan_Ap_My_Hoa_2.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    notes: 'Đã gửi kèm danh sách đoàn viên tham gia Chiến dịch Mùa Hè Xanh.'
+  },
+  {
+    id: 'sub-seed-2',
+    doc_title: 'Danh sách Rà soát Đoàn viên Ưu tú và Cảm tình Đảng Quý III/2026',
+    branch_name: 'Chi đoàn Ấp Bùi Môn',
+    sender: 'Bí thư Chi đoàn Ấp Bùi Môn',
+    submitted_at: '30/08/2026 09:15',
+    status: 'Đã tiếp nhận',
+    file_name: 'Danh_sach_Doan_vien_uu_tu_Ap_Bui_Mon.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    notes: 'Trình 03 hồ sơ đoàn viên ưu tú xuất sắc.'
+  },
+  {
+    id: 'sub-seed-3',
+    doc_title: 'Báo cáo Thu nộp Đoàn phí Quý II/2026 và Danh sách Đoàn viên Sinh hoạt',
+    branch_name: 'Chi đoàn Ấp Dân Thắng',
+    sender: 'Bí thư Chi đoàn Ấp Dân Thắng',
+    submitted_at: '02/09/2026 14:20',
+    status: 'Đang xử lý',
+    file_name: 'Bao_cao_Doan_phi_Ap_Dan_Thang.pdf',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    notes: 'Số tiền đoàn phí đã chuyển qua tài khoản Đoàn xã.'
+  }
+];
+
+export const INITIAL_REQUIRED_SUBMISSIONS = [
+  {
+    id: 'req-seed-1',
+    title: 'Nộp Báo cáo Kết quả Ra quân "Ngày Chủ nhật Xanh" và Hình ảnh Tư liệu 30 Ấp',
+    deadline: '22/09/2026',
+    status: 'Chưa nộp',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp'
+  },
+  {
+    id: 'req-seed-2',
+    title: 'Nộp Danh sách Rà soát Cập nhật Số lượng Đoàn viên Tháng 9/2026',
+    deadline: '15/09/2026',
+    status: 'Chưa nộp',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp'
+  }
+];
+
+export const INITIAL_NOTIFICATIONS = [
+  {
+    id: 'noti-seed-1',
+    title: '🚨 KHẨN: Triệu tập Bán Thường vụ & Bí thư 30 Chi đoàn Ấp họp đột xuất sáng mai',
+    content: 'Ban Thường vụ Đoàn xã triệu tập đồng chí Bí thư (hoặc Phó Bí thư) 30 Chi đoàn Ấp tham dự buổi họp rà soát công tác chuẩn bị Ngày Chủ nhật Xanh vào lúc 08h00 ngày 10/09/2026 tại Phòng họp số 2 UBND Xã.',
+    priority: 'Khẩn cấp',
+    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    created_at: '2026-09-08 16:00',
+    date: '08/09/2026',
+    sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+  },
+  {
+    id: 'noti-seed-2',
+    title: '📢 V/v Nhắc nhở nộp Báo cáo Kết quả Hoạt động Tháng 8/2026 đúng thời hạn',
+    content: 'Yêu cầu các Chi đoàn Ấp chưa nộp báo cáo hoạt động tháng 8 khẩn trương hoàn thiện văn bản và nộp trên Hệ thống Quản lý trước 17h00 ngày 12/09/2026.',
+    priority: 'Quan trọng',
+    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    created_at: '2026-09-07 09:30',
+    date: '07/09/2026',
+    sender: 'Văn phòng Đoàn xã Xuân Thới Sơn'
+  },
+  {
+    id: 'noti-seed-3',
+    title: '🌟 Thông báo Khen thưởng Tập thể & Cá nhân xuất sắc trong Chiến dịch Mùa Hè Xanh',
+    content: 'Chúc mừng 6 Chi đoàn Ấp thuộc Cụm thi đua số 1 đã hoàn thành xuất sắc chỉ tiêu công trình thanh niên Mùa Hè Xanh năm 2026.',
+    priority: 'Bình thường',
+    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    created_at: '2026-09-05 14:15',
+    date: '05/09/2026',
+    sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+  }
+];
+
+export const INITIAL_TASKS = [
+  {
+    id: 'task-seed-1',
+    title: 'Rà soát và cập nhật danh sách 100% đoàn viên 30 Chi đoàn Ấp trên hệ thống',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    deadline: '2026-09-15',
+    status: 'in_progress',
+    priority: 'Khẩn cấp',
+    description: 'Kiểm tra thông tin cá nhân, ngày vào Đoàn và trình độ học vấn từng đoàn viên.'
+  },
+  {
+    id: 'task-seed-2',
+    title: 'Thu nộp Đoàn phí Quý III/2026 và quyết toán tài chính Chi đoàn',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    deadline: '2026-09-25',
+    status: 'todo',
+    priority: 'Bình thường',
+    description: 'Thực hiện việc thu nộp đoàn phí theo đúng quy định và trích nộp Đoàn xã đúng hạn.'
+  },
+  {
+    id: 'task-seed-3',
+    title: 'Chuẩn bị địa điểm & công cụ ra quân "Ngày Chủ nhật Xanh" dọn dẹp cảnh quan',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    deadline: '2026-09-19',
+    status: 'completed',
+    priority: 'Quan trọng',
+    description: 'Chuẩn bị chổi, bao chứa rác, cuốc xẻng và sơn để dọn dẹp và xóa quảng cáo bẩn.'
+  }
+];
+
 export const INITIAL_TASKS_DOAN_XA = {
-  todo: [],
-  inProgress: [],
-  completed: []
+  todo: INITIAL_TASKS.filter(t => t.status === 'todo'),
+  inProgress: INITIAL_TASKS.filter(t => t.status === 'in_progress'),
+  completed: INITIAL_TASKS.filter(t => t.status === 'completed')
 };
-export const INITIAL_TASKS_CHI_DOAN = [];
-export const INITIAL_NOTIFICATIONS = [];
+
+export const INITIAL_TASKS_CHI_DOAN = INITIAL_TASKS;
 
 // Helper function to format current live date in Vietnamese
 export function getLiveVietnameseDate() {
@@ -745,6 +919,11 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================
 export async function syncFetchDocuments() {
+  let localList = getPersistedData('documents', INITIAL_DOCUMENTS);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_DOCUMENTS;
+    setPersistedData('documents', INITIAL_DOCUMENTS);
+  }
   if (supabase) {
     try {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
@@ -763,18 +942,25 @@ export async function syncFetchDocuments() {
           file_url: item.file_url || item.pdf_url || '',
           storage_provider: item.storage_provider || 'supabase'
         }));
-        setPersistedData('documents', mapped);
-        return mapped;
+        const combined = [...mapped, ...localList];
+        const seen = new Set();
+        const clean = combined.filter(d => {
+          if (!d || !d.id || seen.has(d.id)) return false;
+          seen.add(d.id);
+          return true;
+        });
+        setPersistedData('documents', clean);
+        return clean;
       }
     } catch (e) {
       console.warn('Supabase fetch documents error, using local storage fallback:', e);
     }
   }
-  return getPersistedData('documents', []);
+  return localList;
 }
 
 export async function syncSaveDocument(docItem) {
-  const current = getPersistedData('documents', []);
+  const current = getPersistedData('documents', INITIAL_DOCUMENTS);
   const updatedLocal = [docItem, ...current];
   setPersistedData('documents', updatedLocal);
   notifySyncEvent('SAVE_DOCUMENT', docItem);
@@ -816,7 +1002,7 @@ export async function syncSaveDocument(docItem) {
 }
 
 export async function syncDeleteDocument(docId) {
-  const current = getPersistedData('documents', []);
+  const current = getPersistedData('documents', INITIAL_DOCUMENTS);
   const updatedLocal = current.filter(d => String(d.id) !== String(docId));
   setPersistedData('documents', updatedLocal);
 
@@ -841,6 +1027,11 @@ export async function syncDeleteDocument(docId) {
 // 3. DOCUMENT SUBMISSIONS SYNC (BẢNG NỘP BÁO CÁO CHI ĐOÀN)
 // ============================================================================
 export async function syncFetchSubmissions() {
+  let localList = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_SUBMISSION_HISTORY;
+    setPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
+  }
   if (supabase) {
     try {
       const { data, error } = await supabase.from('document_submissions').select('*').order('created_at', { ascending: false });
@@ -856,18 +1047,25 @@ export async function syncFetchSubmissions() {
           file_url: item.file_url || item.file_name || '',
           storage_provider: item.storage_provider || 'supabase'
         }));
-        setPersistedData('submissions', mapped);
-        return mapped;
+        const combined = [...mapped, ...localList];
+        const seen = new Set();
+        const clean = combined.filter(s => {
+          if (!s || !s.id || seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        });
+        setPersistedData('submissions', clean);
+        return clean;
       }
     } catch (e) {
       console.warn('Supabase fetch submissions error, using local storage fallback:', e);
     }
   }
-  return getPersistedData('submissions', []);
+  return localList;
 }
 
 export async function syncSaveSubmission(subItem) {
-  const current = getPersistedData('submissions', []);
+  const current = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
   const updatedLocal = [subItem, ...current];
   setPersistedData('submissions', updatedLocal);
   notifySyncEvent('SAVE_SUBMISSION', subItem);
@@ -977,6 +1175,11 @@ export function sortNotificationsByPriority(notis = []) {
 // 4. NOTIFICATIONS SYNC (BẢNG THÔNG BÁO & CHỈ ĐẠO)
 // ============================================================================
 export async function syncFetchNotifications() {
+  let localList = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_NOTIFICATIONS;
+    setPersistedData('notifications', INITIAL_NOTIFICATIONS);
+  }
   if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
@@ -991,7 +1194,8 @@ export async function syncFetchNotifications() {
           time_ago: item.time_ago || 'Vừa xong',
           createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now()
         }));
-        const sorted = sortNotificationsByPriority(mapped);
+        const combined = [...mapped, ...localList];
+        const sorted = sortNotificationsByPriority(combined);
         setPersistedData('notifications', sorted);
         return sorted;
       }
@@ -999,12 +1203,11 @@ export async function syncFetchNotifications() {
       console.warn('Supabase fetch notifications error, using local storage fallback:', e);
     }
   }
-  const local = getPersistedData('notifications', []);
-  return sortNotificationsByPriority(local);
+  return sortNotificationsByPriority(localList);
 }
 
 export async function syncSaveNotification(notiItem) {
-  const current = getPersistedData('notifications', []);
+  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
   const newItem = {
     ...notiItem,
     priority: notiItem.priority || 'Bình thường',
@@ -1053,7 +1256,7 @@ export async function syncSaveNotification(notiItem) {
 }
 
 export async function syncUpdateNotification(updatedNoti) {
-  const current = getPersistedData('notifications', []);
+  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
   const updatedLocal = sortNotificationsByPriority(
     current.map(n => n.id === updatedNoti.id ? { ...n, ...updatedNoti } : n)
   );
@@ -1077,7 +1280,7 @@ export async function syncUpdateNotification(updatedNoti) {
 }
 
 export async function syncDeleteNotification(notificationId) {
-  const current = getPersistedData('notifications', []);
+  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
   const updatedLocal = current.filter(n => n.id !== notificationId);
   setPersistedData('notifications', updatedLocal);
   notifySyncEvent('DELETE_NOTIFICATION', { notificationId });
@@ -1097,6 +1300,11 @@ export async function syncDeleteNotification(notificationId) {
 // 5. TASKS SYNC (BẢNG CÔNG VIỆC / TODO LIST)
 // ============================================================================
 export async function syncFetchTasks() {
+  let localList = getPersistedData('tasks', INITIAL_TASKS);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_TASKS;
+    setPersistedData('tasks', INITIAL_TASKS);
+  }
   if (supabase) {
     try {
       const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
@@ -1109,14 +1317,21 @@ export async function syncFetchTasks() {
           dueDate: item.due_date || 'Hôm nay',
           assigned_to: item.assigned_to || 'Đoàn xã'
         }));
-        setPersistedData('tasks', mapped);
-        return mapped;
+        const combined = [...mapped, ...localList];
+        const seen = new Set();
+        const clean = combined.filter(t => {
+          if (!t || !t.id || seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        setPersistedData('tasks', clean);
+        return clean;
       }
     } catch (e) {
       console.warn('Supabase fetch tasks error, using local storage fallback:', e);
     }
   }
-  return getPersistedData('tasks', []);
+  return localList;
 }
 
 export async function syncSaveTask(taskItem) {

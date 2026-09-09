@@ -638,14 +638,20 @@ export default function App() {
               </h3>
               <div className="p-3 bg-light rounded-3">
                 <div className="fw-semibold text-primary mb-2">Dữ liệu hệ thống:</div>
-                {userActivities.length === 0 && userDocuments.length === 0 ? (
-                  <div className="text-secondary" style={{ fontSize: '13px' }}>Không tìm thấy văn bản hay hoạt động khớp với từ khóa.</div>
-                ) : (
-                  <ul className="mb-0 text-dark" style={{ fontSize: '13px' }}>
-                    {userActivities.map(a => <li key={a.id} className="mb-1">{a.title}</li>)}
-                    {userDocuments.map(d => <li key={d.id} className="mb-1">{d.title}</li>)}
-                  </ul>
-                )}
+                {(() => {
+                  const q = searchQuery.trim().toLowerCase();
+                  const matchedActs = userActivities.filter(a => (a.title || '').toLowerCase().includes(q) || (a.description || '').toLowerCase().includes(q));
+                  const matchedDocs = userDocuments.filter(d => (d.title || '').toLowerCase().includes(q) || (d.doc_number || '').toLowerCase().includes(q));
+                  if (matchedActs.length === 0 && matchedDocs.length === 0) {
+                    return <div className="text-secondary" style={{ fontSize: '13px' }}>Không tìm thấy văn bản hay hoạt động khớp với từ khóa.</div>;
+                  }
+                  return (
+                    <ul className="mb-0 text-dark" style={{ fontSize: '13px' }}>
+                      {matchedActs.map(a => <li key={a.id} className="mb-1"><strong>[Hoạt động]</strong> {a.title} ({a.day}/{a.month}/{a.year})</li>)}
+                      {matchedDocs.map(d => <li key={d.id} className="mb-1"><strong>[Văn bản]</strong> {d.title} (Số: {d.doc_number || 'N/A'})</li>)}
+                    </ul>
+                  );
+                })()}
               </div>
             </div>
           ) : activeTab === 'dashboard' ? (

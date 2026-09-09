@@ -1212,16 +1212,24 @@ export async function syncFetchNotifications() {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
-        const mapped = data.map(item => ({
-          id: item.id,
-          title: item.title,
-          content: item.content || '',
-          target_scope: item.target_scope || 'Tất cả 30 Chi đoàn Ấp',
-          priority: item.priority || item.type || 'Bình thường',
-          type: item.type || 'general',
-          time_ago: item.time_ago || 'Vừa xong',
-          createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now()
-        }));
+        const mapped = data.map(item => {
+          const matchedLocal = (localList || []).find(l => String(l.id) === String(item.id)) || {};
+          return {
+            ...matchedLocal,
+            ...item,
+            id: item.id,
+            title: item.title,
+            content: item.content || matchedLocal.content || '',
+            target_scope: item.target_scope || matchedLocal.target_scope || 'Tất cả 30 Chi đoàn Ấp',
+            priority: item.priority || matchedLocal.priority || item.type || 'Bình thường',
+            type: item.type || matchedLocal.type || 'general',
+            time_ago: item.time_ago || matchedLocal.time_ago || 'Vừa xong',
+            createdAt: item.created_at ? new Date(item.created_at).getTime() : (matchedLocal.createdAt || Date.now()),
+            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || [],
+            activity_details: item.activity_details || matchedLocal.activity_details || null,
+            sender: item.sender || matchedLocal.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+          };
+        });
         const cleanCombined = mapped.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
         const sorted = sortNotificationsByPriority(cleanCombined);
         setPersistedData('notifications', sorted);

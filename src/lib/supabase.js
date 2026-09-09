@@ -831,8 +831,7 @@ export async function syncFetchActivities() {
             absentBy: item.absentBy || matchedLocal.absentBy || []
           };
         });
-        const combined = [...mapped, ...localList];
-        const cleanMapped = deduplicateActivities(combined).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
+        const cleanMapped = deduplicateActivities(mapped).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
         setPersistedData('activities', cleanMapped);
         return cleanMapped;
       }
@@ -963,9 +962,8 @@ export async function syncFetchDocuments() {
           file_url: item.file_url || item.pdf_url || '',
           storage_provider: item.storage_provider || 'supabase'
         }));
-        const combined = [...mapped, ...localList];
         const seen = new Set();
-        const clean = combined.filter(d => {
+        const clean = mapped.filter(d => {
           if (!d || !d.id || seen.has(d.id)) return false;
           if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
           seen.add(d.id);
@@ -1075,9 +1073,8 @@ export async function syncFetchSubmissions() {
           file_url: item.file_url || item.file_name || '',
           storage_provider: item.storage_provider || 'supabase'
         }));
-        const combined = [...mapped, ...localList];
         const seen = new Set();
-        const clean = combined.filter(s => {
+        const clean = mapped.filter(s => {
           if (!s || !s.id || seen.has(s.id)) return false;
           seen.add(s.id);
           return true;
@@ -1225,8 +1222,7 @@ export async function syncFetchNotifications() {
           time_ago: item.time_ago || 'Vừa xong',
           createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now()
         }));
-        const combined = [...mapped, ...localList];
-        const cleanCombined = combined.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
+        const cleanCombined = mapped.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
         const sorted = sortNotificationsByPriority(cleanCombined);
         setPersistedData('notifications', sorted);
         return sorted;
@@ -1359,9 +1355,8 @@ export async function syncFetchTasks() {
           dueDate: item.due_date || 'Hôm nay',
           assigned_to: item.assigned_to || 'Đoàn xã'
         }));
-        const combined = [...mapped, ...localList];
         const seen = new Set();
-        const clean = combined.filter(t => {
+        const clean = mapped.filter(t => {
           if (!t || !t.id || seen.has(t.id)) return false;
           if (deleted.includes(String(t.id)) || (t.title && deleted.includes(t.title))) return false;
           seen.add(t.id);

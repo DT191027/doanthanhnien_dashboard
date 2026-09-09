@@ -443,6 +443,19 @@ export function getPersistedData(key, fallback = []) {
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
+      if (parsed.length === 0 && Array.isArray(fallback) && fallback.length > 0) {
+        setPersistedData(key, fallback);
+        return fallback;
+      }
+      if (Array.isArray(fallback) && fallback.length > 0) {
+        const parsedIds = new Set(parsed.map(i => i?.id).filter(Boolean));
+        const missingSeeds = fallback.filter(f => f && f.id && !parsedIds.has(f.id));
+        if (missingSeeds.length > 0) {
+          const merged = [...parsed, ...missingSeeds];
+          setPersistedData(key, merged);
+          return merged;
+        }
+      }
       const seen = new Set();
       return parsed.filter(item => {
         if (item && item.id) {
@@ -452,7 +465,7 @@ export function getPersistedData(key, fallback = []) {
         return true;
       });
     }
-    return parsed;
+    return parsed || fallback;
   } catch (e) {
     return fallback;
   }

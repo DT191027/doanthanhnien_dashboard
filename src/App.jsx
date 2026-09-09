@@ -33,6 +33,7 @@ import {
   StorageArchiveView, 
   SettingsView 
 } from './components/SecondaryViews';
+import BranchMembersView from './components/BranchMembersView';
 import { 
   INITIAL_BRANCHES, 
   supabase, 
@@ -56,6 +57,9 @@ import {
   syncDeleteTask,
   syncFetchAttendance,
   syncSaveAttendance,
+  syncFetchMembers,
+  syncSaveMember,
+  syncDeleteMember,
   COMPETITION_CLUSTERS,
   isItemTargetedToUser,
   deduplicateActivities
@@ -84,6 +88,7 @@ export default function App() {
   const [notificationsList, setNotificationsList] = useState([]);
   const [tasksList, setTasksList] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState({});
+  const [membersList, setMembersList] = useState([]);
 
   // Modals state
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
@@ -120,13 +125,14 @@ export default function App() {
   };
 
   const loadAllData = async () => {
-    const [acts, docs, subs, notis, tsks, atts] = await Promise.all([
+    const [acts, docs, subs, notis, tsks, atts, mbrs] = await Promise.all([
       syncFetchActivities(),
       syncFetchDocuments(),
       syncFetchSubmissions(),
       syncFetchNotifications(),
       syncFetchTasks(),
-      syncFetchAttendance()
+      syncFetchAttendance(),
+      syncFetchMembers()
     ]);
     setActivitiesList(deduplicateActivities(acts));
     setDocumentsList(docs);
@@ -134,11 +140,24 @@ export default function App() {
     setNotificationsList(notis);
     setTasksList(tsks);
     setAttendanceRecords(atts || {});
+    setMembersList(mbrs || []);
     setSelectedActivityDetail(prev => {
       if (!prev) return null;
       const updated = acts.find(a => a.id === prev.id);
       return updated || prev;
     });
+  };
+
+  const handleSaveMember = async (memberData) => {
+    const updated = await syncSaveMember(memberData);
+    setMembersList(updated);
+    triggerToast(memberData.id ? 'Đã cập nhật thông tin đoàn viên!' : 'Đã thêm mới đoàn viên!');
+  };
+
+  const handleDeleteMember = async (memberId) => {
+    const updated = await syncDeleteMember(memberId);
+    setMembersList(updated);
+    triggerToast('Đã xóa hồ sơ đoàn viên!');
   };
 
   useEffect(() => {
@@ -798,40 +817,13 @@ export default function App() {
             /* SETTINGS VIEW */
             <SettingsView currentRole={currentUser} />
           ) : activeTab === 'branches' ? (
-            /* 30 CHI ĐOÀN ẤP MANAGEMENT VIEW */
-            <div className="content-card">
-              <div className="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                  <h3 className="card-title-header mb-1">Danh sách 30 Chi đoàn Ấp trực thuộc</h3>
-                  <div className="text-secondary" style={{ fontSize: '13px' }}>
-                    Quản lý thông tin bí thư và đoàn viên 30 Ấp thuộc Đoàn xã Xuân Thới Sơn
-                  </div>
-                </div>
-                <button className="btn btn-primary fw-semibold" style={{ backgroundColor: '#0066FF' }}>
-                  + Thêm Chi đoàn mới
-                </button>
-              </div>
-
-              <div className="row g-3">
-                {INITIAL_BRANCHES.map((b) => (
-                  <div key={b.id} className="col-12 col-md-6 col-lg-4">
-                    <div className="p-3 rounded-3 bg-light border h-100 hover-shadow transition">
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <span className="badge bg-primary-subtle text-primary fw-bold">{b.code}</span>
-                        <span className="text-secondary" style={{ fontSize: '11px' }}>0 Đoàn viên</span>
-                      </div>
-                      <h5 className="fw-bold text-dark mb-1" style={{ fontSize: '15px' }}>{b.name}</h5>
-                      <div className="text-muted" style={{ fontSize: '12.5px' }}>👤 {b.secretary_name}</div>
-                      <div className="text-muted" style={{ fontSize: '11px' }}>✉️ {b.email}</div>
-                      <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-                        <span className="text-success fw-bold" style={{ fontSize: '11px' }}>● Đang hoạt động</span>
-                        <span className="badge bg-light text-secondary border">Đã bảo mật</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            /* 30 CHI ĐOÀN ẤP & ĐOÀN VIÊN MANAGEMENT VIEW */
+            <BranchMembersView 
+              members={membersList}
+              currentRole={currentUser}
+              onSaveMember={handleSaveMember}
+              onDeleteMember={handleDeleteMember}
+            />
           ) : activeTab === 'contact' ? (
             /* CONTACT VIEW FOR CHI DOAN */
             <div className="content-card">

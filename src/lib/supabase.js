@@ -121,7 +121,145 @@ export const INITIAL_ROLES = [
 ];
 
 // Initial Empty Constant Exports
-export const INITIAL_ACTIVITIES = [];
+// Seed Activities Dataset for 30 Hamlets & Competition Clusters
+export const INITIAL_ACTIVITIES = [
+  {
+    id: 'act-seed-1',
+    title: 'Hội nghị Học tập & Quán triệt Nghị quyết Đại hội Đoàn TNCS Hồ Chí Minh Xã Xuân Thới Sơn',
+    priority: 'Khẩn cấp',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    day: '15',
+    month: '09',
+    year: 2026,
+    dateIso: '2026-09-15',
+    time: '08:00 - 11:30',
+    location: 'Hội trường lớn UBND Xã Xuân Thới Sơn',
+    status: 'Đang diễn ra',
+    description: 'Tập trung quán triệt các chỉ tiêu thi đua năm 2026 và triển khai kế hoạch thực hiện công trình thanh niên 30 Ấp.',
+    confirmedBy: [
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '14/09/2026 08:30' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 4', time: '14/09/2026 09:15' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 3', time: '14/09/2026 09:40' },
+      { branch: 'Chi đoàn Ấp Bùi Môn', time: '14/09/2026 10:00' },
+      { branch: 'Chi đoàn Ấp Dân Thắng', time: '14/09/2026 10:20' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 1', time: '14/09/2026 11:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 2', time: '14/09/2026 11:30' },
+      { branch: 'Chi đoàn Ấp Nam Xuân', time: '14/09/2026 13:10' },
+      { branch: 'Chi đoàn Ấp Nhị Tân', time: '14/09/2026 14:00' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 1', time: '14/09/2026 14:30' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 2', time: '14/09/2026 15:00' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 3', time: '14/09/2026 15:20' },
+      { branch: 'Chi đoàn Ấp Nhị Xuân', time: '14/09/2026 15:45' },
+      { branch: 'Chi đoàn Ấp Tân Lập', time: '14/09/2026 16:00' },
+      { branch: 'Chi đoàn Ấp Tân Thới Nhì', time: '14/09/2026 16:15' },
+      { branch: 'Chi đoàn Ấp Tân Tiến', time: '14/09/2026 16:30' },
+      { branch: 'Chi đoàn Ấp Thống Nhất 1', time: '14/09/2026 16:45' },
+      { branch: 'Chi đoàn Ấp Thống Nhất 2', time: '14/09/2026 17:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới', time: '14/09/2026 17:15' },
+      { branch: 'Chi đoàn Ấp Xuân Thới 1', time: '14/09/2026 17:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới 2', time: '14/09/2026 17:45' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông', time: '14/09/2026 18:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 3', time: '14/09/2026 18:15' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 4', time: '14/09/2026 18:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 5', time: '14/09/2026 18:45' },
+      { branch: 'Chi đoàn Ấp Nam Xuân 1', time: '14/09/2026 19:00' },
+      { branch: 'Chi đoàn Ấp Nam Xuân 2', time: '14/09/2026 19:15' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 5', time: '14/09/2026 19:30' }
+    ],
+    absentBy: [
+      { branch: 'Chi đoàn Ấp Nhị Xuân 1', reason: 'Bí thư bận công tác đột xuất cấp ủy chỉ đạo tuần tra địa bàn', time: '14/09/2026 14:15' },
+      { branch: 'Chi đoàn Ấp Thới Sơn', reason: 'Bí thư & Phó bí thư tham dự lớp tập huấn lý luận chính trị', time: '14/09/2026 15:30' }
+    ]
+  },
+  {
+    id: 'act-seed-2',
+    title: 'Ngày đồng loạt ra quân "Ngày Chủ nhật Xanh" dọn dẹp vệ sinh môi trường 30 Ấp',
+    priority: 'Bình thường',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    day: '20',
+    month: '09',
+    year: 2026,
+    dateIso: '2026-09-20',
+    time: '07:00 - 10:30',
+    location: 'Tuyến đường thanh niên tự quản 30 Ấp',
+    status: 'Sắp diễn ra',
+    description: 'Chi đoàn 30 Ấp huy động 100% đoàn viên tham gia dọn dẹp rác thải, bóc xóa quảng cáo bẩn và trồng cây xanh.',
+    confirmedBy: [
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '14/09/2026 09:00' },
+      { branch: 'Chi đoàn Ấp Bùi Môn', time: '14/09/2026 10:15' },
+      { branch: 'Chi đoàn Ấp Dân Thắng', time: '14/09/2026 11:20' }
+    ],
+    absentBy: []
+  },
+  {
+    id: 'act-seed-3',
+    title: 'Lễ Thắp nến Tri ân các Anh hùng Liệt sĩ nhân kỷ niệm Ngày Thương binh Liệt sĩ 27/7',
+    priority: 'Quan trọng',
+    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+    day: '27',
+    month: '07',
+    year: 2026,
+    dateIso: '2026-07-27',
+    time: '18:30 - 21:00',
+    location: 'Nghĩa trang Liệt sĩ Huyện',
+    status: 'Đã kết thúc',
+    description: 'Dâng hoa, thắp nến tri ân và trao quà hỗ trợ các gia đình chính sách, Bà mẹ Việt Nam Anh hùng.',
+    confirmedBy: [
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '26/07/2026 08:00' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 4', time: '26/07/2026 08:30' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 3', time: '26/07/2026 09:00' },
+      { branch: 'Chi đoàn Ấp Bùi Môn', time: '26/07/2026 09:30' },
+      { branch: 'Chi đoàn Ấp Dân Thắng', time: '26/07/2026 10:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 1', time: '26/07/2026 10:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 2', time: '26/07/2026 11:00' },
+      { branch: 'Chi đoàn Ấp Nam Xuân', time: '26/07/2026 11:30' },
+      { branch: 'Chi đoàn Ấp Nhị Tân', time: '26/07/2026 13:00' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 1', time: '26/07/2026 13:30' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 2', time: '26/07/2026 14:00' },
+      { branch: 'Chi đoàn Ấp Nhị Tân 3', time: '26/07/2026 14:30' },
+      { branch: 'Chi đoàn Ấp Nhị Xuân', time: '26/07/2026 15:00' },
+      { branch: 'Chi đoàn Ấp Tân Lập', time: '26/07/2026 15:30' },
+      { branch: 'Chi đoàn Ấp Tân Thới Nhì', time: '26/07/2026 16:00' },
+      { branch: 'Chi đoàn Ấp Tân Tiến', time: '26/07/2026 16:30' },
+      { branch: 'Chi đoàn Ấp Thống Nhất 1', time: '26/07/2026 17:00' },
+      { branch: 'Chi đoàn Ấp Thống Nhất 2', time: '26/07/2026 17:30' },
+      { branch: 'Chi đoàn Ấp Thới Sơn', time: '26/07/2026 18:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới', time: '26/07/2026 18:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới 1', time: '26/07/2026 19:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới 2', time: '26/07/2026 19:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông', time: '26/07/2026 20:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 3', time: '26/07/2026 20:30' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 4', time: '26/07/2026 21:00' },
+      { branch: 'Chi đoàn Ấp Xuân Thới Đông 5', time: '26/07/2026 21:30' },
+      { branch: 'Chi đoàn Ấp Nam Xuân 1', time: '26/07/2026 22:00' },
+      { branch: 'Chi đoàn Ấp Nam Xuân 2', time: '26/07/2026 22:30' },
+      { branch: 'Chi đoàn Ấp Mỹ Hoà 5', time: '26/07/2026 23:00' }
+    ],
+    absentBy: [
+      { branch: 'Chi đoàn Ấp Nhị Xuân 1', reason: 'Đơn vị thực hiện nhiệm vụ bảo đảm an ninh trật tự địa bàn', time: '26/07/2026 14:00' }
+    ]
+  }
+];
+
+// Seed Youth Members Dataset for 30 Hamlets
+export const INITIAL_MEMBERS = [
+  { id: 'dv-1', full_name: 'Nguyễn Văn An', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1998-05-12', join_date: '2014-03-26', phone: '0903123456', email: 'nguyenvanan@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-2', full_name: 'Trần Thị Bích', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Phó Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2000-08-20', join_date: '2016-03-26', phone: '0912345678', email: 'tranthibich@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
+  { id: 'dv-3', full_name: 'Lê Hoài Nam', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Ủy viên BCH', gender: 'Nam', birth_date: '2002-03-15', join_date: '2018-03-26', phone: '0987654321', email: 'lehoainam@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' },
+  { id: 'dv-4', full_name: 'Phạm Minh Tâm', branch_name: 'Chi đoàn Ấp Bùi Môn', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1997-11-04', join_date: '2013-03-26', phone: '0934567890', email: 'phamminhtam@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-5', full_name: 'Ngô Thanh Hương', branch_name: 'Chi đoàn Ấp Bùi Môn', position: 'Đoàn viên', gender: 'Nữ', birth_date: '2001-02-18', join_date: '2017-03-26', phone: '0945678901', email: 'ngothanhhuong@gmail.com', status: 'Đang sinh hoạt', education: '12/12' },
+  { id: 'dv-6', full_name: 'Vũ Quốc Khánh', branch_name: 'Chi đoàn Ấp Dân Thắng', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1999-09-30', join_date: '2015-03-26', phone: '0956789012', email: 'vuquockhanh@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-7', full_name: 'Hoàng Bích Ngọc', branch_name: 'Chi đoàn Ấp Dân Thắng', position: 'Đoàn viên', gender: 'Nữ', birth_date: '2003-07-25', join_date: '2019-03-26', phone: '0967890123', email: 'hoangbichngoc@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
+  { id: 'dv-8', full_name: 'Đặng Tuấn Anh', branch_name: 'Chi đoàn Ấp Xuân Thới Đông 1', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1998-01-10', join_date: '2014-03-26', phone: '0978901234', email: 'dangtuananh@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-9', full_name: 'Nguyễn Thị Thu Hà', branch_name: 'Chi đoàn Ấp Xuân Thới Đông 1', position: 'Phó Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2001-12-05', join_date: '2017-03-26', phone: '0989012345', email: 'nguyenthithuha@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' },
+  { id: 'dv-10', full_name: 'Bùi Đức Trọng', branch_name: 'Chi đoàn Ấp Nam Xuân', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1996-04-14', join_date: '2012-03-26', phone: '0990123456', email: 'buiductrong@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-11', full_name: 'Trịnh Mai Anh', branch_name: 'Chi đoàn Ấp Nhị Tân 1', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '1999-06-22', join_date: '2015-03-26', phone: '0901234567', email: 'trinhmaianh@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
+  { id: 'dv-12', full_name: 'Đỗ Hữu Phước', branch_name: 'Chi đoàn Ấp Tân Lập', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '2000-10-08', join_date: '2016-03-26', phone: '0912345670', email: 'dohuuphuoc@gmail.com', status: 'Đang sinh hoạt', education: '12/12' },
+  { id: 'dv-13', full_name: 'Lương Mỹ Duyên', branch_name: 'Chi đoàn Ấp Thống Nhất 1', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2002-09-17', join_date: '2018-03-26', phone: '0923456781', email: 'luongmyduyen@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
+  { id: 'dv-14', full_name: 'Cao Văn Khiêm', branch_name: 'Chi đoàn Ấp Xuân Thới', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1997-03-03', join_date: '2013-03-26', phone: '0934567892', email: 'caovankhiem@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
+  { id: 'dv-15', full_name: 'Phan Bảo Ngọc', branch_name: 'Chi đoàn Ấp Thới Sơn', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2001-05-19', join_date: '2017-03-26', phone: '0945678903', email: 'phanbaongoc@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' }
+];
+
 export const INITIAL_DOCUMENTS_DOAN_XA = [];
 export const INITIAL_DOCUMENTS_CHI_DOAN = [];
 export const INITIAL_REQUIRED_SUBMISSIONS = [];
@@ -452,7 +590,11 @@ export function getActivityTimeStatus(act) {
 // 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
 // ============================================================================
 export async function syncFetchActivities() {
-  const localList = getPersistedData('activities', []);
+  let localList = getPersistedData('activities', INITIAL_ACTIVITIES);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_ACTIVITIES;
+    setPersistedData('activities', INITIAL_ACTIVITIES);
+  }
   if (supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
@@ -1104,5 +1246,64 @@ export async function syncSaveAttendance(activityId, recordData) {
     [activityId]: recordData
   };
   setPersistedData('attendance_records', updated);
+  return updated;
+}
+
+// ============================================================================
+// MEMBERS SYNC (BẢNG QUẢN LÝ ĐOÀN VIÊN 30 CHI ĐOÀN ẤP)
+// ============================================================================
+export async function syncFetchMembers() {
+  let localList = getPersistedData('members', INITIAL_MEMBERS);
+  if (!localList || localList.length === 0) {
+    localList = INITIAL_MEMBERS;
+    setPersistedData('members', INITIAL_MEMBERS);
+  }
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        setPersistedData('members', data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch members error, using local fallback:', e);
+    }
+  }
+  return localList;
+}
+
+export async function syncSaveMember(memberItem) {
+  const current = getPersistedData('members', INITIAL_MEMBERS);
+  const exists = current.some(item => String(item.id) === String(memberItem.id));
+  const updated = exists
+    ? current.map(item => String(item.id) === String(memberItem.id) ? { ...item, ...memberItem } : item)
+    : [memberItem, ...current];
+
+  setPersistedData('members', updated);
+  notifySyncEvent('SAVE_MEMBER', memberItem);
+
+  if (supabase) {
+    try {
+      await supabase.from('members').upsert([memberItem]);
+    } catch (e) {
+      console.warn('Supabase save member error:', e);
+    }
+  }
+  return updated;
+}
+
+export async function syncDeleteMember(memberId) {
+  const current = getPersistedData('members', INITIAL_MEMBERS);
+  const updated = current.filter(item => String(item.id) !== String(memberId));
+  setPersistedData('members', updated);
+  notifySyncEvent('DELETE_MEMBER', { id: memberId });
+
+  if (supabase) {
+    try {
+      await supabase.from('members').delete().eq('id', memberId);
+    } catch (e) {
+      console.warn('Supabase delete member error:', e);
+    }
+  }
   return updated;
 }

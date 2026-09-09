@@ -614,22 +614,14 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 export function getPersistedData(key, fallback = []) {
   try {
     const raw = localStorage.getItem(`xts_youth_${key}`);
-    if (!raw) return fallback;
+    if (raw === null) {
+      if (Array.isArray(fallback) && fallback.length > 0) {
+        setPersistedData(key, fallback);
+      }
+      return fallback;
+    }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      if (parsed.length === 0 && Array.isArray(fallback) && fallback.length > 0) {
-        setPersistedData(key, fallback);
-        return fallback;
-      }
-      if (Array.isArray(fallback) && fallback.length > 0) {
-        const parsedIds = new Set(parsed.map(i => i?.id).filter(Boolean));
-        const missingSeeds = fallback.filter(f => f && f.id && !parsedIds.has(f.id));
-        if (missingSeeds.length > 0) {
-          const merged = [...parsed, ...missingSeeds];
-          setPersistedData(key, merged);
-          return merged;
-        }
-      }
       const seen = new Set();
       return parsed.filter(item => {
         if (item && item.id) {
@@ -639,7 +631,7 @@ export function getPersistedData(key, fallback = []) {
         return true;
       });
     }
-    return parsed || fallback;
+    return parsed !== null ? parsed : fallback;
   } catch (e) {
     return fallback;
   }
@@ -777,8 +769,8 @@ export function getActivityTimeStatus(act) {
 // 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
 // ============================================================================
 export async function syncFetchActivities() {
-  let localList = getPersistedData('activities', INITIAL_ACTIVITIES);
-  if (!localList || localList.length === 0) {
+  let localList = getPersistedData('activities', null);
+  if (localList === null) {
     localList = INITIAL_ACTIVITIES;
     setPersistedData('activities', INITIAL_ACTIVITIES);
   }

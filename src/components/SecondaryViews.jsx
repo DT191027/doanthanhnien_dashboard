@@ -31,7 +31,7 @@ import {
   Edit3,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -40,48 +40,71 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
   const [activeTab, setActiveTab] = useState('confirmed'); // 'confirmed' | 'absent'
 
   const activityAttendance = (attendanceRecords && item?.id && attendanceRecords[item.id]) ? attendanceRecords[item.id] : {};
-  const confirmedBy = item?.confirmedBy || [];
-  const absentBy = item?.absentBy || [];
-  const branchName = currentRole?.full_name || 'Chi đoàn Ấp';
+  const confirmedBy = Array.isArray(item?.confirmedBy) ? item.confirmedBy : [];
+  const absentBy = Array.isArray(item?.absentBy) ? item.absentBy : [];
+  const branchName = currentRole?.full_name || currentRole?.branch_name || 'Chi đoàn Ấp';
 
   const participatingBranches = [];
   const absentBranches = [];
 
   // 1. Process attendanceRecords map
-  Object.entries(activityAttendance).forEach(([branch, record]) => {
-    if (typeof record === 'boolean') {
-      if (record) {
-        const matchConf = confirmedBy.find(c => c.branch === branch);
-        participatingBranches.push({ branch, time: matchConf?.time || 'Đã xác nhận' });
+  if (typeof activityAttendance === 'object' && activityAttendance !== null) {
+    Object.entries(activityAttendance).forEach(([branch, record]) => {
+      if (typeof record === 'boolean') {
+        if (record) {
+          const matchConf = confirmedBy.find(c => (typeof c === 'string' ? c : c?.branch) === branch);
+          participatingBranches.push({ branch, time: (typeof matchConf === 'object' ? matchConf?.time : null) || 'Đã xác nhận' });
+        }
+      } else if (typeof record === 'object' && record !== null) {
+        if (record.attended) {
+          participatingBranches.push({ branch, time: record.time || 'Đã xác nhận' });
+        } else {
+          absentBranches.push({ branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
+        }
       }
-    } else if (typeof record === 'object' && record !== null) {
-      if (record.attended) {
-        participatingBranches.push({ branch, time: record.time || 'Đã xác nhận' });
-      } else {
-        absentBranches.push({ branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
-      }
-    }
-  });
+    });
+  }
 
   // 2. Add from confirmedBy list if not present
   confirmedBy.forEach(c => {
-    if (!participatingBranches.some(p => p.branch === c.branch)) {
-      participatingBranches.push({ branch: c.branch, time: c.time || 'Đã xác nhận' });
+    if (!c) return;
+    const bName = typeof c === 'string' ? c : (c.branch || c.name || '');
+    const bTime = typeof c === 'object' ? (c.time || 'Đã xác nhận') : 'Đã xác nhận';
+    if (bName && !participatingBranches.some(p => p.branch === bName)) {
+      participatingBranches.push({ branch: bName, time: bTime });
     }
   });
 
   // 3. Add from absentBy list if not present
   absentBy.forEach(a => {
-    if (!absentBranches.some(p => p.branch === a.branch)) {
-      absentBranches.push({ branch: a.branch, reason: a.reason || 'Báo vắng', time: a.time || 'Vừa xong' });
+    if (!a) return;
+    const bName = typeof a === 'string' ? a : (a.branch || a.name || '');
+    const bReason = typeof a === 'object' ? (a.reason || 'Báo vắng') : 'Báo vắng';
+    const bTime = typeof a === 'object' ? (a.time || 'Vừa xong') : 'Vừa xong';
+    if (bName && !absentBranches.some(p => p.branch === bName)) {
+      absentBranches.push({ branch: bName, reason: bReason, time: bTime });
     }
   });
 
-  const hasConfirmed = participatingBranches.some(c => c.branch === branchName);
-  const myConfirmation = participatingBranches.find(c => c.branch === branchName);
+  const cleanUserBranch = String(branchName).replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').trim();
 
-  const hasAbsent = absentBranches.some(a => a.branch === branchName);
-  const myAbsent = absentBranches.find(a => a.branch === branchName);
+  const hasConfirmed = participatingBranches.some(c => {
+    const cleanC = String(c.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return c.branch === branchName || (cleanUserBranch && cleanC && cleanC === cleanUserBranch);
+  });
+  const myConfirmation = participatingBranches.find(c => {
+    const cleanC = String(c.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return c.branch === branchName || (cleanUserBranch && cleanC && cleanC === cleanUserBranch);
+  });
+
+  const hasAbsent = absentBranches.some(a => {
+    const cleanA = String(a.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return a.branch === branchName || (cleanUserBranch && cleanA && cleanA === cleanUserBranch);
+  });
+  const myAbsent = absentBranches.find(a => {
+    const cleanA = String(a.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return a.branch === branchName || (cleanUserBranch && cleanA && cleanA === cleanUserBranch);
+  });
 
   if (!isDoanXa) {
     if (hasConfirmed) {
@@ -108,106 +131,97 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
       {/* Button 1: Confirmed count */}
       <button 
         type="button"
-        className="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3 shadow-xs"
+        className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
         style={{ fontSize: '11.5px' }}
         onClick={(e) => {
           e.stopPropagation();
           setActiveTab('confirmed');
-          setShowDropdown(!showDropdown || activeTab !== 'confirmed');
+          setShowDropdown(!showDropdown);
         }}
+        title="Xem danh sách Chi đoàn đã tiếp nhận / tham gia"
       >
-        <CheckCircle2 size={14} />
-        <span>Đã có {participatingBranches.length}/30 Chi đoàn tiếp nhận</span>
+        <CheckCircle2 size={13} />
+        <span>{participatingBranches.length} tiếp nhận</span>
       </button>
 
       {/* Button 2: Absent count */}
-      <button 
-        type="button"
-        className={`btn btn-sm ${absentBranches.length > 0 ? 'btn-outline-danger bg-danger-subtle text-danger border-danger-subtle' : 'btn-outline-secondary'} fw-semibold d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3 shadow-xs`}
-        style={{ fontSize: '11.5px' }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setActiveTab('absent');
-          setShowDropdown(!showDropdown || activeTab !== 'absent');
-        }}
-      >
-        <XCircle size={14} />
-        <span>{absentBranches.length} Chi đoàn báo vắng</span>
-      </button>
+      {absentBranches.length > 0 && (
+        <button 
+          type="button"
+          className="btn btn-sm btn-outline-danger fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
+          style={{ fontSize: '11.5px' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveTab('absent');
+            setShowDropdown(!showDropdown);
+          }}
+          title="Xem danh sách Chi đoàn báo vắng kèm lý do"
+        >
+          <XCircle size={13} />
+          <span>{absentBranches.length} báo vắng</span>
+        </button>
+      )}
 
+      {/* Dropdown panel showing lists */}
       {showDropdown && (
         <div 
-          className="position-absolute end-0 mt-1 bg-white border shadow-lg rounded-3 p-3 text-dark" 
-          style={{ zIndex: 1050, width: '340px', maxHeight: '340px', overflowY: 'auto', top: '100%' }}
+          className="position-absolute end-0 top-100 mt-2 bg-white rounded-3 shadow-lg border p-3 z-3 text-start"
+          style={{ width: '320px', zIndex: 1050 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
-            <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-              📊 Thống kê Phản hồi ({participatingBranches.length + absentBranches.length}/30 Chi đoàn)
-            </span>
-            <button type="button" className="btn-close btn-sm" onClick={() => setShowDropdown(false)}></button>
-          </div>
-
-          {/* Sub-header Tabs */}
-          <div className="d-flex align-items-center gap-1 mb-2.5 bg-light p-1 rounded-2 border">
-            <button 
-              type="button"
-              className={`btn btn-xs flex-fill fw-bold py-1 ${activeTab === 'confirmed' ? 'btn-success text-white' : 'btn-light text-secondary'}`}
-              style={{ fontSize: '11px' }}
-              onClick={() => setActiveTab('confirmed')}
-            >
-              ✓ Tiếp nhận ({participatingBranches.length})
-            </button>
-            <button 
-              type="button"
-              className={`btn btn-xs flex-fill fw-bold py-1 ${activeTab === 'absent' ? 'btn-danger text-white' : 'btn-light text-secondary'}`}
-              style={{ fontSize: '11px' }}
-              onClick={() => setActiveTab('absent')}
-            >
-              ✕ Báo vắng ({absentBranches.length})
-            </button>
+          <div className="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+            <div className="d-flex gap-2">
+              <button 
+                type="button"
+                className={`btn btn-xs fw-bold ${activeTab === 'confirmed' ? 'btn-success text-white' : 'btn-light border text-secondary'}`}
+                style={{ fontSize: '11px', padding: '2px 8px' }}
+                onClick={() => setActiveTab('confirmed')}
+              >
+                ✓ Tiếp nhận ({participatingBranches.length})
+              </button>
+              <button 
+                type="button"
+                className={`btn btn-xs fw-bold ${activeTab === 'absent' ? 'btn-danger text-white' : 'btn-light border text-secondary'}`}
+                style={{ fontSize: '11px', padding: '2px 8px' }}
+                onClick={() => setActiveTab('absent')}
+              >
+                ✕ Báo vắng ({absentBranches.length})
+              </button>
+            </div>
+            <button type="button" className="btn-close btn-close-xs" onClick={() => setShowDropdown(false)}></button>
           </div>
 
           {activeTab === 'confirmed' ? (
             participatingBranches.length === 0 ? (
-              <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
-                Chưa có Chi đoàn nào xác nhận tham gia
-              </div>
+              <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào xác nhận</div>
             ) : (
-              <div className="d-flex flex-column gap-1.5">
-                {participatingBranches.map((c, idx) => (
-                  <div key={idx} className="d-flex align-items-center justify-content-between p-2 bg-success-subtle bg-opacity-25 rounded border border-success-subtle text-dark" style={{ fontSize: '12px' }}>
-                    <span className="fw-semibold text-success d-flex align-items-center gap-1">
-                      <CheckCircle2 size={14} className="text-success flex-shrink-0" />
-                      <span>{c.branch}</span>
-                    </span>
-                    <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
-                      {c.time ? `Lúc ${c.time}` : 'Vừa xong'}
-                    </span>
+              <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                {participatingBranches.map((c, i) => (
+                  <div key={i} className="d-flex align-items-center justify-content-between p-1.5 bg-light rounded border-start border-success border-3">
+                    <span className="fw-semibold text-dark" style={{ fontSize: '12px' }}>✓ {c.branch}</span>
+                    <span className="text-muted" style={{ fontSize: '10.5px' }}>{c.time}</span>
                   </div>
                 ))}
               </div>
             )
           ) : (
             absentBranches.length === 0 ? (
-              <div className="text-muted text-center py-3" style={{ fontSize: '12px' }}>
-                Không có Chi đoàn nào báo vắng
-              </div>
+              <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào báo vắng</div>
             ) : (
-              <div className="d-flex flex-column gap-2">
-                {absentBranches.map((a, idx) => (
-                  <div key={idx} className="p-2.5 bg-danger-subtle bg-opacity-25 rounded border border-danger-subtle text-dark" style={{ fontSize: '12px' }}>
+              <div className="d-flex flex-column gap-2" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                {absentBranches.map((a, i) => (
+                  <div key={i} className="p-2 bg-danger-subtle rounded border border-danger-subtle">
                     <div className="d-flex align-items-center justify-content-between mb-1">
-                      <span className="fw-bold text-danger d-flex align-items-center gap-1">
+                      <span className="fw-bold text-danger d-flex align-items-center gap-1" style={{ fontSize: '12px' }}>
                         <XCircle size={14} className="text-danger flex-shrink-0" />
                         <span>{a.branch}</span>
                       </span>
-                      <span className="text-muted" style={{ fontSize: '11px', fontWeight: 500 }}>
-                        {a.time ? `Lúc ${a.time}` : 'Vừa xong'}
+                      <span className="text-muted" style={{ fontSize: '10.5px', fontWeight: 500 }}>
+                        {a.time || 'Vừa xong'}
                       </span>
                     </div>
                     <div className="p-1.5 bg-white rounded border border-danger-subtle text-danger-emphasis" style={{ fontSize: '11.5px' }}>
-                      <strong>💬 Lý do vắng mặt:</strong> {a.reason || 'Không ghi rõ lý do'}
+                      <strong>💬 Lý do vắng mặt:</strong> {a.reason || 'Báo vắng'}
                     </div>
                   </div>
                 ))}
@@ -226,18 +240,23 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
   const [search, setSearch] = useState('');
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
-  const cleanActivities = deduplicateActivities(activities);
+  const safeActivities = Array.isArray(activities) ? activities : [];
+  const cleanActivities = deduplicateActivities(safeActivities);
   const sortedActivities = sortActivitiesByPriority(cleanActivities);
 
   const filtered = sortedActivities.filter(a => {
+    if (!a) return false;
     const timeStatus = getActivityTimeStatus(a);
     let matchFilter = true;
     if (filter === 'ONGOING') matchFilter = timeStatus.code === 'ONGOING';
     else if (filter === 'UPCOMING') matchFilter = timeStatus.code === 'UPCOMING' || timeStatus.code === 'FUTURE_DATE';
     else if (filter === 'FINISHED') matchFilter = timeStatus.code === 'FINISHED' || a.status === 'Đã hoàn thành';
 
-    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || 
-                        (a.location && a.location.toLowerCase().includes(search.toLowerCase()));
+    const titleStr = String(a.title || '').toLowerCase();
+    const locStr = String(a.location || '').toLowerCase();
+    const kw = String(search || '').toLowerCase();
+
+    const matchSearch = !kw || titleStr.includes(kw) || locStr.includes(kw);
     return matchFilter && matchSearch;
   });
 

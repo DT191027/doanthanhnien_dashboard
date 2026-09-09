@@ -504,10 +504,13 @@ export default function App() {
     setTasksList(updated);
   };
 
-  const handleDeleteTask = async (taskId) => {
-    const updated = await syncDeleteTask(taskId);
-    setTasksList(updated);
-    triggerToast('Đã thu hồi & xóa nhiệm vụ khỏi hệ thống!');
+  const handleDeleteTask = async (taskId, taskTitle = '') => {
+    setTasksList(prev => prev.filter(t => String(t.id) !== String(taskId) && (!taskTitle || t.title !== taskTitle)));
+    triggerToast('Đã thu hồi & xóa công việc khỏi hệ thống thành công!');
+
+    const updated = await syncDeleteTask(taskId, taskTitle);
+    const filtered = (updated || []).filter(t => String(t.id) !== String(taskId) && (!taskTitle || t.title !== taskTitle));
+    setTasksList(filtered);
   };
 
   const handleSaveAttendance = async (activityId, recordData) => {
@@ -738,7 +741,7 @@ export default function App() {
                   />
 
                   {!isDoanXa && (
-                    <BranchTasks tasks={userTasks} currentRole={currentUser} setActiveTab={setActiveTab} />
+                    <BranchTasks tasks={userTasks} currentRole={currentUser} setActiveTab={setActiveTab} onDeleteTask={handleDeleteTask} />
                   )}
 
                   <NotificationsList 

@@ -1094,19 +1094,17 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       )}
                     </div>
                   </div>
-                  {isDoanXa && (
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button 
+                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                    title="Thu hồi / Xóa nhiệm vụ"
+                    onClick={() => {
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                        onDeleteTask && onDeleteTask(t.id, t.title);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1135,19 +1133,17 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       )}
                     </div>
                   </div>
-                  {isDoanXa && (
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button 
+                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                    title="Thu hồi / Xóa nhiệm vụ"
+                    onClick={() => {
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                        onDeleteTask && onDeleteTask(t.id, t.title);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1176,19 +1172,17 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       )}
                     </div>
                   </div>
-                  {isDoanXa && (
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button 
+                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
+                    title="Thu hồi / Xóa nhiệm vụ"
+                    onClick={() => {
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                        onDeleteTask && onDeleteTask(t.id, t.title);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))}
             </div>

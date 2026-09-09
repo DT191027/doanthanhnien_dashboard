@@ -1,8 +1,8 @@
 import React from 'react';
-import { CheckSquare } from 'lucide-react';
+import { CheckSquare, Trash2 } from 'lucide-react';
 import { COMPETITION_CLUSTERS } from '../lib/supabase';
 
-export default function BranchTasks({ tasks = [], currentRole, setActiveTab }) {
+export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onDeleteTask }) {
   const branchName = currentRole?.branch_name || currentRole?.title || '';
 
   // Filter tasks relevant to this Chi đoàn:
@@ -53,9 +53,25 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab }) {
                   <span className="ms-2 text-primary fw-semibold">📌 {task.assigned_to}</span>
                 </div>
               </div>
-              <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
-                {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
-              </span>
+              <div className="d-flex align-items-center gap-2">
+                <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
+                  {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
+                </span>
+                {onDeleteTask && (
+                  <button 
+                    className="btn btn-link text-danger p-0 ms-1"
+                    title="Xóa công việc"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${task.title}" không?`)) {
+                        onDeleteTask(task.id, task.title);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

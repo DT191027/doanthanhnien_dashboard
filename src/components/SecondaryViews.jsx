@@ -109,7 +109,7 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
   if (!isDoanXa) {
     if (hasConfirmed) {
       return (
-        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-success-subtle text-success border border-success-subtle rounded-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-success-subtle text-success border border-success-subtle rounded-3 shadow-xs" style={{ fontSize: '11.5px', fontWeight: 600 }}>
           <CheckCircle2 size={14} />
           <span>✓ Đã tiếp nhận ({myConfirmation?.time || 'Vừa xong'})</span>
         </div>
@@ -117,13 +117,26 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     }
     if (hasAbsent) {
       return (
-        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-danger-subtle text-danger border border-danger-subtle rounded-3" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+        <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-danger-subtle text-danger border border-danger-subtle rounded-3 shadow-xs" style={{ fontSize: '11.5px', fontWeight: 600 }}>
           <XCircle size={14} />
           <span>✕ Đã báo vắng ({myAbsent?.time || 'Vừa xong'})</span>
         </div>
       );
     }
-    return null;
+    return (
+      <button 
+        type="button"
+        className="btn btn-sm btn-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale"
+        style={{ fontSize: '12px', transition: 'all 0.2s ease', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onConfirmReceipt && onConfirmReceipt(type || 'notification', item);
+        }}
+      >
+        <CheckCircle2 size={15} />
+        <span>Xác nhận tiếp nhận</span>
+      </button>
+    );
   }
 
   return (
@@ -1046,7 +1059,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
 }
 
 // 5. Full Tasks & Todo Management View (Fully Synced with Supabase Realtime)
-export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDeleteTask, isDoanXa }) {
+export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDeleteTask, isDoanXa, currentUser, onConfirmReceipt }) {
   return (
     <div className="content-card">
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
@@ -1081,30 +1094,41 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'todo').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
-                  <button className="btn btn-link p-0 text-secondary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
-                    <Circle size={18} />
-                  </button>
-                  <div className="flex-grow-1">
-                    <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                      <span>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
-                      {t.assigned_to && (
-                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
-                      )}
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm position-relative">
+                  <div className="d-flex align-items-start gap-2">
+                    <button className="btn btn-link p-0 text-secondary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
+                      <Circle size={18} />
+                    </button>
+                    <div className="flex-grow-1">
+                      <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                        <span>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
+                        {t.assigned_to && (
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                        )}
+                      </div>
                     </div>
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id, t.title);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button 
-                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                    title="Thu hồi / Xóa nhiệm vụ"
-                    onClick={() => {
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                        onDeleteTask && onDeleteTask(t.id, t.title);
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="mt-2 pt-1 border-top d-flex justify-content-end">
+                    <ReceiptConfirmationBox 
+                      type="task" 
+                      item={t} 
+                      currentRole={currentUser} 
+                      isDoanXa={isDoanXa} 
+                      onConfirmReceipt={onConfirmReceipt} 
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1120,30 +1144,41 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'inProgress' || t.status === 'in_progress').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
-                  <button className="btn btn-link p-0 text-primary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
-                    <Circle size={18} />
-                  </button>
-                  <div className="flex-grow-1">
-                    <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                      <span>Ưu tiên: {t.priority}</span>
-                      {t.assigned_to && (
-                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
-                      )}
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm position-relative">
+                  <div className="d-flex align-items-start gap-2">
+                    <button className="btn btn-link p-0 text-primary" onClick={() => onToggleTask && onToggleTask(t.id, 'completed')}>
+                      <Circle size={18} />
+                    </button>
+                    <div className="flex-grow-1">
+                      <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                        <span>Ưu tiên: {t.priority}</span>
+                        {t.assigned_to && (
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                        )}
+                      </div>
                     </div>
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id, t.title);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button 
-                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                    title="Thu hồi / Xóa nhiệm vụ"
-                    onClick={() => {
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                        onDeleteTask && onDeleteTask(t.id, t.title);
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="mt-2 pt-1 border-top d-flex justify-content-end">
+                    <ReceiptConfirmationBox 
+                      type="task" 
+                      item={t} 
+                      currentRole={currentUser} 
+                      isDoanXa={isDoanXa} 
+                      onConfirmReceipt={onConfirmReceipt} 
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1159,30 +1194,41 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
             </div>
             <div className="d-flex flex-column gap-2">
               {tasks.filter(t => t.status === 'completed').map(t => (
-                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm d-flex align-items-start gap-2 position-relative">
-                  <button className="btn btn-link p-0 text-success" onClick={() => onToggleTask && onToggleTask(t.id, 'todo')}>
-                    <CheckCircle2 size={18} />
-                  </button>
-                  <div className="flex-grow-1 text-decoration-line-through text-muted">
-                    <div className="fw-semibold text-muted pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                    <div className="text-success d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                      <span>Đã hoàn tất</span>
-                      {t.assigned_to && (
-                        <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
-                      )}
+                <div key={t.id} className="p-2.5 bg-white rounded-2 border shadow-sm position-relative">
+                  <div className="d-flex align-items-start gap-2">
+                    <button className="btn btn-link p-0 text-success" onClick={() => onToggleTask && onToggleTask(t.id, 'todo')}>
+                      <CheckCircle2 size={18} />
+                    </button>
+                    <div className="flex-grow-1 text-decoration-line-through text-muted">
+                      <div className="fw-semibold text-muted pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
+                      <div className="text-success d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
+                        <span>Đã hoàn tất</span>
+                        {t.assigned_to && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
+                        )}
+                      </div>
                     </div>
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
+                      title="Thu hồi / Xóa nhiệm vụ"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                          onDeleteTask && onDeleteTask(t.id, t.title);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button 
-                    className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
-                    title="Thu hồi / Xóa nhiệm vụ"
-                    onClick={() => {
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                        onDeleteTask && onDeleteTask(t.id, t.title);
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="mt-2 pt-1 border-top d-flex justify-content-end">
+                    <ReceiptConfirmationBox 
+                      type="task" 
+                      item={t} 
+                      currentRole={currentUser} 
+                      isDoanXa={isDoanXa} 
+                      onConfirmReceipt={onConfirmReceipt} 
+                    />
+                  </div>
                 </div>
               ))}
             </div>

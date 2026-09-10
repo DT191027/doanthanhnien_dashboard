@@ -389,7 +389,7 @@ export default function App() {
   };
 
   const handleConfirmReceipt = async (type, item) => {
-    const branchName = currentUser?.full_name || 'Chi đoàn Ấp';
+    const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -400,7 +400,7 @@ export default function App() {
 
     const existingConfirmed = item.confirmedBy || [];
     if (existingConfirmed.some(c => c.branch === branchName)) {
-      triggerToast('Đơn vị đã xác nhận tiếp nhận & tham gia hoạt động trước đó!');
+      triggerToast('Đơn vị đã xác nhận tiếp nhận trước đó!');
       return;
     }
 
@@ -413,6 +413,37 @@ export default function App() {
       };
       const updatedList = await syncUpdateNotification(updatedNoti);
       setNotificationsList(updatedList);
+
+      // Link to task if title matches
+      const cleanNotiTitle = (item.title || '').replace(/^📋 Nhiệm vụ mới:\s*/i, '').replace(/^📋 Nhiệm vụ mới - [^:]+:\s*/i, '').trim();
+      const matchedTask = tasksList.find(t => t.title && (t.title.includes(cleanNotiTitle) || cleanNotiTitle.includes(t.title)));
+      if (matchedTask) {
+        const tConfirmed = matchedTask.confirmedBy || [];
+        if (!tConfirmed.some(c => c.branch === branchName)) {
+          const updatedTask = { ...matchedTask, confirmedBy: [...tConfirmed, { branch: branchName, time: timeStr }] };
+          const updatedTasks = await syncSaveTask(updatedTask);
+          setTasksList(updatedTasks);
+        }
+      }
+    } else if (type === 'task') {
+      const updatedTask = {
+        ...item,
+        confirmedBy: updatedConfirmedBy
+      };
+      const updatedTasks = await syncSaveTask(updatedTask);
+      setTasksList(updatedTasks);
+
+      // Link to notification if title matches
+      const cleanTaskTitle = (item.title || '').trim();
+      const matchedNoti = notificationsList.find(n => n.title && n.title.includes(cleanTaskTitle));
+      if (matchedNoti) {
+        const nConfirmed = matchedNoti.confirmedBy || [];
+        if (!nConfirmed.some(c => c.branch === branchName)) {
+          const updatedNoti = { ...matchedNoti, confirmedBy: [...nConfirmed, { branch: branchName, time: timeStr }] };
+          const updatedNotis = await syncUpdateNotification(updatedNoti);
+          setNotificationsList(updatedNotis);
+        }
+      }
     } else if (type === 'activity') {
       const updatedAct = {
         ...item,
@@ -429,7 +460,7 @@ export default function App() {
       }
     } catch(e) {}
 
-    triggerToast(`Đã xác nhận tiếp nhận thông báo & đăng ký tham gia hoạt động!`);
+    triggerToast(`Đã xác nhận tiếp nhận lúc ${timeStr}! Dữ liệu đã gửi về Quản trị viên.`);
   };
 
   const handleEditNotification = (noti) => {
@@ -747,7 +778,13 @@ export default function App() {
                   />
 
                   {!isDoanXa && (
-                    <BranchTasks tasks={userTasks} currentRole={currentUser} setActiveTab={setActiveTab} onDeleteTask={handleDeleteTask} />
+                    <BranchTasks 
+                      tasks={userTasks} 
+                      currentRole={currentUser} 
+                      setActiveTab={setActiveTab} 
+                      onDeleteTask={handleDeleteTask}
+                      onConfirmReceipt={handleConfirmReceipt}
+                    />
                   )}
 
                   <NotificationsList 
@@ -809,6 +846,8 @@ export default function App() {
               onToggleTask={handleToggleTask} 
               onDeleteTask={handleDeleteTask}
               isDoanXa={isDoanXa} 
+              currentUser={currentUser}
+              onConfirmReceipt={handleConfirmReceipt}
             />
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */

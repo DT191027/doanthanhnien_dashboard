@@ -1355,14 +1355,20 @@ export async function syncFetchTasks() {
     try {
       const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
-        const mapped = data.map(item => ({
-          id: item.id,
-          title: item.title,
-          status: item.status === 'in_progress' ? 'inProgress' : item.status || 'todo',
-          priority: item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : 'Bình thường',
-          dueDate: item.due_date || 'Hôm nay',
-          assigned_to: item.assigned_to || 'Đoàn xã'
-        }));
+        const mapped = data.map(item => {
+          const matchedLocal = (localList || []).find(l => String(l.id) === String(item.id)) || {};
+          return {
+            ...matchedLocal,
+            ...item,
+            id: item.id,
+            title: item.title,
+            status: item.status === 'in_progress' ? 'inProgress' : item.status || 'todo',
+            priority: item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : (item.priority || 'Bình thường'),
+            dueDate: item.due_date || matchedLocal.dueDate || 'Hôm nay',
+            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Đoàn xã',
+            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || []
+          };
+        });
         const seen = new Set();
         const clean = mapped.filter(t => {
           if (!t || !t.id || seen.has(t.id)) return false;
@@ -1382,7 +1388,11 @@ export async function syncFetchTasks() {
 
 export async function syncSaveTask(taskItem) {
   const current = getPersistedData('tasks', []);
-  const updatedLocal = [taskItem, ...current];
+  const exists = current.some(item => String(item.id) === String(taskItem.id));
+  const updatedLocal = exists
+    ? current.map(item => String(item.id) === String(taskItem.id) ? { ...item, ...taskItem } : item)
+    : [taskItem, ...current];
+
   setPersistedData('tasks', updatedLocal);
   notifySyncEvent('SAVE_TASK', taskItem);
 
@@ -1396,18 +1406,18 @@ export async function syncSaveTask(taskItem) {
       if (taskItem.priority === 'Cao' || taskItem.priority === 'high') validPriority = 'high';
       else if (taskItem.priority === 'Thấp' || taskItem.priority === 'low') validPriority = 'low';
 
-      const { data, error } = await supabase.from('tasks').insert([{
+      const payload = {
         title: taskItem.title,
         status: validTaskStatus,
         priority: validPriority,
         due_date: new Date().toISOString().split('T')[0],
         assigned_to: taskItem.assigned_to || 'Đoàn xã'
-      }]).select();
+      };
 
-      if (error) {
-        console.error('Supabase error inserting task:', error);
+      if (exists) {
+        await supabase.from('tasks').update(payload).eq('id', taskItem.id);
       } else {
-        console.log('Supabase task inserted successfully:', data);
+        await supabase.from('tasks').insert([payload]);
       }
     } catch (e) {
       console.error('Supabase save task exception:', e);

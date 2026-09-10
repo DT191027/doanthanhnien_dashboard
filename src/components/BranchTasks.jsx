@@ -1,9 +1,11 @@
 import React from 'react';
 import { CheckSquare, Trash2 } from 'lucide-react';
 import { COMPETITION_CLUSTERS } from '../lib/supabase';
+import { ReceiptConfirmationBox } from './SecondaryViews';
 
-export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onDeleteTask }) {
-  const branchName = currentRole?.branch_name || currentRole?.title || '';
+export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onDeleteTask, onConfirmReceipt }) {
+  const branchName = currentRole?.full_name || currentRole?.branch_name || currentRole?.title || '';
+  const isDoanXa = currentRole?.role === 'doan_xa' || currentRole?.role === 'admin';
 
   // Filter tasks relevant to this Chi đoàn:
   // 1. Assigned to "Tất cả 30 Chi đoàn Ấp"
@@ -43,34 +45,45 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onD
           <div className="text-secondary" style={{ fontSize: '11px' }}>Sẵn sàng theo dõi công việc chi đoàn</div>
         </div>
       ) : (
-        <div className="d-flex flex-column gap-2" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+        <div className="d-flex flex-column gap-2" style={{ maxHeight: '280px', overflowY: 'auto' }}>
           {myTasks.map((task) => (
-            <div key={task.id} className="p-2 px-3 rounded-3 bg-light border d-flex align-items-center justify-content-between hover-shadow transition">
-              <div>
-                <div className="fw-semibold text-dark" style={{ fontSize: '12.5px' }}>{task.title}</div>
-                <div className="text-muted" style={{ fontSize: '10.5px' }}>
-                  <span>Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
-                  <span className="ms-2 text-primary fw-semibold">📌 {task.assigned_to}</span>
+            <div key={task.id} className="p-2.5 px-3 rounded-3 bg-light border hover-shadow transition">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <div>
+                  <div className="fw-semibold text-dark" style={{ fontSize: '12.5px' }}>{task.title}</div>
+                  <div className="text-muted" style={{ fontSize: '10.5px' }}>
+                    <span>Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
+                    <span className="ms-2 text-primary fw-semibold">📌 {task.assigned_to}</span>
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
+                    {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
+                  </span>
+                  {onDeleteTask && (
+                    <button 
+                      className="btn btn-link text-danger p-0 ms-1"
+                      title="Xóa công việc"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${task.title}" không?`)) {
+                          onDeleteTask(task.id, task.title);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
-                  {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
-                </span>
-                {onDeleteTask && (
-                  <button 
-                    className="btn btn-link text-danger p-0 ms-1"
-                    title="Xóa công việc"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${task.title}" không?`)) {
-                        onDeleteTask(task.id, task.title);
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+              <div className="pt-1.5 border-top d-flex justify-content-end">
+                <ReceiptConfirmationBox 
+                  type="task" 
+                  item={task} 
+                  currentRole={currentRole} 
+                  isDoanXa={isDoanXa} 
+                  onConfirmReceipt={onConfirmReceipt} 
+                />
               </div>
             </div>
           ))}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -18,7 +18,8 @@ import {
   FileSpreadsheet,
   Building,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import { INITIAL_BRANCHES, OFFICIAL_HAMLETS } from '../lib/supabase';
 
@@ -42,6 +43,18 @@ export default function BranchMembersView({
   const [viewingMember, setViewingMember] = useState(null);
   const [deletingMember, setDeletingMember] = useState(null);
 
+  // 5-Second Restore Timer State
+  const [pendingDeletedMember, setPendingDeletedMember] = useState(null);
+  const [restoreCountdown, setRestoreCountdown] = useState(5);
+  const [showRestoreNoticeModal, setShowRestoreNoticeModal] = useState(false);
+  const countdownRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
   // Form State for Create/Edit Member
   const [formData, setFormData] = useState({
     id: '',
@@ -60,9 +73,9 @@ export default function BranchMembersView({
 
   const safeMembers = Array.isArray(members) ? members : [];
 
-  // Filter members list based on user role and selected controls
+  // Filter members list based on user role, selected controls, and pending deletions
   const filteredMembers = safeMembers.filter(m => {
-    if (!m) return false;
+    if (!m || (pendingDeletedMember && m.id === pendingDeletedMember.id)) return false;
 
     // Branch filter
     let matchesBranch = true;
@@ -151,10 +164,36 @@ export default function BranchMembersView({
   };
 
   const handleConfirmDelete = () => {
-    if (deletingMember && deletingMember.id) {
-      onDeleteMember && onDeleteMember(deletingMember.id);
-      setDeletingMember(null);
+    if (!deletingMember) return;
+    const target = deletingMember;
+    setDeletingMember(null);
+
+    // If there was a previous pending deletion, purge it permanently before starting new timer
+    if (pendingDeletedMember && pendingDeletedMember.id !== target.id) {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      onDeleteMember && onDeleteMember(pendingDeletedMember.id);
     }
+
+    setPendingDeletedMember(target);
+    setRestoreCountdown(5);
+
+    let count = 5;
+    countdownRef.current = setInterval(() => {
+      count -= 1;
+      setRestoreCountdown(count);
+      if (count <= 0) {
+        clearInterval(countdownRef.current);
+        onDeleteMember && onDeleteMember(target.id);
+        setPendingDeletedMember(null);
+      }
+    }, 1000);
+  };
+
+  const handleCancelPendingDelete = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    const restoredName = pendingDeletedMember?.full_name || 'Đoàn viên';
+    setPendingDeletedMember(null);
+    setShowRestoreNoticeModal(false);
   };
 
   const getStatusBadge = (status) => {
@@ -684,9 +723,13 @@ export default function BranchMembersView({
                 Xác nhận xóa đoàn viên này?
               </h5>
 
-              <p className="text-secondary mb-4" style={{ fontSize: '13px', lineHeight: '1.5' }}>
-                Hồ sơ đoàn viên <strong className="text-dark">"{deletingMember.full_name}"</strong> thuộc <strong>{deletingMember.branch_name}</strong> sẽ được xóa hoàn toàn và đồng bộ dữ liệu tức thì trên hệ thống!
+              <p className="text-secondary mb-3" style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                Hồ sơ đoàn viên <strong className="text-dark">"{deletingMember.full_name}"</strong> thuộc <strong>{deletingMember.branch_name}</strong> sẽ được chuyển vào hàng chờ xóa.
               </p>
+
+              <div className="p-2.5 bg-warning-subtle text-warning-emphasis rounded-3 border border-warning-subtle mb-4" style={{ fontSize: '12px' }}>
+                <strong>💬 Lưu ý:</strong> Sau khi bấm xóa, bạn sẽ có <strong>5 giây</strong> để bấm nút <strong>KHÔI PHỤC</strong>. Hết 5s hệ thống sẽ xóa vĩnh viễn!
+              </div>
 
               <div className="d-flex align-items-center justify-content-center gap-2.5">
                 <button 
@@ -704,6 +747,94 @@ export default function BranchMembersView({
                   onClick={handleConfirmDelete}
                 >
                   Xác nhận Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating 5-Second Restore Banner */}
+      {pendingDeletedMember && (
+        <div 
+          className="position-fixed top-0 start-50 translate-middle-x mt-3 bg-dark text-white px-4 py-3 rounded-4 shadow-lg border border-warning d-flex align-items-center justify-content-between gap-3 flex-wrap animate-fade-in"
+          style={{ zIndex: 1090, minWidth: '460px', backgroundColor: '#0F172A' }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div className="p-2.5 bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-extrabold fs-5 shadow-sm" style={{ width: '42px', height: '42px' }}>
+              {restoreCountdown}s
+            </div>
+            <div>
+              <div className="fw-bold text-white" style={{ fontSize: '14px' }}>
+                Đã xóa đoàn viên "{pendingDeletedMember.full_name}"
+              </div>
+              <div className="text-warning-emphasis mt-0.5" style={{ fontSize: '12px' }}>
+                Bấm <strong>Khôi phục</strong> trong <strong className="text-warning fw-extrabold">{restoreCountdown}s</strong>, nếu không sẽ xóa vĩnh viễn!
+              </div>
+            </div>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <button 
+              type="button" 
+              className="btn btn-warning fw-bold px-3.5 py-2 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-sm text-dark hover-scale"
+              style={{ fontSize: '13px', backgroundColor: '#F59E0B', borderColor: '#F59E0B' }}
+              onClick={() => setShowRestoreNoticeModal(true)}
+            >
+              <RotateCcw size={16} />
+              <span>Khôi phục ({restoreCountdown}s)</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 4: Restore Confirmation Modal */}
+      {showRestoreNoticeModal && pendingDeletedMember && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-50" 
+          style={{ zIndex: 1095 }}
+          onClick={() => setShowRestoreNoticeModal(false)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered shadow-lg" 
+            style={{ maxWidth: '440px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 rounded-4 text-center p-4">
+              <div className="d-flex justify-content-center mb-3">
+                <div className="p-3 bg-success-subtle text-success rounded-circle d-inline-flex align-items-center justify-content-center">
+                  <RotateCcw size={36} />
+                </div>
+              </div>
+
+              <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '18px' }}>
+                Xác nhận Khôi phục Đoàn viên?
+              </h5>
+
+              <p className="text-secondary mb-4" style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                Hồ sơ đoàn viên <strong className="text-dark">"{pendingDeletedMember.full_name}"</strong> thuộc <strong>{pendingDeletedMember.branch_name}</strong> sẽ được khôi phục nguyên vẹn về danh sách.
+                <br />
+                <span className="text-warning-emphasis mt-1 d-block fw-semibold">
+                  (Thời gian còn lại: {restoreCountdown}s trước khi bị xóa vĩnh viễn)
+                </span>
+              </p>
+
+              <div className="d-flex align-items-center justify-content-center gap-2.5">
+                <button 
+                  type="button" 
+                  className="btn btn-light border text-secondary fw-semibold px-4 py-2 rounded-3 flex-fill"
+                  style={{ fontSize: '13.5px' }}
+                  onClick={() => setShowRestoreNoticeModal(false)}
+                >
+                  Bỏ qua
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-success fw-bold px-4 py-2 rounded-3 flex-fill shadow-sm"
+                  style={{ fontSize: '13.5px', backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                  onClick={handleCancelPendingDelete}
+                >
+                  ✓ Xác nhận Khôi phục
                 </button>
               </div>
             </div>

@@ -577,9 +577,23 @@ export function DocumentsView({
     }));
   };
 
-  const currentList = tabType === 'incoming_docs' ? processIncomingItems() : processOutgoingItems();
+  const rawList = tabType === 'incoming_docs' ? processIncomingItems() : processOutgoingItems();
+  
+  // Deduplicate list by title and ID to ensure items appear exactly ONCE
+  const deduplicatedList = (() => {
+    const seen = new Set();
+    return rawList.filter(item => {
+      if (!item) return false;
+      const key = (item.display_title && item.display_title.trim()) 
+        ? item.display_title.trim() 
+        : String(item.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
 
-  const filtered = currentList.filter(item => {
+  const filtered = deduplicatedList.filter(item => {
     const kw = search.toLowerCase().trim();
     if (!kw) return true;
     const titleMatch = (item.display_title || '').toLowerCase().includes(kw);
@@ -920,6 +934,37 @@ export function DocumentsView({
                   {previewDoc.display_summary || 'Nội dung chi tiết được lưu trữ cùng tệp đính kèm.'}
                 </div>
               </div>
+
+              {/* Xem trực tiếp nội dung tệp (Embedded PDF / Document Viewer) */}
+              {previewDoc.file_url && previewDoc.file_url !== '#' && (
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <FileText className="text-primary" size={16} />
+                      <span>Xem trực tiếp nội dung tệp ({previewDoc.file_name || 'Van_Ban.pdf'}):</span>
+                    </div>
+                    <a 
+                      href={previewDoc.file_url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-semibold d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: '11.5px' }}
+                    >
+                      <span>↗️ Mở cửa sổ toàn màn hình</span>
+                    </a>
+                  </div>
+
+                  <div className="border rounded-3 overflow-hidden bg-dark shadow-xs position-relative" style={{ height: '420px' }}>
+                    <iframe
+                      src={previewDoc.file_url.startsWith('http') 
+                        ? previewDoc.file_url 
+                        : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + '/' + previewDoc.file_name)}&embedded=true`}
+                      title="Xem trực tiếp nội dung văn bản"
+                      className="w-100 h-100 border-0 bg-white"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Tệp đính kèm & Tải PDF */}
               <div className="p-3 bg-white border rounded-3 d-flex align-items-center justify-content-between mb-4">

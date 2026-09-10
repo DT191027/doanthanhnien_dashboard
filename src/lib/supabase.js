@@ -941,7 +941,15 @@ export async function syncFetchDocuments() {
   if (localList === null) {
     localList = INITIAL_DOCUMENTS;
   }
-  localList = (localList || []).filter(d => d && !deleted.includes(String(d.id)) && (!d.title || !deleted.includes(d.title)));
+  const seenLocal = new Set();
+  localList = (localList || []).filter(d => {
+    if (!d) return false;
+    if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
+    const key = (d.title && d.title.trim()) ? d.title.trim() : String(d.id);
+    if (seenLocal.has(key)) return false;
+    seenLocal.add(key);
+    return true;
+  });
   setPersistedData('documents', localList);
 
   if (supabase) {
@@ -964,9 +972,11 @@ export async function syncFetchDocuments() {
         }));
         const seen = new Set();
         const clean = mapped.filter(d => {
-          if (!d || !d.id || seen.has(d.id)) return false;
+          if (!d) return false;
+          const key = (d.title && d.title.trim()) ? d.title.trim() : String(d.id);
+          if (seen.has(key)) return false;
           if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
-          seen.add(d.id);
+          seen.add(key);
           return true;
         });
         setPersistedData('documents', clean);
@@ -981,7 +991,27 @@ export async function syncFetchDocuments() {
 
 export async function syncSaveDocument(docItem) {
   const current = getPersistedData('documents', INITIAL_DOCUMENTS);
-  const updatedLocal = [docItem, ...current];
+  const existsIndex = (current || []).findIndex(d => 
+    d && ((docItem.id && String(d.id) === String(docItem.id)) || (d.title && docItem.title && d.title.trim() === docItem.title.trim()))
+  );
+
+  let updatedLocal;
+  if (existsIndex >= 0) {
+    updatedLocal = [...current];
+    updatedLocal[existsIndex] = { ...updatedLocal[existsIndex], ...docItem };
+  } else {
+    updatedLocal = [docItem, ...current];
+  }
+
+  const seen = new Set();
+  updatedLocal = updatedLocal.filter(d => {
+    if (!d) return false;
+    const key = (d.title && d.title.trim()) ? d.title.trim() : String(d.id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   setPersistedData('documents', updatedLocal);
   notifySyncEvent('SAVE_DOCUMENT', docItem);
 
@@ -995,23 +1025,28 @@ export async function syncSaveDocument(docItem) {
       if (docItem.type === 'incoming') validDocType = 'incoming';
       else if (docItem.type === 'submission') validDocType = 'submission';
 
-      const { data, error } = await supabase.from('documents').insert([{
+      const payload = {
         doc_number: docItem.doc_number,
         title: docItem.title,
         type: validDocType,
         sender: docItem.sender || 'Đoàn xã Xuân Thới Sơn',
         recipient_scope: docItem.recipient_scope || 'ALL',
-        issue_date: new Date().toISOString().split('T')[0],
+        issue_date: docItem.date || docItem.issue_date || new Date().toISOString().split('T')[0],
         status: validDocStatus,
         pdf_url: docItem.file_url || docItem.file_name || '',
         file_url: docItem.file_url || '',
         storage_provider: docItem.storage_provider || 'supabase'
-      }]).select();
+      };
 
-      if (error) {
-        console.error('Supabase error inserting document:', error);
+      if (docItem.id && !String(docItem.id).startsWith('doc-')) {
+        await supabase.from('documents').upsert([{ id: docItem.id, ...payload }]);
       } else {
-        console.log('Supabase document inserted successfully:', data);
+        const { data: existing } = await supabase.from('documents').select('id').eq('title', docItem.title);
+        if (existing && existing.length > 0) {
+          await supabase.from('documents').update(payload).eq('id', existing[0].id);
+        } else {
+          await supabase.from('documents').insert([payload]);
+        }
       }
     } catch (e) {
       console.error('Supabase save document exception:', e);

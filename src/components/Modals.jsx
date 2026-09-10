@@ -174,6 +174,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
     title: '',
     priority: 'Bình thường',
+    doc_category: 'act_docs',
     day: '',
     month: '',
     year: '',
@@ -218,6 +219,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       ...prev,
       title: prev.title || cleanTitle,
       time: '08:00 - 11:30',
+      doc_category: prev.doc_category || 'act_docs',
       day: prev.day || String(today.getDate()).padStart(2, '0'),
       month: prev.month || String(today.getMonth() + 1).padStart(2, '0'),
       year: prev.year || today.getFullYear(),
@@ -275,12 +277,14 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       hasSubTasks: hasSubTasks,
       subTasks: hasSubTasks ? subTasks : [],
       priority: formData.priority || 'Bình thường',
+      doc_category: formData.doc_category || 'act_docs',
       location: formData.location || OFFICIAL_ADDRESS
     });
 
     setFormData({
       title: '',
       priority: 'Bình thường',
+      doc_category: 'act_docs',
       day: '',
       month: '',
       time: '08:00 - 11:30',
@@ -378,6 +382,23 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-primary d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                    <FileText size={15} />
+                    <span>Mục đích văn bản (Tự động đưa vào Văn bản đi & Lưu trữ văn bản)</span>
+                  </label>
+                  <select
+                    className="form-select bg-light border-primary-subtle"
+                    value={formData.doc_category || 'act_docs'}
+                    onChange={(e) => setFormData({ ...formData, doc_category: e.target.value })}
+                  >
+                    <option value="act_docs">📌 Văn bản thuộc ban hành hoạt động</option>
+                    <option value="meeting_docs">🤝 Văn bản cuộc họp</option>
+                    <option value="implementation_docs">📢 Văn bản triển khai</option>
+                    <option value="decision_docs">⚖️ Văn bản quyết định</option>
+                  </select>
                 </div>
 
                 <div className="row g-2 mb-3">

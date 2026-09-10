@@ -149,6 +149,16 @@ export default function App() {
     });
   };
 
+  const handleSaveDocumentItem = async (docItem) => {
+    const updated = await syncSaveDocument(docItem);
+    setDocumentsList(updated);
+  };
+
+  const handleSaveSubmissionItem = async (subItem) => {
+    const updated = await syncSaveSubmission(subItem);
+    setSubmissionsList(updated);
+  };
+
   const handleSaveMember = async (memberData) => {
     const updated = await syncSaveMember(memberData);
     setMembersList(updated);
@@ -251,27 +261,35 @@ export default function App() {
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
 
-    // Nếu có đính kèm tệp văn bản khi tạo hoạt động, tự động đẩy lên phần Văn bản đi & Lưu trữ văn bản
-    if (newAct.file_name || newAct.file_url) {
-      const autoDoc = {
-        id: `doc-${Date.now()}`,
-        doc_number: `${Math.floor(Math.random() * 40) + 10}-KH/ĐX-XTS`,
-        title: `Kế hoạch ban hành: ${newAct.title}`,
-        summary: `Ban hành ngày ${dayVal}/${monthVal}/${yearVal} - Kế hoạch triển khai hoạt động "${newAct.title}"`,
-        sender: 'Đoàn xã Xuân Thới Sơn',
-        recipient_scope: assignedText,
-        status: 'unread',
-        type: 'outgoing',
-        category: 'act_docs',
-        category_label: 'Văn bản thuộc ban hành hoạt động',
-        date: `${dayVal}/${monthVal}/${yearVal}`,
-        file_name: newAct.file_name,
-        file_url: newAct.file_url,
-        storage_provider: 'supabase'
-      };
-      const updatedDocs = await syncSaveDocument(autoDoc);
-      setDocumentsList(updatedDocs);
-    }
+    // Tự động ban hành văn bản đi và đưa vào Lưu trữ văn bản dựa vào mục đích của văn bản
+    const categoryMap = {
+      act_docs: 'Văn bản thuộc ban hành hoạt động',
+      meeting_docs: 'Văn bản cuộc họp',
+      implementation_docs: 'Văn bản triển khai',
+      decision_docs: 'Văn bản quyết định'
+    };
+    const categoryKey = newAct.doc_category || 'act_docs';
+    const categoryLabel = categoryMap[categoryKey] || 'Văn bản thuộc ban hành hoạt động';
+
+    const autoDoc = {
+      id: `doc-${Date.now()}`,
+      doc_number: `${Math.floor(Math.random() * 40) + 10}-KH/ĐX-XTS`,
+      title: `Kế hoạch ban hành: ${newAct.title}`,
+      summary: `Ban hành ngày ${dayVal}/${monthVal}/${yearVal} - ${categoryLabel} cho hoạt động "${newAct.title}". Địa điểm: ${newAct.location || OFFICIAL_ADDRESS}. Thời gian: ${activityItem.time}`,
+      sender: 'Đoàn xã Xuân Thới Sơn',
+      recipient_scope: assignedText,
+      status: 'unread',
+      type: 'outgoing',
+      category: categoryKey,
+      category_label: categoryLabel,
+      date: `${dayVal}/${monthVal}/${yearVal}`,
+      time: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
+      file_name: newAct.file_name || `Van_Ban_Ban_Hanh_${newAct.title.replace(/\s+/g, '_')}.pdf`,
+      file_url: newAct.file_url || '#',
+      storage_provider: 'supabase'
+    };
+    const updatedDocs = await syncSaveDocument(autoDoc);
+    setDocumentsList(updatedDocs);
 
     // Tự động phát thông báo tới đúng đơn vị được giao
     const targetText = assignedText;
@@ -851,9 +869,13 @@ export default function App() {
             /* DOCUMENTS MANAGEMENT VIEW */
             <DocumentsView 
               documents={userDocuments}
+              submissions={submissionsList}
               tabType={activeTab}
               onOpenIssueDocument={() => setShowIssueDocModal(true)}
               onDeleteDocument={handleDeleteDocument}
+              onSaveDocument={handleSaveDocumentItem}
+              onSaveSubmission={handleSaveSubmissionItem}
+              triggerToast={triggerToast}
               isDoanXa={isDoanXa}
             />
           ) : activeTab === 'submission_history' ? (

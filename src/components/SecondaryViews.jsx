@@ -512,26 +512,143 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
 }
 
 // 2. Full Documents Management View
-export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpenIssueDocument, onDeleteDocument, isDoanXa }) {
+export function DocumentsView({ 
+  documents = [], 
+  submissions = [], 
+  tabType = 'incoming_docs', 
+  onOpenIssueDocument, 
+  onDeleteDocument, 
+  onSaveDocument,
+  onSaveSubmission,
+  triggerToast,
+  isDoanXa 
+}) {
   const [search, setSearch] = useState('');
+  const [previewDoc, setPreviewDoc] = useState(null);
 
-  const filtered = documents.filter(d => {
-    const matchType = tabType === 'incoming_docs' ? d.type === 'incoming' : 
-                      tabType === 'outgoing_docs' ? (d.type === 'outgoing' || !d.type) : true;
-    const matchSearch = d.title.toLowerCase().includes(search.toLowerCase()) || 
-                        (d.doc_number && d.doc_number.toLowerCase().includes(search.toLowerCase()));
-    return matchType && matchSearch;
+  // Process incoming items combining submissions and incoming documents
+  const processIncomingItems = () => {
+    const docsIncoming = (documents || []).filter(d => d.type === 'incoming').map(d => ({
+      ...d,
+      item_type: 'document',
+      doc_number: d.doc_number || `VB-${String(d.id).slice(-6)}`,
+      source_branch: d.sender || d.branch_name || 'Chi đoàn Ấp',
+      display_title: d.title || 'Văn bản tiếp nhận',
+      display_summary: d.summary || d.content || d.description || 'Văn bản đã được đơn vị gửi trực tuyến.',
+      display_date: d.date || d.issue_date || 'Hôm nay',
+      display_time: d.time || d.created_at_time || '08:00',
+      read_status: d.read_status || (d.status === 'read' || d.status === 'Đã đọc' ? 'read' : 'unread'),
+      receipt_status: d.receipt_status || (d.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
+      file_name: d.file_name || d.pdf_url || 'Van_Ban.pdf',
+      file_url: d.file_url || d.pdf_url || '#'
+    }));
+
+    const subsIncoming = (submissions || []).map(s => ({
+      ...s,
+      item_type: 'submission',
+      doc_number: s.doc_number || `BC-${String(s.id).slice(-6)}`,
+      source_branch: s.branch_name || s.sender || 'Chi đoàn Ấp',
+      display_title: s.doc_title || s.title || `Báo cáo / Văn bản từ ${s.branch_name || 'Chi đoàn Ấp'}`,
+      display_summary: s.notes || s.content || s.summary || 'Văn bản báo cáo nộp từ Chi đoàn trực thuộc.',
+      display_date: s.submitted_at ? s.submitted_at.split(' ')[0] : (s.sub_date || 'Hôm nay'),
+      display_time: s.submitted_at && s.submitted_at.includes(' ') ? s.submitted_at.split(' ')[1] : (s.time || 'Vừa xong'),
+      read_status: s.read_status || (s.status === 'Đã tiếp nhận' || s.receipt_status === 'Đã tiếp nhận' ? 'read' : 'unread'),
+      receipt_status: s.receipt_status || (s.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
+      file_name: s.file_name || 'Bao_Cao_Chi_Doan.pdf',
+      file_url: s.file_url || '#'
+    }));
+
+    return [...subsIncoming, ...docsIncoming];
+  };
+
+  const processOutgoingItems = () => {
+    return (documents || []).filter(d => d.type === 'outgoing' || !d.type).map(d => ({
+      ...d,
+      item_type: 'document',
+      doc_number: d.doc_number || `KH-${String(d.id).slice(-6)}`,
+      source_branch: d.sender || 'Đoàn xã Xuân Thới Sơn',
+      display_title: d.title || 'Văn bản ban hành',
+      display_summary: d.summary || d.description || 'Kế hoạch / Văn bản ban hành tới 30 Chi đoàn Ấp',
+      display_date: d.date || d.issue_date || 'Hôm nay',
+      display_time: d.time || '',
+      category_label: d.category_label || 'Văn bản thuộc ban hành hoạt động',
+      file_name: d.file_name || 'Van_Ban_Ban_Hanh.pdf',
+      file_url: d.file_url || '#'
+    }));
+  };
+
+  const currentList = tabType === 'incoming_docs' ? processIncomingItems() : processOutgoingItems();
+
+  const filtered = currentList.filter(item => {
+    const kw = search.toLowerCase().trim();
+    if (!kw) return true;
+    const titleMatch = (item.display_title || '').toLowerCase().includes(kw);
+    const numMatch = (item.doc_number || '').toLowerCase().includes(kw);
+    const branchMatch = (item.source_branch || '').toLowerCase().includes(kw);
+    const summaryMatch = (item.display_summary || '').toLowerCase().includes(kw);
+    return titleMatch || numMatch || branchMatch || summaryMatch;
   });
 
+  const handleToggleReadStatus = (item, e) => {
+    if (e) e.stopPropagation();
+    const newRead = item.read_status === 'read' ? 'unread' : 'read';
+    const updatedPayload = {
+      ...item,
+      read_status: newRead,
+      status: newRead === 'read' ? 'read' : 'unread'
+    };
+    if (item.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedPayload);
+    } else {
+      onSaveDocument && onSaveDocument(updatedPayload);
+    }
+    triggerToast && triggerToast(`Đã chuyển trạng thái đọc sang: ${newRead === 'read' ? 'Đã đọc' : 'Chưa đọc'}`);
+  };
+
+  const handleConfirmReceipt = (item, e) => {
+    if (e) e.stopPropagation();
+    const updatedPayload = {
+      ...item,
+      receipt_status: 'Đã tiếp nhận',
+      status: 'Đã tiếp nhận',
+      read_status: 'read'
+    };
+    if (item.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedPayload);
+    } else {
+      onSaveDocument && onSaveDocument(updatedPayload);
+    }
+    if (previewDoc && previewDoc.id === item.id) {
+      setPreviewDoc(updatedPayload);
+    }
+    triggerToast && triggerToast(`Đã xác nhận tiếp nhận văn bản "${item.display_title}" từ ${item.source_branch}!`);
+  };
+
+  const handleOpenPreview = (item) => {
+    const readItem = {
+      ...item,
+      read_status: 'read'
+    };
+    if (item.read_status !== 'read') {
+      if (item.item_type === 'submission') {
+        onSaveSubmission && onSaveSubmission(readItem);
+      } else {
+        onSaveDocument && onSaveDocument(readItem);
+      }
+    }
+    setPreviewDoc(readItem);
+  };
+
   const titleMap = {
-    incoming_docs: 'Quản lý Văn bản đến (Báo cáo tiếp nhận)',
-    outgoing_docs: 'Quản lý Văn bản đi (Văn bản ban hành)',
+    incoming_docs: 'Quản lý Văn bản đến (Tiếp nhận báo cáo & văn bản từ 30 Chi đoàn)',
+    outgoing_docs: 'Quản lý Văn bản đi (Ban hành hoạt động & lưu trữ văn bản)',
     doan_xa_docs: 'Văn bản từ Đoàn xã',
     required_docs: 'Văn bản cần nộp'
   };
 
   return (
     <div className="content-card">
+      {/* Header section */}
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
@@ -539,7 +656,9 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
             {titleMap[tabType] || 'Quản lý Văn bản'}
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Hệ thống tiếp nhận, phát hành và lưu trữ văn bản số hóa 100% Realtime
+            {tabType === 'incoming_docs' 
+              ? 'Tiếp nhận, kiểm tra, xác nhận và tải tệp văn bản/báo cáo từ 30 Chi đoàn Ấp' 
+              : 'Ban hành, phân loại và lưu trữ tự động văn bản triển khai hoạt động'}
           </div>
         </div>
 
@@ -550,23 +669,23 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
             onClick={onOpenIssueDocument}
           >
             <Send size={16} />
-            <span>Ban hành văn bản mới</span>
+            <span>+ Ban hành văn bản mới</span>
           </button>
         )}
       </div>
 
       {/* Search Bar */}
       <div className="d-flex align-items-center justify-content-between mb-3 gap-3">
-        <div className="fw-semibold text-dark" style={{ fontSize: '14px' }}>
-          Danh sách văn bản ({filtered.length})
+        <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>
+          Danh sách văn bản {tabType === 'incoming_docs' ? 'đến' : 'đi'} ({filtered.length})
         </div>
 
-        <div className="input-group" style={{ maxWidth: '320px' }}>
+        <div className="input-group" style={{ maxWidth: '340px' }}>
           <span className="input-group-text bg-light border-end-0"><Search size={15} className="text-secondary" /></span>
           <input 
             type="text" 
             className="form-control bg-light border-start-0 ps-0" 
-            placeholder="Tìm kiếm số hiệu, trích yếu..." 
+            placeholder="Tìm theo nguồn, số hiệu, tiêu đề..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ fontSize: '13px' }}
@@ -582,7 +701,9 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
           </div>
           <h5 className="fw-bold text-dark mb-1">Chưa có văn bản nào trong mục này</h5>
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
-            Tất cả văn bản được ban hành hoặc tiếp nhận sẽ hiển thị tự động tại đây.
+            {tabType === 'incoming_docs' 
+              ? 'Tất cả văn bản/báo cáo do 30 Chi đoàn nộp sẽ tự động hiển thị tại đây.'
+              : 'Tất cả văn bản ban hành từ Quản lý hoạt động sẽ tự động đưa lên đây và Lưu trữ văn bản.'}
           </p>
           {isDoanXa && (
             <button className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }} onClick={onOpenIssueDocument}>
@@ -596,65 +717,265 @@ export function DocumentsView({ documents = [], tabType = 'incoming_docs', onOpe
             <thead>
               <tr>
                 <th>Số / Ký hiệu</th>
-                <th>Tên / Trích yếu văn bản</th>
-                <th>Đơn vị gửi / nhận</th>
-                <th>Ngày phát hành</th>
+                <th>{tabType === 'incoming_docs' ? 'Nguồn phát hành (Chi đoàn)' : 'Đơn vị nhận'}</th>
+                <th>Tiêu đề & Trích yếu văn bản</th>
+                <th>{tabType === 'incoming_docs' ? 'Ngày giờ nộp / Tải tệp lên' : 'Ngày ban hành'}</th>
+                {tabType === 'incoming_docs' && <th>Trạng thái đọc</th>}
                 <th>Trạng thái</th>
                 <th>Tệp đính kèm</th>
-                {isDoanXa && <th>Thao tác</th>}
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((doc) => (
-                <tr key={doc.id}>
-                  <td className="fw-bold text-primary">{doc.doc_number || '---'}</td>
+              {filtered.map((item) => (
+                <tr key={item.id} className={tabType === 'incoming_docs' && item.read_status === 'unread' ? 'bg-warning-subtle bg-opacity-10' : ''}>
+                  <td className="fw-bold text-primary">{item.doc_number || '---'}</td>
+                  
+                  {/* Nguồn gửi / Đơn vị nhận (Tô đậm nguồn) */}
                   <td>
-                    <div className="fw-bold text-dark">{doc.title}</div>
-                    {doc.summary && <div className="text-muted" style={{ fontSize: '11.5px' }}>{doc.summary}</div>}
+                    <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <Building size={15} className="text-primary flex-shrink-0" />
+                      <strong>{item.source_branch || (tabType === 'incoming_docs' ? 'Chi đoàn Ấp' : 'Toàn xã')}</strong>
+                    </div>
                   </td>
-                  <td className="text-secondary">{doc.sender || doc.recipient_scope || 'Toàn xã'}</td>
-                  <td className="text-secondary">{doc.date || doc.issue_date || 'Hôm nay'}</td>
+
+                  {/* Tiêu đề & Nội dung văn bản (Tô đậm tiêu đề) */}
                   <td>
-                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                      {doc.status || 'Đã ban hành'}
-                    </span>
+                    <div className="fw-extrabold text-dark" style={{ fontSize: '13.5px' }}>
+                      {item.display_title}
+                    </div>
+                    {item.display_summary && (
+                      <div className="text-secondary mt-0.5 line-clamp-2" style={{ fontSize: '12px' }}>
+                        {item.display_summary}
+                      </div>
+                    )}
+                    {item.category_label && (
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 mt-1" style={{ fontSize: '10.5px' }}>
+                        📌 {item.category_label}
+                      </span>
+                    )}
                   </td>
+
+                  {/* Ngày giờ tải tệp lên / Nộp văn bản */}
+                  <td className="text-secondary" style={{ fontSize: '12.5px' }}>
+                    <div className="fw-semibold text-dark">
+                      📅 {item.display_date}
+                    </div>
+                    {item.display_time && (
+                      <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                        ⏰ {item.display_time}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Trạng thái đọc (Clickable Toggle) */}
+                  {tabType === 'incoming_docs' && (
+                    <td>
+                      <button 
+                        className={`badge ${item.read_status === 'read' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-danger-subtle text-danger border-danger-subtle'} border px-2.5 py-1.5 rounded-2 fw-semibold cursor-pointer border-0 shadow-xs hover-scale`}
+                        style={{ fontSize: '11.5px' }}
+                        title="Bấm để thay đổi trạng thái đọc"
+                        onClick={(e) => handleToggleReadStatus(item, e)}
+                      >
+                        {item.read_status === 'read' ? '🟢 Đã đọc' : '🔴 Chưa đọc'}
+                      </button>
+                    </td>
+                  )}
+
+                  {/* Trạng thái tiếp nhận / Ban hành */}
                   <td>
-                    {doc.file_url || doc.file_name ? (
+                    {tabType === 'incoming_docs' ? (
+                      item.receipt_status === 'Đã tiếp nhận' ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold">
+                          ✓ Đã tiếp nhận
+                        </span>
+                      ) : (
+                        <button 
+                          className="btn btn-sm btn-outline-primary fw-bold px-2.5 py-1 rounded-2 shadow-xs"
+                          style={{ fontSize: '11.5px' }}
+                          onClick={(e) => handleConfirmReceipt(item, e)}
+                        >
+                          Xác nhận tiếp nhận
+                        </button>
+                      )
+                    ) : (
+                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-semibold">
+                        {item.status || 'Đã ban hành'}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Tệp đính kèm / Tải PDF */}
+                  <td>
+                    {item.file_url || item.file_name ? (
                       <a 
-                        href={doc.file_url || `/${doc.file_name}`} 
-                        download={doc.file_name || 'Van_Ban.pdf'}
+                        href={item.file_url && item.file_url !== '#' ? item.file_url : `/${item.file_name}`} 
+                        download={item.file_name || 'Van_Ban.pdf'}
                         target="_blank" 
                         rel="noreferrer" 
-                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 fw-semibold px-2.5 py-1 rounded-2"
+                        style={{ fontSize: '11.5px' }}
                       >
-                        <Download size={13} /> Tải PDF
+                        <Download size={13} />
+                        <span>Tải PDF</span>
                       </a>
                     ) : (
                       <span className="text-muted" style={{ fontSize: '11px' }}>Không có tệp</span>
                     )}
                   </td>
-                  {isDoanXa && (
-                    <td>
+
+                  {/* Thao tác */}
+                  <td>
+                    <div className="d-inline-flex align-items-center gap-1.5">
                       <button 
-                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2"
-                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
-                        title="Thu hồi văn bản tức thì"
-                        onClick={() => {
-                          if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${doc.title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 30 Chi đoàn.`)) {
-                            onDeleteDocument && onDeleteDocument(doc.id, doc.title);
-                          }
-                        }}
+                        className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
+                        style={{ fontSize: '11.5px' }}
+                        title="Xem chi tiết & trích yếu văn bản"
+                        onClick={() => handleOpenPreview(item)}
                       >
-                        <Trash2 size={13} />
-                        <span>Thu hồi</span>
+                        <FileText size={13} />
+                        <span>Xem trước</span>
                       </button>
-                    </td>
-                  )}
+
+                      {isDoanXa && tabType === 'outgoing_docs' && (
+                        <button 
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Thu hồi văn bản tức thì"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${item.display_title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 30 Chi đoàn.`)) {
+                              onDeleteDocument && onDeleteDocument(item.id, item.display_title);
+                            }
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Thu hồi</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Preview Modal for Incoming / Outgoing Documents */}
+      {previewDoc && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-50" 
+          style={{ zIndex: 1080 }}
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered modal-lg shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 rounded-4 p-4">
+              <div className="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+                <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style={{ fontSize: '16.5px' }}>
+                  <FileText className="text-primary" size={22} />
+                  <span>Trích yếu & Xem trước Văn bản</span>
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setPreviewDoc(null)}></button>
+              </div>
+
+              {/* Nguồn gửi nổi bật */}
+              <div className="p-3 bg-primary-subtle bg-opacity-30 border border-primary-subtle rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                <div>
+                  <div className="text-secondary" style={{ fontSize: '12px' }}>Đơn vị / Nguồn phát hành:</div>
+                  <div className="fw-extrabold text-primary fs-6 d-flex align-items-center gap-1.5">
+                    <Building size={18} />
+                    <span>{previewDoc.source_branch || 'Chi đoàn Ấp'}</span>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <span className={`badge ${previewDoc.read_status === 'read' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-danger-subtle text-danger border-danger-subtle'} border px-2.5 py-1 rounded-2`}>
+                    {previewDoc.read_status === 'read' ? '🟢 Đã đọc' : '🔴 Chưa đọc'}
+                  </span>
+                  <span className={`badge ${previewDoc.receipt_status === 'Đã tiếp nhận' ? 'bg-success text-white' : 'bg-warning text-dark'} px-2.5 py-1 rounded-2`}>
+                    {previewDoc.receipt_status === 'Đã tiếp nhận' ? '✓ Đã tiếp nhận' : '⏳ Chờ tiếp nhận'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Chi tiết nội dung văn bản */}
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <div className="text-muted fw-semibold mb-1" style={{ fontSize: '12px' }}>
+                  Số hiệu: <strong className="text-primary">{previewDoc.doc_number || '---'}</strong>
+                </div>
+                <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '17px' }}>
+                  {previewDoc.display_title}
+                </h5>
+
+                <div className="text-secondary mb-3 d-flex align-items-center gap-3" style={{ fontSize: '12.5px' }}>
+                  <span>📅 Ngày tải lên: <strong>{previewDoc.display_date}</strong></span>
+                  {previewDoc.display_time && <span>⏰ Giờ tải: <strong>{previewDoc.display_time}</strong></span>}
+                </div>
+
+                <div className="p-3 bg-white rounded-3 border text-dark" style={{ fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                  <div className="fw-bold text-secondary mb-1" style={{ fontSize: '12px' }}>📋 Nội dung / Trích yếu:</div>
+                  {previewDoc.display_summary || 'Nội dung chi tiết được lưu trữ cùng tệp đính kèm.'}
+                </div>
+              </div>
+
+              {/* Tệp đính kèm & Tải PDF */}
+              <div className="p-3 bg-white border rounded-3 d-flex align-items-center justify-content-between mb-4">
+                <div className="d-flex align-items-center gap-2.5">
+                  <div className="p-2.5 bg-danger-subtle text-danger rounded-3">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <div className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
+                      {previewDoc.file_name || 'Van_Ban_Dinh_Kem.pdf'}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '11.5px' }}>Tệp PDF / Văn bản chính thức</div>
+                  </div>
+                </div>
+
+                {previewDoc.file_url || previewDoc.file_name ? (
+                  <a 
+                    href={previewDoc.file_url && previewDoc.file_url !== '#' ? previewDoc.file_url : `/${previewDoc.file_name}`} 
+                    download={previewDoc.file_name || 'Van_Ban.pdf'}
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="btn btn-primary d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-2 rounded-3 shadow-xs"
+                    style={{ backgroundColor: '#0066FF' }}
+                  >
+                    <Download size={16} />
+                    <span>Tải PDF về máy</span>
+                  </a>
+                ) : (
+                  <span className="text-muted" style={{ fontSize: '12px' }}>Không có tệp</span>
+                )}
+              </div>
+
+              {/* Footer Modal Actions */}
+              <div className="d-flex align-items-center justify-content-between pt-2 border-top">
+                <button 
+                  type="button" 
+                  className="btn btn-light border text-secondary fw-semibold px-4 py-2 rounded-3"
+                  onClick={() => setPreviewDoc(null)}
+                >
+                  Đóng
+                </button>
+
+                {previewDoc.receipt_status !== 'Đã tiếp nhận' && (
+                  <button 
+                    type="button" 
+                    className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5"
+                    style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                    onClick={(e) => handleConfirmReceipt(previewDoc, e)}
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>Xác nhận tiếp nhận văn bản này</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -877,6 +877,7 @@ export default function App() {
               onSaveSubmission={handleSaveSubmissionItem}
               triggerToast={triggerToast}
               isDoanXa={isDoanXa}
+              currentUser={currentUser}
             />
           ) : activeTab === 'submission_history' ? (
             /* SUBMISSIONS HISTORY VIEW */

@@ -394,10 +394,10 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                     value={formData.doc_category || 'act_docs'}
                     onChange={(e) => setFormData({ ...formData, doc_category: e.target.value })}
                   >
-                    <option value="act_docs">📌 Văn bản thuộc ban hành hoạt động</option>
-                    <option value="meeting_docs">🤝 Văn bản cuộc họp</option>
-                    <option value="implementation_docs">📢 Văn bản triển khai</option>
                     <option value="decision_docs">⚖️ Văn bản quyết định</option>
+                    <option value="act_docs">📌 Ban hành hoạt động</option>
+                    <option value="implementation_docs">📢 Văn bản triển khai</option>
+                    <option value="meeting_docs">🤝 Văn bản cuộc họp</option>
                   </select>
                 </div>
 
@@ -754,6 +754,8 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
     doc_number: '',
     title: '',
+    date: new Date().toISOString().split('T')[0],
+    category: 'decision_docs',
     recipient_scope: 'ALL',
     file_name: '',
     file_url: ''
@@ -793,15 +795,35 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     }
 
     const fallbackUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(formData.title || 'Van_Ban')}`;
+    const categoryMap = {
+      decision_docs: 'Văn bản quyết định',
+      act_docs: 'Ban hành hoạt động',
+      implementation_docs: 'Văn bản triển khai',
+      meeting_docs: 'Văn bản cuộc họp'
+    };
+    const chosenCat = formData.category || 'decision_docs';
+    const chosenDate = formData.date || new Date().toISOString().split('T')[0];
 
     onSave && onSave({ 
       ...formData, 
+      date: chosenDate,
+      issue_date: chosenDate,
+      category: chosenCat,
+      category_label: categoryMap[chosenCat] || 'Văn bản quyết định',
       file_name: selectedFile ? selectedFile.name : formData.file_name || 'Van_Ban.pdf',
       file_url: finalStatus ? finalStatus.file_url : formData.file_url || fallbackUrl,
       storage_provider: finalStatus ? finalStatus.storage_provider : 'supabase'
     });
     
-    setFormData({ doc_number: '', title: '', recipient_scope: 'ALL', file_name: '', file_url: '' });
+    setFormData({ 
+      doc_number: '', 
+      title: '', 
+      date: new Date().toISOString().split('T')[0],
+      category: 'decision_docs', 
+      recipient_scope: 'ALL', 
+      file_name: '', 
+      file_url: '' 
+    });
     setSelectedFile(null);
     setUploadStatus(null);
     onClose();
@@ -821,7 +843,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
           <form onSubmit={handleSubmit}>
             <div className="modal-body p-4">
               <div className="row g-3 mb-3">
-                <div className="col-md-4">
+                <div className="col-md-3">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Số / Ký hiệu văn bản <span className="text-danger">*</span></label>
                   <input
                     type="text"
@@ -832,7 +854,16 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                     onChange={(e) => setFormData({ ...formData, doc_number: e.target.value })}
                   />
                 </div>
-                <div className="col-md-8">
+                <div className="col-md-3">
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày ban hành / đăng</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={formData.date || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                </div>
+                <div className="col-md-6">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Tên / Trích yếu văn bản <span className="text-danger">*</span></label>
                   <input
                     type="text"
@@ -842,6 +873,58 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
+                </div>
+              </div>
+
+              {/* Mục đích của văn bản - Nút chức năng chọn theo thứ tự yêu cầu */}
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-primary d-flex align-items-center justify-content-between mb-2" style={{ fontSize: '13px' }}>
+                  <span className="d-flex align-items-center gap-1.5">
+                    <FileText size={15} />
+                    <span>Mục đích của văn bản <span className="text-danger">*</span></span>
+                  </span>
+                  <span className="badge bg-primary-subtle text-primary fw-bold" style={{ fontSize: '11px' }}>
+                    {formData.category === 'decision_docs' && '⚖️ Văn bản quyết định'}
+                    {formData.category === 'act_docs' && '📌 Ban hành hoạt động'}
+                    {formData.category === 'implementation_docs' && '📢 Văn bản triển khai'}
+                    {formData.category === 'meeting_docs' && '🤝 Văn bản cuộc họp'}
+                  </span>
+                </label>
+                
+                <div className="row g-2">
+                  {[
+                    { key: 'decision_docs', label: 'Văn bản quyết định', icon: '⚖️', desc: 'Quyết định, quy chế' },
+                    { key: 'act_docs', label: 'Ban hành hoạt động', icon: '📌', desc: 'Kế hoạch, phong trào' },
+                    { key: 'implementation_docs', label: 'Văn bản triển khai', icon: '📢', desc: 'Công văn, hướng dẫn' },
+                    { key: 'meeting_docs', label: 'Văn bản cuộc họp', icon: '🤝', desc: 'Biên bản, triệu tập họp' }
+                  ].map((cat, idx) => {
+                    const isSelected = (formData.category || 'decision_docs') === cat.key;
+                    return (
+                      <div className="col-6 col-md-3" key={cat.key}>
+                        <button
+                          type="button"
+                          className={`btn w-100 p-2.5 rounded-3 text-start border d-flex flex-column justify-content-between transition-all ${
+                            isSelected 
+                              ? 'btn-primary shadow-sm border-primary text-white' 
+                              : 'btn-light bg-white border-secondary-subtle text-dark hover-shadow'
+                          }`}
+                          onClick={() => setFormData({ ...formData, category: cat.key })}
+                          style={{ minHeight: '64px', cursor: 'pointer' }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                            <span style={{ fontSize: '15px' }}>{cat.icon}</span>
+                            <span className={`badge ${isSelected ? 'bg-white text-primary' : 'bg-light text-secondary'} rounded-pill`} style={{ fontSize: '9.5px' }}>
+                              #{idx + 1}
+                            </span>
+                          </div>
+                          <div className="fw-bold" style={{ fontSize: '12px', lineHeight: '1.2' }}>{cat.label}</div>
+                          <div className={`mt-0.5 text-truncate ${isSelected ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '10px' }}>
+                            {cat.desc}
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

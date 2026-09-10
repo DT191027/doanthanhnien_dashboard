@@ -932,11 +932,42 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
   return updatedLocal;
 }
 
+export function getDocViewsMap() {
+  return getPersistedData('doc_views_map', {});
+}
+
+export function recordDocView(docIdentifier, branchName) {
+  if (!docIdentifier || !branchName) return [];
+  const map = getDocViewsMap();
+  const current = map[docIdentifier] || [];
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = now.toLocaleDateString('vi-VN');
+  
+  const updatedList = [
+    ...current.filter(v => v.branch_name !== branchName),
+    {
+      branch_name: branchName,
+      viewed_at: `${timeStr} ngày ${dateStr}`,
+      timestamp: now.toISOString()
+    }
+  ];
+  
+  const newMap = {
+    ...map,
+    [docIdentifier]: updatedList
+  };
+  setPersistedData('doc_views_map', newMap);
+  notifySyncEvent('DOC_VIEWED', { docIdentifier, branchName, list: updatedList });
+  return updatedList;
+}
+
 // ============================================================================
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================
 export async function syncFetchDocuments() {
   const deleted = getDeletedItems('documents');
+  const viewsMap = getDocViewsMap();
   let localList = getPersistedData('documents', null);
   if (localList === null) {
     localList = INITIAL_DOCUMENTS;
@@ -949,7 +980,10 @@ export async function syncFetchDocuments() {
     if (seenLocal.has(key)) return false;
     seenLocal.add(key);
     return true;
-  });
+  }).map(d => ({
+    ...d,
+    viewed_by: d.viewed_by || viewsMap[d.id] || viewsMap[d.title] || []
+  }));
   setPersistedData('documents', localList);
 
   if (supabase) {
@@ -968,7 +1002,8 @@ export async function syncFetchDocuments() {
           date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
           file_name: item.pdf_url || '',
           file_url: item.file_url || item.pdf_url || '',
-          storage_provider: item.storage_provider || 'supabase'
+          storage_provider: item.storage_provider || 'supabase',
+          viewed_by: item.viewed_by || viewsMap[item.id] || viewsMap[item.title] || []
         }));
         const seen = new Set();
         const clean = mapped.filter(d => {
@@ -1011,6 +1046,12 @@ export async function syncSaveDocument(docItem) {
     seen.add(key);
     return true;
   });
+
+  if (Array.isArray(docItem.viewed_by) && docItem.viewed_by.length > 0) {
+    const map = getDocViewsMap();
+    const docKey = docItem.id || docItem.title;
+    setPersistedData('doc_views_map', { ...map, [docKey]: docItem.viewed_by });
+  }
 
   setPersistedData('documents', updatedLocal);
   notifySyncEvent('SAVE_DOCUMENT', docItem);

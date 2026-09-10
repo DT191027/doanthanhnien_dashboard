@@ -29,9 +29,10 @@ import {
   AlertTriangle,
   Trash2,
   Edit3,
+  Eye,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, getDocViewsMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -521,13 +522,20 @@ export function DocumentsView({
   onSaveDocument,
   onSaveSubmission,
   triggerToast,
-  isDoanXa 
+  isDoanXa,
+  currentUser
 }) {
   const [search, setSearch] = useState('');
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [viewHistoryDoc, setViewHistoryDoc] = useState(null);
+  const [historyTab, setHistoryTab] = useState('ALL'); // 'ALL' | 'VIEWED' | 'NOT_VIEWED'
+  const [historySearch, setHistorySearch] = useState('');
+  const [simulateBranch, setSimulateBranch] = useState(INITIAL_BRANCHES[0]?.name || 'Chi đoàn Ấp Bùi Môn');
 
   // Process incoming items combining submissions and incoming documents
   const processIncomingItems = () => {
+    const viewsMap = getDocViewsMap ? getDocViewsMap() : {};
     const docsIncoming = (documents || []).filter(d => d.type === 'incoming').map(d => ({
       ...d,
       item_type: 'document',
@@ -540,7 +548,10 @@ export function DocumentsView({
       read_status: d.read_status || (d.status === 'read' || d.status === 'Đã đọc' ? 'read' : 'unread'),
       receipt_status: d.receipt_status || (d.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
       file_name: d.file_name || d.pdf_url || 'Van_Ban.pdf',
-      file_url: d.file_url || d.pdf_url || '#'
+      file_url: d.file_url || d.pdf_url || '#',
+      viewed_by: (Array.isArray(d.viewed_by) && d.viewed_by.length > 0)
+        ? d.viewed_by
+        : (viewsMap[d.id] || viewsMap[d.title] || [])
     }));
 
     const subsIncoming = (submissions || []).map(s => ({
@@ -555,13 +566,17 @@ export function DocumentsView({
       read_status: s.read_status || (s.status === 'Đã tiếp nhận' || s.receipt_status === 'Đã tiếp nhận' ? 'read' : 'unread'),
       receipt_status: s.receipt_status || (s.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
       file_name: s.file_name || 'Bao_Cao_Chi_Doan.pdf',
-      file_url: s.file_url || '#'
+      file_url: s.file_url || '#',
+      viewed_by: (Array.isArray(s.viewed_by) && s.viewed_by.length > 0)
+        ? s.viewed_by
+        : (viewsMap[s.id] || viewsMap[s.title] || [])
     }));
 
     return [...subsIncoming, ...docsIncoming];
   };
 
   const processOutgoingItems = () => {
+    const viewsMap = getDocViewsMap ? getDocViewsMap() : {};
     return (documents || []).filter(d => d.type === 'outgoing' || !d.type).map(d => ({
       ...d,
       item_type: 'document',
@@ -571,9 +586,13 @@ export function DocumentsView({
       display_summary: d.summary || d.description || 'Kế hoạch / Văn bản ban hành tới 30 Chi đoàn Ấp',
       display_date: d.date || d.issue_date || 'Hôm nay',
       display_time: d.time || '',
+      category: d.category || 'act_docs',
       category_label: d.category_label || 'Văn bản thuộc ban hành hoạt động',
       file_name: d.file_name || 'Van_Ban_Ban_Hanh.pdf',
-      file_url: d.file_url || '#'
+      file_url: d.file_url || '#',
+      viewed_by: (Array.isArray(d.viewed_by) && d.viewed_by.length > 0)
+        ? d.viewed_by
+        : (viewsMap[d.id] || viewsMap[d.title] || [])
     }));
   };
 
@@ -638,12 +657,49 @@ export function DocumentsView({
     triggerToast && triggerToast(`Đã xác nhận tiếp nhận văn bản "${item.display_title}" từ ${item.source_branch}!`);
   };
 
+  // Record Chi doan viewing document and transmit data back to administrator
+  const handleRecordDocView = (item, branchName) => {
+    if (!item || !branchName) return;
+    const updatedViews = recordDocView(item.id || item.title, branchName);
+    const updatedDoc = {
+      ...item,
+      viewed_by: updatedViews,
+      read_status: 'read',
+      status: 'Đã đọc'
+    };
+    if (item.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedDoc);
+    } else {
+      onSaveDocument && onSaveDocument(updatedDoc);
+    }
+    if (previewDoc && (previewDoc.id === item.id || previewDoc.title === item.title)) {
+      setPreviewDoc(updatedDoc);
+    }
+    if (viewHistoryDoc && (viewHistoryDoc.id === item.id || viewHistoryDoc.title === item.title)) {
+      setViewHistoryDoc(updatedDoc);
+    }
+    triggerToast && triggerToast(`Đã truyền dữ liệu: ${branchName} đã xem văn bản về Quản trị viên!`);
+  };
+
+  // Open Preview Modal & auto transmit view record if Chi doan is viewing
   const handleOpenPreview = (item) => {
-    const readItem = {
+    let readItem = {
       ...item,
       read_status: 'read'
     };
-    if (item.read_status !== 'read') {
+
+    if (!isDoanXa) {
+      const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+      const updatedViews = recordDocView(item.id || item.title, branchName);
+      readItem.viewed_by = updatedViews;
+      readItem.status = 'Đã đọc';
+      if (item.item_type === 'submission') {
+        onSaveSubmission && onSaveSubmission(readItem);
+      } else {
+        onSaveDocument && onSaveDocument(readItem);
+      }
+      triggerToast && triggerToast(`Đã gửi xác nhận: ${branchName} đã xem văn bản lúc ${updatedViews[updatedViews.length - 1]?.viewed_at}!`);
+    } else if (item.read_status !== 'read') {
       if (item.item_type === 'submission') {
         onSaveSubmission && onSaveSubmission(readItem);
       } else {
@@ -651,6 +707,75 @@ export function DocumentsView({
       }
     }
     setPreviewDoc(readItem);
+  };
+
+  // Open Edit Document Modal (Tiêu đề, Ngày đăng, Số hiệu, Mục đích văn bản)
+  const handleOpenEdit = (item) => {
+    let dateStr = item.display_date || item.date || item.issue_date || '';
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        dateStr = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+      }
+    } else if (!dateStr || dateStr === 'Hôm nay') {
+      dateStr = new Date().toISOString().split('T')[0];
+    }
+
+    const categoryMap = {
+      'Văn bản quyết định': 'decision_docs',
+      'Ban hành hoạt động': 'act_docs',
+      'Văn bản thuộc ban hành hoạt động': 'act_docs',
+      'Văn bản triển khai': 'implementation_docs',
+      'Văn bản cuộc họp': 'meeting_docs'
+    };
+
+    setEditingDoc({
+      id: item.id,
+      title: item.display_title || item.title || '',
+      date: dateStr,
+      doc_number: item.doc_number || '',
+      category: item.category || categoryMap[item.category_label] || 'decision_docs',
+      category_label: item.category_label || 'Văn bản quyết định',
+      rawItem: item
+    });
+  };
+
+  // Save Edit Document Changes
+  const handleSaveEditDoc = (e) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+
+    const categoryLabels = {
+      decision_docs: 'Văn bản quyết định',
+      act_docs: 'Ban hành hoạt động',
+      implementation_docs: 'Văn bản triển khai',
+      meeting_docs: 'Văn bản cuộc họp'
+    };
+
+    const chosenCat = editingDoc.category || 'decision_docs';
+    const chosenLabel = categoryLabels[chosenCat] || 'Văn bản quyết định';
+
+    const updatedItem = {
+      ...editingDoc.rawItem,
+      id: editingDoc.id,
+      title: editingDoc.title.trim(),
+      display_title: editingDoc.title.trim(),
+      date: editingDoc.date,
+      issue_date: editingDoc.date,
+      display_date: editingDoc.date,
+      doc_number: editingDoc.doc_number.trim(),
+      category: chosenCat,
+      category_label: chosenLabel
+    };
+
+    if (editingDoc.rawItem.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedItem);
+    } else {
+      onSaveDocument && onSaveDocument(updatedItem);
+    }
+
+    setEditingDoc(null);
+    triggerToast && triggerToast(`Đã cập nhật tiêu đề và ngày đăng của văn bản "${updatedItem.title}" thành công!`);
   };
 
   const titleMap = {
@@ -735,9 +860,9 @@ export function DocumentsView({
                 <th>Tiêu đề & Trích yếu văn bản</th>
                 <th>{tabType === 'incoming_docs' ? 'Ngày giờ nộp / Tải tệp lên' : 'Ngày ban hành'}</th>
                 {tabType === 'incoming_docs' && <th>Trạng thái đọc</th>}
-                <th>Trạng thái</th>
+                <th style={{ minWidth: '160px' }}>Trạng thái</th>
                 <th>Tệp đính kèm</th>
-                <th>Thao tác</th>
+                <th style={{ minWidth: '160px' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -770,7 +895,7 @@ export function DocumentsView({
                     )}
                   </td>
 
-                  {/* Ngày giờ tải tệp lên / Nộp văn bản */}
+                  {/* Ngày giờ tải tệp lên / Nộp văn bản / Ngày ban hành */}
                   <td className="text-secondary" style={{ fontSize: '12.5px' }}>
                     <div className="fw-semibold text-dark">
                       📅 {item.display_date}
@@ -782,7 +907,7 @@ export function DocumentsView({
                     )}
                   </td>
 
-                  {/* Trạng thái đọc (Clickable Toggle) */}
+                  {/* Trạng thái đọc (Clickable Toggle) - Cho Incoming Docs */}
                   {tabType === 'incoming_docs' && (
                     <td>
                       <button 
@@ -796,7 +921,7 @@ export function DocumentsView({
                     </td>
                   )}
 
-                  {/* Trạng thái tiếp nhận / Ban hành */}
+                  {/* Trạng thái: Hiển thị dựa trên Chi đoàn nào đã xem & ngày giờ xem */}
                   <td>
                     {tabType === 'incoming_docs' ? (
                       item.receipt_status === 'Đã tiếp nhận' ? (
@@ -813,9 +938,79 @@ export function DocumentsView({
                         </button>
                       )
                     ) : (
-                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-semibold">
-                        {item.status || 'Đã ban hành'}
-                      </span>
+                      /* Outgoing Docs - Hiển thị chi đoàn nào đã xem, truyền dữ liệu về quản trị viên */
+                      <div>
+                        {isDoanXa ? (
+                          (() => {
+                            const views = item.viewed_by || [];
+                            const count = views.length;
+                            const total = INITIAL_BRANCHES.length; // 30
+                            if (count === 0) {
+                              return (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-light border border-secondary-subtle text-secondary px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold hover-scale"
+                                  style={{ fontSize: '11px', cursor: 'pointer', background: '#f8fafc' }}
+                                  onClick={() => setViewHistoryDoc(item)}
+                                  title="Bấm để xem danh sách 30 Chi đoàn và thời gian xem"
+                                >
+                                  <Eye size={12} className="text-secondary" />
+                                  <span>Chưa có Chi đoàn xem</span>
+                                  <span className="badge bg-secondary-subtle text-secondary rounded-pill" style={{ fontSize: '9.5px' }}>0/{total}</span>
+                                </button>
+                              );
+                            }
+                            const lastView = views[views.length - 1];
+                            return (
+                              <div>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-bold hover-scale"
+                                  style={{ fontSize: '11px', cursor: 'pointer', background: '#ecfdf5' }}
+                                  onClick={() => setViewHistoryDoc(item)}
+                                  title="Bấm để xem chi tiết chi đoàn nào đã xem, ngày giờ xem"
+                                >
+                                  <Eye size={12} className="text-success" />
+                                  <span>{count}/{total} Chi đoàn đã xem</span>
+                                </button>
+                                {lastView && (
+                                  <div className="mt-1" style={{ fontSize: '11px' }}>
+                                    <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '170px' }}>
+                                      <span className="text-success me-1">●</span>{lastView.branch_name}
+                                    </div>
+                                    <div className="text-muted" style={{ fontSize: '10px' }}>
+                                      lúc {lastView.viewed_at}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          /* Chi đoàn User View: Check if current branch has viewed */
+                          (() => {
+                            const myBranch = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+                            const myView = (item.viewed_by || []).find(v => v.branch_name === myBranch);
+                            if (myView) {
+                              return (
+                                <div>
+                                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                                    ✓ Đã xem
+                                  </span>
+                                  <div className="text-muted mt-0.5" style={{ fontSize: '10px' }}>
+                                    lúc {myView.viewed_at}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                                🔴 Chưa xem
+                              </span>
+                            );
+                          })()
+                        )}
+                      </div>
                     )}
                   </td>
 
@@ -829,6 +1024,12 @@ export function DocumentsView({
                         rel="noreferrer" 
                         className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 fw-semibold px-2.5 py-1 rounded-2"
                         style={{ fontSize: '11.5px' }}
+                        onClick={() => {
+                          if (!isDoanXa) {
+                            const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+                            handleRecordDocView(item, branchName);
+                          }
+                        }}
                       >
                         <Download size={13} />
                         <span>Tải PDF</span>
@@ -850,6 +1051,19 @@ export function DocumentsView({
                         <FileText size={13} />
                         <span>Xem trước</span>
                       </button>
+
+                      {/* Nút chỉnh sửa tiêu đề, ngày đăng */}
+                      {isDoanXa && (
+                        <button 
+                          className="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold text-warning-emphasis"
+                          style={{ fontSize: '11.5px' }}
+                          title="Chỉnh sửa lại ngày đăng, tiêu đề văn bản"
+                          onClick={() => handleOpenEdit(item)}
+                        >
+                          <Edit3 size={13} />
+                          <span>Sửa</span>
+                        </button>
+                      )}
 
                       {isDoanXa && tabType === 'outgoing_docs' && (
                         <button 
@@ -875,7 +1089,333 @@ export function DocumentsView({
         </div>
       )}
 
-      {/* Preview Modal for Incoming / Outgoing Documents */}
+      {/* 1. Modal Chỉnh Sửa Ngày Đăng, Tiêu Đề Văn Bản */}
+      {editingDoc && (
+        <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1085 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
+              <div className="modal-header border-bottom pb-3">
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16.5px' }}>
+                  <Edit3 className="text-warning" size={20} />
+                  <span>Chỉnh Sửa Văn Bản (Ngày đăng, Tiêu đề)</span>
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setEditingDoc(null)}></button>
+              </div>
+              <form onSubmit={handleSaveEditDoc}>
+                <div className="modal-body p-4">
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>
+                        Số / Ký hiệu văn bản <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={editingDoc.doc_number}
+                        onChange={(e) => setEditingDoc({ ...editingDoc, doc_number: e.target.value })}
+                        placeholder="Số hiệu..."
+                      />
+                    </div>
+                    <div className="col-md-8">
+                      <label className="form-label fw-semibold text-primary d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                        <Calendar size={15} />
+                        <span>Ngày đăng / Ngày ban hành <span className="text-danger">*</span></span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control fw-bold border-primary-subtle"
+                        required
+                        value={editingDoc.date}
+                        onChange={(e) => setEditingDoc({ ...editingDoc, date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Chỉnh sửa Tiêu đề */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold text-primary d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <FileText size={15} />
+                      <span>Tên / Tiêu đề & Trích yếu văn bản <span className="text-danger">*</span></span>
+                    </label>
+                    <textarea
+                      className="form-control fw-bold text-dark border-primary-subtle"
+                      rows={3}
+                      required
+                      value={editingDoc.title}
+                      onChange={(e) => setEditingDoc({ ...editingDoc, title: e.target.value })}
+                      placeholder="Nhập tiêu đề văn bản..."
+                      style={{ fontSize: '14px', lineHeight: '1.5' }}
+                    />
+                  </div>
+
+                  {/* Mục đích của văn bản - Nút chức năng chọn theo thứ tự yêu cầu */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold text-primary d-flex align-items-center justify-content-between mb-2" style={{ fontSize: '13px' }}>
+                      <span className="d-flex align-items-center gap-1.5">
+                        <FileText size={15} />
+                        <span>Mục đích của văn bản <span className="text-danger">*</span></span>
+                      </span>
+                      <span className="badge bg-primary-subtle text-primary fw-bold" style={{ fontSize: '11px' }}>
+                        {editingDoc.category === 'decision_docs' && '⚖️ Văn bản quyết định'}
+                        {editingDoc.category === 'act_docs' && '📌 Ban hành hoạt động'}
+                        {editingDoc.category === 'implementation_docs' && '📢 Văn bản triển khai'}
+                        {editingDoc.category === 'meeting_docs' && '🤝 Văn bản cuộc họp'}
+                      </span>
+                    </label>
+                    
+                    <div className="row g-2">
+                      {[
+                        { key: 'decision_docs', label: 'Văn bản quyết định', icon: '⚖️' },
+                        { key: 'act_docs', label: 'Ban hành hoạt động', icon: '📌' },
+                        { key: 'implementation_docs', label: 'Văn bản triển khai', icon: '📢' },
+                        { key: 'meeting_docs', label: 'Văn bản cuộc họp', icon: '🤝' }
+                      ].map((cat, idx) => {
+                        const isSelected = editingDoc.category === cat.key;
+                        return (
+                          <div className="col-6 col-md-3" key={cat.key}>
+                            <button
+                              type="button"
+                              className={`btn w-100 p-2.5 rounded-3 text-start border d-flex flex-column justify-content-between transition-all ${
+                                isSelected 
+                                  ? 'btn-primary shadow-sm border-primary text-white' 
+                                  : 'btn-light bg-white border-secondary-subtle text-dark hover-shadow'
+                              }`}
+                              onClick={() => setEditingDoc({ ...editingDoc, category: cat.key })}
+                              style={{ minHeight: '56px', cursor: 'pointer' }}
+                            >
+                              <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                                <span style={{ fontSize: '14px' }}>{cat.icon}</span>
+                                <span className={`badge ${isSelected ? 'bg-white text-primary' : 'bg-light text-secondary'} rounded-pill`} style={{ fontSize: '9.5px' }}>
+                                  #{idx + 1}
+                                </span>
+                              </div>
+                              <div className="fw-bold text-truncate w-100" style={{ fontSize: '12px' }}>{cat.label}</div>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer border-top pt-3">
+                  <button 
+                    type="button" 
+                    className="btn btn-light border text-secondary px-4 py-2 rounded-3 fw-semibold"
+                    onClick={() => setEditingDoc(null)}
+                  >
+                    Hủy
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary px-4 py-2 rounded-3 fw-bold shadow-sm"
+                    style={{ backgroundColor: '#0066FF' }}
+                  >
+                    Lưu Thay Đổi
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Modal Hiển Thị Chi Tiết Chi Đoàn Nào Đã Xem Văn Bản (Ngày, Giờ) */}
+      {viewHistoryDoc && (
+        <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1085 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 shadow-lg p-4">
+              <div className="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+                <div>
+                  <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2 mb-1" style={{ fontSize: '16.5px' }}>
+                    <Eye className="text-primary" size={22} />
+                    <span>Chi Tiết Tiếp Nhận & Theo Dõi Chi Đoàn Đã Xem</span>
+                  </h5>
+                  <div className="text-secondary" style={{ fontSize: '12.5px' }}>
+                    Văn bản: <strong className="text-dark">{viewHistoryDoc.display_title}</strong> (Số: {viewHistoryDoc.doc_number || '---'})
+                  </div>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setViewHistoryDoc(null)}></button>
+              </div>
+
+              {/* Thống kê tỷ lệ tiếp nhận */}
+              {(() => {
+                const viewedMap = new Map();
+                (viewHistoryDoc.viewed_by || []).forEach(v => {
+                  if (v && v.branch_name) {
+                    viewedMap.set(v.branch_name, v);
+                  }
+                });
+                const totalBranches = INITIAL_BRANCHES.length;
+                const viewedCount = viewedMap.size;
+                const percentage = Math.round((viewedCount / totalBranches) * 100);
+
+                const filteredBranchList = INITIAL_BRANCHES.filter(branch => {
+                  const isViewed = viewedMap.has(branch.name);
+                  if (historyTab === 'VIEWED' && !isViewed) return false;
+                  if (historyTab === 'NOT_VIEWED' && isViewed) return false;
+                  if (historySearch && !branch.name.toLowerCase().includes(historySearch.toLowerCase())) return false;
+                  return true;
+                });
+
+                return (
+                  <div>
+                    {/* Summary Header Card */}
+                    <div className="p-3 bg-light rounded-3 border mb-3">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
+                          Tình hình tiếp nhận của 30 Chi đoàn Ấp:
+                        </span>
+                        <span className="badge bg-success text-white fw-bold px-2.5 py-1">
+                          {viewedCount}/{totalBranches} Chi đoàn đã xem ({percentage}%)
+                        </span>
+                      </div>
+                      <div className="progress" style={{ height: '8px' }}>
+                        <div 
+                          className="progress-bar bg-success" 
+                          role="progressbar" 
+                          style={{ width: `${percentage}%` }} 
+                          aria-valuenow={percentage} 
+                          aria-valuemin="0" 
+                          aria-valuemax="100"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filter Tabs & Search */}
+                    <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3">
+                      <div className="btn-group btn-group-sm" role="group">
+                        <button
+                          type="button"
+                          className={`btn ${historyTab === 'ALL' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                          onClick={() => setHistoryTab('ALL')}
+                        >
+                          Tất cả ({totalBranches})
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${historyTab === 'VIEWED' ? 'btn-success fw-bold' : 'btn-outline-success'}`}
+                          onClick={() => setHistoryTab('VIEWED')}
+                        >
+                          ✓ Đã xem ({viewedCount})
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${historyTab === 'NOT_VIEWED' ? 'btn-danger fw-bold' : 'btn-outline-danger'}`}
+                          onClick={() => setHistoryTab('NOT_VIEWED')}
+                        >
+                          ⏳ Chưa xem ({totalBranches - viewedCount})
+                        </button>
+                      </div>
+
+                      <div className="input-group input-group-sm" style={{ maxWidth: '240px' }}>
+                        <span className="input-group-text bg-white border-end-0"><Search size={13} className="text-muted" /></span>
+                        <input
+                          type="text"
+                          className="form-control border-start-0 ps-0"
+                          placeholder="Tìm tên Chi đoàn..."
+                          value={historySearch}
+                          onChange={(e) => setHistorySearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Branch List Table */}
+                    <div className="table-responsive border rounded-3 mb-3" style={{ maxHeight: '320px' }}>
+                      <table className="table table-hover align-middle mb-0" style={{ fontSize: '12.5px' }}>
+                        <thead className="table-light sticky-top">
+                          <tr>
+                            <th style={{ width: '50px' }}>STT</th>
+                            <th>Đơn vị (Chi đoàn Ấp)</th>
+                            <th>Cụm thi đua</th>
+                            <th style={{ width: '220px' }}>Trạng thái & Thời gian xem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredBranchList.map((b, index) => {
+                            const viewRecord = viewedMap.get(b.name);
+                            return (
+                              <tr key={b.id || b.name}>
+                                <td className="text-muted text-center">{index + 1}</td>
+                                <td>
+                                  <div className="fw-bold text-dark d-flex align-items-center gap-1.5">
+                                    <Building size={14} className="text-primary" />
+                                    <span>{b.name}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="badge bg-light text-secondary border" style={{ fontSize: '10.5px' }}>
+                                    {b.cluster_id || 'Cụm'}
+                                  </span>
+                                </td>
+                                <td>
+                                  {viewRecord ? (
+                                    <span className="badge bg-success text-white px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-1 fw-bold shadow-xs">
+                                      <CheckCircle2 size={12} />
+                                      <span>Đã xem lúc {viewRecord.viewed_at}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="badge bg-secondary-subtle text-secondary px-2.5 py-1 rounded-pill fw-semibold">
+                                      ⏳ Chưa xem
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Quản trị viên mô phỏng hoặc ghi nhận nhanh khi kiểm tra */}
+                    {isDoanXa && (
+                      <div className="p-2.5 bg-light rounded-3 border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div className="d-flex align-items-center gap-1.5 text-secondary" style={{ fontSize: '12px' }}>
+                          <ShieldCheck size={16} className="text-primary" />
+                          <span>Mô phỏng Chi đoàn bấm xem (Thử nghiệm truyền dữ liệu ngược về Quản trị viên):</span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                          <select
+                            className="form-select form-select-sm"
+                            style={{ width: '180px', fontSize: '12px' }}
+                            value={simulateBranch}
+                            onChange={(e) => setSimulateBranch(e.target.value)}
+                          >
+                            {INITIAL_BRANCHES.map(b => (
+                              <option key={b.name} value={b.name}>{b.name}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary fw-semibold px-2.5 py-1 text-nowrap"
+                            style={{ fontSize: '11.5px', backgroundColor: '#0066FF' }}
+                            onClick={() => handleRecordDocView(viewHistoryDoc, simulateBranch)}
+                          >
+                            + Ghi nhận xem
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="d-flex justify-content-end pt-3 border-top mt-3">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary px-4 py-1.5 rounded-3 fw-semibold"
+                  onClick={() => setViewHistoryDoc(null)}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Preview Modal for Incoming / Outgoing Documents */}
       {previewDoc && (
         <div 
           className="modal d-block bg-dark bg-opacity-50" 
@@ -895,8 +1435,8 @@ export function DocumentsView({
                 <button type="button" className="btn-close" onClick={() => setPreviewDoc(null)}></button>
               </div>
 
-              {/* Nguồn gửi nổi bật */}
-              <div className="p-3 bg-primary-subtle bg-opacity-30 border border-primary-subtle rounded-3 mb-3 d-flex align-items-center justify-content-between">
+              {/* Nguồn gửi & Trạng thái xem */}
+              <div className="p-3 bg-primary-subtle bg-opacity-30 border border-primary-subtle rounded-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                   <div className="text-secondary" style={{ fontSize: '12px' }}>Đơn vị / Nguồn phát hành:</div>
                   <div className="fw-extrabold text-primary fs-6 d-flex align-items-center gap-1.5">
@@ -906,9 +1446,23 @@ export function DocumentsView({
                 </div>
 
                 <div className="d-flex align-items-center gap-2">
-                  <span className={`badge ${previewDoc.read_status === 'read' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-danger-subtle text-danger border-danger-subtle'} border px-2.5 py-1 rounded-2`}>
-                    {previewDoc.read_status === 'read' ? '🟢 Đã đọc' : '🔴 Chưa đọc'}
-                  </span>
+                  {isDoanXa ? (
+                    <button
+                      type="button"
+                      className="badge bg-success-subtle text-success border border-success px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1 fw-bold cursor-pointer"
+                      onClick={() => {
+                        setViewHistoryDoc(previewDoc);
+                      }}
+                      title="Bấm để xem danh sách chi đoàn đã xem"
+                    >
+                      <Eye size={13} />
+                      <span>{previewDoc.viewed_by?.length || 0}/30 Chi đoàn đã xem</span>
+                    </button>
+                  ) : (
+                    <span className="badge bg-success text-white px-2.5 py-1 rounded-2 fw-bold">
+                      ✓ Bạn đã xem văn bản
+                    </span>
+                  )}
                   <span className={`badge ${previewDoc.receipt_status === 'Đã tiếp nhận' ? 'bg-success text-white' : 'bg-warning text-dark'} px-2.5 py-1 rounded-2`}>
                     {previewDoc.receipt_status === 'Đã tiếp nhận' ? '✓ Đã tiếp nhận' : '⏳ Chờ tiếp nhận'}
                   </span>
@@ -917,15 +1471,23 @@ export function DocumentsView({
 
               {/* Chi tiết nội dung văn bản */}
               <div className="p-3 bg-light rounded-3 border mb-3">
-                <div className="text-muted fw-semibold mb-1" style={{ fontSize: '12px' }}>
-                  Số hiệu: <strong className="text-primary">{previewDoc.doc_number || '---'}</strong>
+                <div className="d-flex align-items-center justify-content-between mb-1">
+                  <div className="text-muted fw-semibold" style={{ fontSize: '12px' }}>
+                    Số hiệu: <strong className="text-primary">{previewDoc.doc_number || '---'}</strong>
+                  </div>
+                  {previewDoc.category_label && (
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '11px' }}>
+                      📌 {previewDoc.category_label}
+                    </span>
+                  )}
                 </div>
+
                 <h5 className="fw-bold text-dark mb-2" style={{ fontSize: '17px' }}>
                   {previewDoc.display_title}
                 </h5>
 
                 <div className="text-secondary mb-3 d-flex align-items-center gap-3" style={{ fontSize: '12.5px' }}>
-                  <span>📅 Ngày tải lên: <strong>{previewDoc.display_date}</strong></span>
+                  <span>📅 Ngày ban hành / tải lên: <strong>{previewDoc.display_date}</strong></span>
                   {previewDoc.display_time && <span>⏰ Giờ tải: <strong>{previewDoc.display_time}</strong></span>}
                 </div>
 
@@ -988,6 +1550,12 @@ export function DocumentsView({
                     rel="noreferrer" 
                     className="btn btn-primary d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-2 rounded-3 shadow-xs"
                     style={{ backgroundColor: '#0066FF' }}
+                    onClick={() => {
+                      if (!isDoanXa) {
+                        const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+                        handleRecordDocView(previewDoc, branchName);
+                      }
+                    }}
                   >
                     <Download size={16} />
                     <span>Tải PDF về máy</span>
@@ -1007,17 +1575,34 @@ export function DocumentsView({
                   Đóng
                 </button>
 
-                {previewDoc.receipt_status !== 'Đã tiếp nhận' && (
-                  <button 
-                    type="button" 
-                    className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5"
-                    style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
-                    onClick={(e) => handleConfirmReceipt(previewDoc, e)}
-                  >
-                    <CheckCircle2 size={16} />
-                    <span>Xác nhận tiếp nhận văn bản này</span>
-                  </button>
-                )}
+                <div className="d-flex align-items-center gap-2">
+                  {isDoanXa && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-warning fw-semibold px-3 py-2 rounded-3 d-inline-flex align-items-center gap-1.5"
+                      onClick={() => {
+                        const itemToEdit = previewDoc;
+                        setPreviewDoc(null);
+                        handleOpenEdit(itemToEdit);
+                      }}
+                    >
+                      <Edit3 size={15} />
+                      <span>Sửa văn bản này</span>
+                    </button>
+                  )}
+
+                  {previewDoc.receipt_status !== 'Đã tiếp nhận' && (
+                    <button 
+                      type="button" 
+                      className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5"
+                      style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                      onClick={(e) => handleConfirmReceipt(previewDoc, e)}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>Xác nhận tiếp nhận văn bản này</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -2284,20 +2869,20 @@ export function StorageArchiveView({ documents = [], submissions = [], onDeleteD
 
         <button 
           type="button"
+          className={`btn btn-sm ${selectedCategory === 'decision_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('decision_docs')}
+          style={{ fontSize: '12.5px' }}
+        >
+          ⚖️ Văn bản quyết định ({countDecision})
+        </button>
+
+        <button 
+          type="button"
           className={`btn btn-sm ${selectedCategory === 'act_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
           onClick={() => setSelectedCategory('act_docs')}
           style={{ fontSize: '12.5px' }}
         >
           📌 Ban hành hoạt động ({countAct})
-        </button>
-
-        <button 
-          type="button"
-          className={`btn btn-sm ${selectedCategory === 'meeting_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
-          onClick={() => setSelectedCategory('meeting_docs')}
-          style={{ fontSize: '12.5px' }}
-        >
-          🤝 Văn bản cuộc họp ({countMeeting})
         </button>
 
         <button 
@@ -2311,11 +2896,11 @@ export function StorageArchiveView({ documents = [], submissions = [], onDeleteD
 
         <button 
           type="button"
-          className={`btn btn-sm ${selectedCategory === 'decision_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
-          onClick={() => setSelectedCategory('decision_docs')}
+          className={`btn btn-sm ${selectedCategory === 'meeting_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('meeting_docs')}
           style={{ fontSize: '12.5px' }}
         >
-          ⚖️ Văn bản quyết định ({countDecision})
+          🤝 Văn bản cuộc họp ({countMeeting})
         </button>
 
         <button 

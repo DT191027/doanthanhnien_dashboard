@@ -34,7 +34,7 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -554,7 +554,7 @@ export function DocumentsView({
       source_branch: d.sender || d.branch_name || 'Chi đoàn Ấp',
       display_title: d.title || 'Văn bản tiếp nhận',
       display_summary: d.summary || d.content || d.description || 'Văn bản đã được đơn vị gửi trực tuyến.',
-      display_date: d.date || d.issue_date || 'Hôm nay',
+      display_date: formatDateDDMMYYYY(d.date || d.issue_date || 'Hôm nay'),
       display_time: d.time || d.created_at_time || '08:00',
       read_status: d.read_status || (d.status === 'read' || d.status === 'Đã đọc' ? 'read' : 'unread'),
       receipt_status: d.receipt_status || (d.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
@@ -572,7 +572,7 @@ export function DocumentsView({
       source_branch: s.branch_name || s.sender || 'Chi đoàn Ấp',
       display_title: s.doc_title || s.title || `Báo cáo / Văn bản từ ${s.branch_name || 'Chi đoàn Ấp'}`,
       display_summary: s.notes || s.content || s.summary || 'Văn bản báo cáo nộp từ Chi đoàn trực thuộc.',
-      display_date: s.submitted_at ? s.submitted_at.split(' ')[0] : (s.sub_date || 'Hôm nay'),
+      display_date: s.submitted_at ? formatDateDDMMYYYY(s.submitted_at.split(' ')[0]) : formatDateDDMMYYYY(s.sub_date || 'Hôm nay'),
       display_time: s.submitted_at && s.submitted_at.includes(' ') ? s.submitted_at.split(' ')[1] : (s.time || 'Vừa xong'),
       read_status: s.read_status || (s.status === 'Đã tiếp nhận' || s.receipt_status === 'Đã tiếp nhận' ? 'read' : 'unread'),
       receipt_status: s.receipt_status || (s.status === 'Đã tiếp nhận' ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'),
@@ -615,7 +615,7 @@ export function DocumentsView({
         source_branch: d.sender || 'Đoàn xã Xuân Thới Sơn',
         display_title: d.title || 'Văn bản ban hành',
         display_summary: d.summary || d.description || 'Kế hoạch / Văn bản ban hành tới 30 Chi đoàn Ấp',
-        display_date: d.date || d.issue_date || 'Hôm nay',
+        display_date: formatDateDDMMYYYY(d.date || d.issue_date || 'Hôm nay'),
         display_time: d.time || '',
         category: catKey,
         category_label: catLabel,
@@ -664,8 +664,8 @@ export function DocumentsView({
         doc_number: t.doc_number || `TD-${String(t.id).slice(-6)}`,
         source_branch: t.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
         display_title: t.title || 'Công việc TODO cần nộp văn bản',
-        display_summary: t.description || t.content || `Nhiệm vụ do Quản trị viên giao. Hạn nộp: ${t.dueDate || t.due_date || 'Hôm nay'}`,
-        display_date: t.dueDate || t.due_date || 'Hôm nay',
+        display_summary: t.description || t.content || `Nhiệm vụ do Quản trị viên giao. Hạn nộp: ${formatDateDDMMYYYY(t.dueDate || t.due_date || 'Hôm nay')}`,
+        display_date: formatDateDDMMYYYY(t.dueDate || t.due_date || 'Hôm nay'),
         display_time: t.time || '',
         is_submitted: isSubmitted,
         file_url: fileUrl,
@@ -808,7 +808,7 @@ export function DocumentsView({
   };
 
   // Record Chi doan viewing document and transmit data back to administrator
-  const handleRecordDocView = (item, branchName) => {
+  const handleRecordDocView = (item, branchName, force = false) => {
     if (!item || !branchName) return;
 
     // Check if branch already recorded view/receipt to prevent duplicate calls or overwriting timestamps
@@ -819,7 +819,7 @@ export function DocumentsView({
       branchName.includes(v.branch_name)
     );
 
-    if (alreadyRecorded) {
+    if (alreadyRecorded && !force) {
       triggerToast && triggerToast(`Chi đoàn ${branchName} đã xác nhận tiếp nhận văn bản này trước đó.`);
       return;
     }
@@ -846,7 +846,96 @@ export function DocumentsView({
     }
 
     const latestView = updatedViews.find(v => v.branch_name === branchName) || updatedViews[updatedViews.length - 1];
-    triggerToast && triggerToast(`✓ Đã xác nhận tiếp nhận văn bản lúc ${latestView?.viewed_at || ''} và truyền dữ liệu về Quản trị viên!`);
+    triggerToast && triggerToast(`✓ Đã xác nhận tiếp nhận văn bản cho ${branchName} lúc ${latestView?.viewed_at || ''}!`);
+  };
+
+  // Remove view record for a Chi đoàn
+  const handleRemoveDocView = (item, branchName) => {
+    if (!item || !branchName) return;
+
+    const matchedBranch = INITIAL_BRANCHES.find(b => 
+      b.name === branchName || 
+      b.name.includes(branchName) || 
+      branchName.includes(b.name)
+    );
+    const canonicalName = matchedBranch ? matchedBranch.name : branchName;
+
+    const remainingViews = (item.viewed_by || []).filter(v => 
+      v && 
+      v.branch_name !== canonicalName && 
+      v.branch_name !== branchName && 
+      !v.branch_name?.includes(canonicalName) && 
+      !canonicalName.includes(v.branch_name)
+    );
+
+    removeDocView(item.id || item.title, branchName);
+
+    const updatedDoc = {
+      ...item,
+      viewed_by: remainingViews
+    };
+
+    if (item.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedDoc);
+    } else {
+      onSaveDocument && onSaveDocument(updatedDoc);
+    }
+
+    if (previewDoc && (previewDoc.id === item.id || previewDoc.title === item.title)) {
+      setPreviewDoc(updatedDoc);
+    }
+    if (viewHistoryDoc && (viewHistoryDoc.id === item.id || viewHistoryDoc.title === item.title)) {
+      setViewHistoryDoc(updatedDoc);
+    }
+
+    triggerToast && triggerToast(`🗑️ Đã xóa lượt xem của Chi đoàn ${canonicalName}!`);
+  };
+
+  // Clean up duplicate view records for a document
+  const handleCleanupDuplicateBranchViews = (item) => {
+    if (!item) return;
+    const currentViews = item.viewed_by || [];
+    const seen = new Set();
+    const cleanViews = [];
+
+    currentViews.forEach(v => {
+      if (!v || !v.branch_name) return;
+      const matched = INITIAL_BRANCHES.find(b => 
+        b.name === v.branch_name || 
+        b.name.includes(v.branch_name) || 
+        v.branch_name.includes(b.name)
+      );
+      const cName = matched ? matched.name : v.branch_name;
+      if (!seen.has(cName)) {
+        seen.add(cName);
+        cleanViews.push({
+          ...v,
+          branch_name: cName
+        });
+      }
+    });
+
+    setDocViews(item.id || item.title, cleanViews);
+
+    const updatedDoc = {
+      ...item,
+      viewed_by: cleanViews
+    };
+
+    if (item.item_type === 'submission') {
+      onSaveSubmission && onSaveSubmission(updatedDoc);
+    } else {
+      onSaveDocument && onSaveDocument(updatedDoc);
+    }
+
+    if (viewHistoryDoc && (viewHistoryDoc.id === item.id || viewHistoryDoc.title === item.title)) {
+      setViewHistoryDoc(updatedDoc);
+    }
+    if (previewDoc && (previewDoc.id === item.id || previewDoc.title === item.title)) {
+      setPreviewDoc(updatedDoc);
+    }
+
+    triggerToast && triggerToast(`🧹 Đã dọn dẹp các lượt xem trùng lặp! (Còn lại ${cleanViews.length} lượt xem hợp lệ)`);
   };
 
   // Open Preview Modal cleanly without auto-confirming or auto-saving duplicate records
@@ -1073,7 +1162,7 @@ export function DocumentsView({
                   {/* Ngày giờ tải tệp lên / Nộp văn bản / Ngày ban hành */}
                   <td className="text-secondary" style={{ fontSize: '12.5px' }}>
                     <div className="fw-semibold text-dark">
-                      📅 {item.display_date}
+                      📅 {formatDateDDMMYYYY(item.display_date)}
                     </div>
                     {item.display_time && (
                       <div className="text-muted" style={{ fontSize: '11.5px' }}>
@@ -1513,7 +1602,7 @@ export function DocumentsView({
                       </div>
                     </div>
 
-                    {/* Filter Tabs & Search */}
+                    {/* Filter Tabs & Search & Cleanup */}
                     <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3">
                       <div className="btn-group btn-group-sm" role="group">
                         <button
@@ -1539,15 +1628,28 @@ export function DocumentsView({
                         </button>
                       </div>
 
-                      <div className="input-group input-group-sm" style={{ maxWidth: '240px' }}>
-                        <span className="input-group-text bg-white border-end-0"><Search size={13} className="text-muted" /></span>
-                        <input
-                          type="text"
-                          className="form-control border-start-0 ps-0"
-                          placeholder="Tìm tên Chi đoàn..."
-                          value={historySearch}
-                          onChange={(e) => setHistorySearch(e.target.value)}
-                        />
+                      <div className="d-flex align-items-center gap-2">
+                        {isDoanXa && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1 text-nowrap fw-semibold"
+                            style={{ fontSize: '11.5px' }}
+                            title="Tự động lọc & dọn dẹp các bản ghi xem trùng lặp"
+                            onClick={() => handleCleanupDuplicateBranchViews(viewHistoryDoc)}
+                          >
+                            🧹 Dọn dẹp trùng lặp
+                          </button>
+                        )}
+                        <div className="input-group input-group-sm" style={{ maxWidth: '220px' }}>
+                          <span className="input-group-text bg-white border-end-0"><Search size={13} className="text-muted" /></span>
+                          <input
+                            type="text"
+                            className="form-control border-start-0 ps-0"
+                            placeholder="Tìm tên Chi đoàn..."
+                            value={historySearch}
+                            onChange={(e) => setHistorySearch(e.target.value)}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1556,10 +1658,11 @@ export function DocumentsView({
                       <table className="table table-hover align-middle mb-0" style={{ fontSize: '12.5px' }}>
                         <thead className="table-light sticky-top">
                           <tr>
-                            <th style={{ width: '50px' }}>STT</th>
+                            <th style={{ width: '45px' }}>STT</th>
                             <th>Đơn vị (Chi đoàn Ấp)</th>
                             <th>Cụm thi đua</th>
                             <th style={{ width: '220px' }}>Trạng thái & Thời gian xem</th>
+                            {isDoanXa && <th className="text-center" style={{ width: '150px' }}>Quản lý & Thao tác</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -1591,6 +1694,33 @@ export function DocumentsView({
                                     </span>
                                   )}
                                 </td>
+                                {isDoanXa && (
+                                  <td className="text-center">
+                                    {viewRecord ? (
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm px-2 py-0.5 rounded-2 d-inline-flex align-items-center gap-1 fw-semibold"
+                                        style={{ fontSize: '11px' }}
+                                        title="Xóa lượt xem của Chi đoàn này"
+                                        onClick={() => handleRemoveDocView(viewHistoryDoc, b.name)}
+                                      >
+                                        <Trash2 size={11} />
+                                        <span>Xóa lượt xem</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline-success btn-sm px-2 py-0.5 rounded-2 d-inline-flex align-items-center gap-1 fw-semibold"
+                                        style={{ fontSize: '11px' }}
+                                        title="Đánh dấu Chi đoàn này đã xem"
+                                        onClick={() => handleRecordDocView(viewHistoryDoc, b.name, true)}
+                                      >
+                                        <Plus size={11} />
+                                        <span>Ghi nhận xem</span>
+                                      </button>
+                                    )}
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}

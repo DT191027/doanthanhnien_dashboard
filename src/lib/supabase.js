@@ -483,25 +483,53 @@ export function formatDateDDMMYYYY(dayOrObj, month, year) {
   
   if (typeof dayOrObj === 'object' && dayOrObj !== null) {
     const obj = dayOrObj;
-    if (obj.formattedDate) return obj.formattedDate;
-    if (obj.date && typeof obj.date === 'string' && obj.date.includes('/')) {
-      const parts = obj.date.split('/');
-      if (parts.length === 3) return obj.date;
+    if (obj.formattedDate) return formatDateDDMMYYYY(obj.formattedDate);
+    if (obj.date && typeof obj.date === 'string') {
+      return formatDateDDMMYYYY(obj.date);
     }
     if (obj.dateIso) {
       const [y, m, d] = obj.dateIso.split('-');
-      if (y && m && d) return `${d}/${m}/${y}`;
+      if (y && m && d) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
     }
     return formatDateDDMMYYYY(obj.day, obj.month, obj.year);
   }
   
-  if (typeof dayOrObj === 'string' && dayOrObj.includes('/')) {
-    const parts = dayOrObj.split('/');
-    if (parts.length === 3) return dayOrObj;
-    if (parts.length === 2 && month) {
-      const dPart = parts[0].padStart(2, '0');
-      const mPart = parts[1].padStart(2, '0');
-      return `${dPart}/${mPart}/${year || new Date().getFullYear()}`;
+  if (typeof dayOrObj === 'string') {
+    const str = dayOrObj.trim();
+    if (!str) return 'Chưa chọn ngày';
+    if (str === 'Hôm nay') return 'Hôm nay';
+
+    // Handle ISO or YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss
+    if (str.includes('-')) {
+      const datePart = str.split('T')[0].split(' ')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        if (y.length === 4) {
+          return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+        }
+        if (d.length === 4) {
+          return `${y.padStart(2, '0')}/${m.padStart(2, '0')}/${d}`;
+        }
+      }
+    }
+    
+    // Handle DD/MM/YYYY or YYYY/MM/DD or MM/DD/YYYY
+    if (str.includes('/')) {
+      const datePart = str.split('T')[0].split(' ')[0];
+      const parts = datePart.split('/');
+      if (parts.length === 3) {
+        let [p1, p2, p3] = parts;
+        if (p1.length === 4) { // YYYY/MM/DD
+          return `${p3.padStart(2, '0')}/${p2.padStart(2, '0')}/${p1}`;
+        }
+        return `${p1.padStart(2, '0')}/${p2.padStart(2, '0')}/${p3}`;
+      }
+      if (parts.length === 2 && month) {
+        const dPart = parts[0].padStart(2, '0');
+        const mPart = parts[1].padStart(2, '0');
+        return `${dPart}/${mPart}/${year || new Date().getFullYear()}`;
+      }
     }
   }
   
@@ -980,6 +1008,47 @@ export function recordDocView(docIdentifier, branchName) {
   setPersistedData('doc_views_map', newMap);
   notifySyncEvent('DOC_VIEWED', { docIdentifier, branchName: canonicalName, list: updatedList });
   return updatedList;
+}
+
+export function removeDocView(docIdentifier, branchName) {
+  if (!docIdentifier || !branchName) return [];
+  const map = getDocViewsMap();
+  const current = map[docIdentifier] || [];
+
+  const matchedBranch = INITIAL_BRANCHES.find(b => 
+    b.name === branchName || 
+    b.name.includes(branchName) || 
+    branchName.includes(b.name)
+  );
+  const canonicalName = matchedBranch ? matchedBranch.name : branchName;
+
+  const updatedList = current.filter(v => 
+    v && 
+    v.branch_name !== canonicalName && 
+    v.branch_name !== branchName && 
+    !v.branch_name?.includes(canonicalName) && 
+    !canonicalName.includes(v.branch_name)
+  );
+
+  const newMap = {
+    ...map,
+    [docIdentifier]: updatedList
+  };
+  setPersistedData('doc_views_map', newMap);
+  notifySyncEvent('DOC_VIEWED', { docIdentifier, branchName: canonicalName, list: updatedList });
+  return updatedList;
+}
+
+export function setDocViews(docIdentifier, viewsArray) {
+  if (!docIdentifier) return [];
+  const map = getDocViewsMap();
+  const newMap = {
+    ...map,
+    [docIdentifier]: viewsArray || []
+  };
+  setPersistedData('doc_views_map', newMap);
+  notifySyncEvent('DOC_VIEWED', { docIdentifier, list: viewsArray });
+  return viewsArray || [];
 }
 
 export function getDocCategoriesMap() {

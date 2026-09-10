@@ -941,8 +941,21 @@ export function recordDocView(docIdentifier, branchName) {
   const map = getDocViewsMap();
   const current = map[docIdentifier] || [];
 
+  // Match canonical branch name if branchName matches one in INITIAL_BRANCHES
+  const matchedBranch = INITIAL_BRANCHES.find(b => 
+    b.name === branchName || 
+    b.name.includes(branchName) || 
+    branchName.includes(b.name)
+  );
+  const canonicalName = matchedBranch ? matchedBranch.name : branchName;
+
   // If this branch already recorded view/receipt, preserve existing timestamp and return current list
-  const existing = current.find(v => v.branch_name === branchName);
+  const existing = current.find(v => 
+    v.branch_name === canonicalName || 
+    v.branch_name === branchName || 
+    v.branch_name?.includes(branchName) || 
+    branchName.includes(v.branch_name)
+  );
   if (existing) {
     return current;
   }
@@ -952,9 +965,9 @@ export function recordDocView(docIdentifier, branchName) {
   const dateStr = now.toLocaleDateString('vi-VN');
   
   const updatedList = [
-    ...current,
+    ...current.filter(v => v.branch_name !== canonicalName && v.branch_name !== branchName),
     {
-      branch_name: branchName,
+      branch_name: canonicalName,
       viewed_at: `${timeStr} ngày ${dateStr}`,
       timestamp: now.toISOString()
     }
@@ -965,7 +978,7 @@ export function recordDocView(docIdentifier, branchName) {
     [docIdentifier]: updatedList
   };
   setPersistedData('doc_views_map', newMap);
-  notifySyncEvent('DOC_VIEWED', { docIdentifier, branchName, list: updatedList });
+  notifySyncEvent('DOC_VIEWED', { docIdentifier, branchName: canonicalName, list: updatedList });
   return updatedList;
 }
 

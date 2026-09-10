@@ -1139,8 +1139,20 @@ export function DocumentsView({
                       <div>
                         {isDoanXa ? (
                           (() => {
-                            const views = item.viewed_by || [];
-                            const count = views.length;
+                            const viewedMap = new Map();
+                            (item.viewed_by || []).forEach(v => {
+                              if (v && v.branch_name) {
+                                const matchedBranch = INITIAL_BRANCHES.find(b => 
+                                  b.name === v.branch_name || 
+                                  b.name.includes(v.branch_name) || 
+                                  v.branch_name.includes(b.name)
+                                );
+                                if (matchedBranch) {
+                                  viewedMap.set(matchedBranch.name, v);
+                                }
+                              }
+                            });
+                            const count = viewedMap.size;
                             const total = INITIAL_BRANCHES.length; // 30
                             if (count === 0) {
                               return (
@@ -1157,7 +1169,7 @@ export function DocumentsView({
                                 </button>
                               );
                             }
-                            const lastView = views[views.length - 1];
+                            const lastView = Array.from(viewedMap.values()).pop();
                             return (
                               <div>
                                 <button
@@ -1455,7 +1467,14 @@ export function DocumentsView({
                 const viewedMap = new Map();
                 (viewHistoryDoc.viewed_by || []).forEach(v => {
                   if (v && v.branch_name) {
-                    viewedMap.set(v.branch_name, v);
+                    const matchedBranch = INITIAL_BRANCHES.find(b => 
+                      b.name === v.branch_name || 
+                      b.name.includes(v.branch_name) || 
+                      v.branch_name.includes(b.name)
+                    );
+                    if (matchedBranch) {
+                      viewedMap.set(matchedBranch.name, v);
+                    }
                   }
                 });
                 const totalBranches = INITIAL_BRANCHES.length;
@@ -1667,7 +1686,24 @@ export function DocumentsView({
                       title="Bấm để xem danh sách chi đoàn đã xem"
                     >
                       <Eye size={13} />
-                      <span>{previewDoc.viewed_by?.length || 0}/30 Chi đoàn đã xem</span>
+                      <span>
+                        {(() => {
+                          const viewedMap = new Map();
+                          (previewDoc.viewed_by || []).forEach(v => {
+                            if (v && v.branch_name) {
+                              const matchedBranch = INITIAL_BRANCHES.find(b => 
+                                b.name === v.branch_name || 
+                                b.name.includes(v.branch_name) || 
+                                v.branch_name.includes(b.name)
+                              );
+                              if (matchedBranch) {
+                                viewedMap.set(matchedBranch.name, v);
+                              }
+                            }
+                          });
+                          return viewedMap.size;
+                        })()}/30 Chi đoàn đã xem
+                      </span>
                     </button>
                   ) : (
                     <span className="badge bg-success text-white px-2.5 py-1 rounded-2 fw-bold">

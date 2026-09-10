@@ -870,11 +870,16 @@ export default function App() {
             <DocumentsView 
               documents={userDocuments}
               submissions={submissionsList}
+              tasks={userTasks}
               tabType={activeTab}
               onOpenIssueDocument={() => setShowIssueDocModal(true)}
               onDeleteDocument={handleDeleteDocument}
               onSaveDocument={handleSaveDocumentItem}
               onSaveSubmission={handleSaveSubmissionItem}
+              onSaveTask={async (taskItem) => {
+                const updatedTasks = await syncSaveTask(taskItem);
+                setTasksList(updatedTasks);
+              }}
               triggerToast={triggerToast}
               isDoanXa={isDoanXa}
               currentUser={currentUser}

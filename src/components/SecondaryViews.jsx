@@ -30,10 +30,12 @@ import {
   Trash2,
   Edit3,
   Eye,
-  MoreVertical
+  MoreVertical,
+  Upload,
+  FileCheck
 } from 'lucide-react';
 import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
-import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
+import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
 export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false, attendanceRecords = {} }) {
@@ -516,11 +518,13 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
 export function DocumentsView({ 
   documents = [], 
   submissions = [], 
+  tasks = [],
   tabType = 'incoming_docs', 
   onOpenIssueDocument, 
   onDeleteDocument, 
   onSaveDocument,
   onSaveSubmission,
+  onSaveTask,
   triggerToast,
   isDoanXa,
   currentUser
@@ -532,6 +536,13 @@ export function DocumentsView({
   const [historyTab, setHistoryTab] = useState('ALL'); // 'ALL' | 'VIEWED' | 'NOT_VIEWED'
   const [historySearch, setHistorySearch] = useState('');
   const [simulateBranch, setSimulateBranch] = useState(INITIAL_BRANCHES[0]?.name || 'Chi đoàn Ấp Bùi Môn');
+
+  // State for submitting documents for required TODO tasks
+  const [submittingTask, setSubmittingTask] = useState(null);
+  const [taskDocFile, setTaskDocFile] = useState(null);
+  const [isUploadingTaskDoc, setIsUploadingTaskDoc] = useState(false);
+  const [taskDocUploadStatus, setTaskDocUploadStatus] = useState(null);
+  const [taskDocFormData, setTaskDocFormData] = useState({ file_name: '', file_url: '', notes: '' });
 
   // Process incoming items combining submissions and incoming documents
   const processIncomingItems = () => {
@@ -617,7 +628,125 @@ export function DocumentsView({
     });
   };
 
-  const rawList = tabType === 'incoming_docs' ? processIncomingItems() : processOutgoingItems();
+  // Process required document tasks assigned by admin (TODO tasks)
+  const processRequiredDocsItems = () => {
+    const viewsMap = getDocViewsMap ? getDocViewsMap() : {};
+    
+    // Map existing submissions by task_id, doc_title, or title
+    const subMap = {};
+    (submissions || []).forEach(s => {
+      if (s.task_id) subMap[s.task_id] = s;
+      if (s.doc_title) subMap[s.doc_title] = s;
+      if (s.title) subMap[s.title] = s;
+    });
+
+    const targetTasks = (tasks || []).filter(t => {
+      if (!t) return false;
+      if (!isDoanXa) {
+        return isItemTargetedToUser(t.assigned_to || 'ALL', currentUser);
+      }
+      return true;
+    });
+
+    return targetTasks.map(t => {
+      const matchedSub = subMap[t.id] || subMap[t.title] || null;
+      const isSubmitted = !!(t.submitted_file || t.submitted_at || matchedSub);
+
+      const fileUrl = t.submitted_file || (matchedSub ? matchedSub.file_url : null) || t.file_url || null;
+      const fileName = t.submitted_file_name || (matchedSub ? matchedSub.file_name : null) || t.file_name || null;
+      const submittedAt = t.submitted_at || (matchedSub ? matchedSub.submitted_at : null) || null;
+      const submittedBy = t.submitted_by || (matchedSub ? matchedSub.branch_name : null) || t.assigned_to;
+
+      return {
+        ...t,
+        rawTask: t,
+        item_type: 'required_task',
+        doc_number: t.doc_number || `TD-${String(t.id).slice(-6)}`,
+        source_branch: t.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+        display_title: t.title || 'Công việc TODO cần nộp văn bản',
+        display_summary: t.description || t.content || `Nhiệm vụ do Quản trị viên giao. Hạn nộp: ${t.dueDate || t.due_date || 'Hôm nay'}`,
+        display_date: t.dueDate || t.due_date || 'Hôm nay',
+        display_time: t.time || '',
+        is_submitted: isSubmitted,
+        file_url: fileUrl,
+        file_name: fileName,
+        submitted_at: submittedAt,
+        submitted_by: submittedBy,
+        matched_sub: matchedSub,
+        viewed_by: (Array.isArray(t.viewed_by) && t.viewed_by.length > 0)
+          ? t.viewed_by
+          : (viewsMap[t.id] || viewsMap[t.title] || [])
+      };
+    });
+  };
+
+  const rawList = tabType === 'incoming_docs' 
+    ? processIncomingItems() 
+    : tabType === 'required_docs'
+    ? processRequiredDocsItems()
+    : processOutgoingItems();
+
+  // Handle uploading and submitting document for TODO task
+  const handleSubmitTaskDoc = async (e) => {
+    e.preventDefault();
+    if (!submittingTask) return;
+
+    const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+    const now = new Date();
+    const dateStr = formatDateDDMMYYYY(now);
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const submittedAtFormatted = `${timeStr} ngày ${dateStr}`;
+
+    const fileName = taskDocFile ? taskDocFile.name : (taskDocFormData.file_name || 'Bao_Cao_Cong_Viec.pdf');
+    const fileUrl = taskDocUploadStatus?.file_url || taskDocFormData.file_url || `https://drive.google.com/drive/search?q=${encodeURIComponent(submittingTask.display_title)}`;
+
+    const submissionPayload = {
+      id: `sub_${Date.now()}`,
+      task_id: submittingTask.id,
+      doc_title: submittingTask.display_title,
+      title: `Báo cáo: ${submittingTask.display_title}`,
+      branch_name: branchName,
+      sender: branchName,
+      submitted_at: submittedAtFormatted,
+      sub_date: dateStr,
+      time: timeStr,
+      file_name: fileName,
+      file_url: fileUrl,
+      notes: taskDocFormData.notes || `Nộp báo cáo công việc: ${submittingTask.display_title}`,
+      status: 'Chờ tiếp nhận',
+      receipt_status: 'Chờ tiếp nhận',
+      read_status: 'unread',
+      item_type: 'submission'
+    };
+
+    if (onSaveSubmission) {
+      await onSaveSubmission(submissionPayload);
+    }
+
+    const updatedTaskPayload = {
+      ...submittingTask.rawTask,
+      id: submittingTask.id,
+      title: submittingTask.display_title,
+      status: 'completed',
+      has_submission: true,
+      submitted_file: fileUrl,
+      submitted_file_name: fileName,
+      submitted_at: submittedAtFormatted,
+      submitted_by: branchName,
+      submitted_notes: taskDocFormData.notes || ''
+    };
+
+    if (onSaveTask) {
+      await onSaveTask(updatedTaskPayload);
+    }
+
+    triggerToast && triggerToast(`Đã nộp văn bản cho công việc "${submittingTask.display_title}" thành công! Dữ liệu đã gửi về cho Quản trị viên.`);
+
+    setSubmittingTask(null);
+    setTaskDocFile(null);
+    setTaskDocUploadStatus(null);
+    setTaskDocFormData({ file_name: '', file_url: '', notes: '' });
+  };
   
   // Deduplicate list by title and ID to ensure items appear exactly ONCE
   const deduplicatedList = (() => {
@@ -811,7 +940,7 @@ export function DocumentsView({
     incoming_docs: 'Quản lý Văn bản đến (Tiếp nhận báo cáo & văn bản từ 30 Chi đoàn)',
     outgoing_docs: 'Quản lý Văn bản đi (Ban hành hoạt động & lưu trữ văn bản)',
     doan_xa_docs: 'Văn bản từ Đoàn xã',
-    required_docs: 'Văn bản cần nộp'
+    required_docs: 'Văn bản cần nộp (Công việc TODO do Quản trị viên giao)'
   };
 
   return (
@@ -826,6 +955,8 @@ export function DocumentsView({
           <div className="text-secondary" style={{ fontSize: '13px' }}>
             {tabType === 'incoming_docs' 
               ? 'Tiếp nhận, kiểm tra, xác nhận và tải tệp văn bản/báo cáo từ 30 Chi đoàn Ấp' 
+              : tabType === 'required_docs'
+              ? 'Nộp văn bản và tệp báo cáo cho các công việc TODO do Quản trị viên giao'
               : 'Ban hành, phân loại và lưu trữ tự động văn bản triển khai hoạt động'}
           </div>
         </div>
@@ -845,7 +976,7 @@ export function DocumentsView({
       {/* Search Bar */}
       <div className="d-flex align-items-center justify-content-between mb-3 gap-3">
         <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>
-          Danh sách văn bản {tabType === 'incoming_docs' ? 'đến' : 'đi'} ({filtered.length})
+          Danh sách văn bản {tabType === 'incoming_docs' ? 'đến' : tabType === 'required_docs' ? 'cần nộp' : 'đi'} ({filtered.length})
         </div>
 
         <div className="input-group" style={{ maxWidth: '340px' }}>
@@ -867,10 +998,14 @@ export function DocumentsView({
           <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-3 text-primary">
             <FileText size={32} />
           </div>
-          <h5 className="fw-bold text-dark mb-1">Chưa có văn bản nào trong mục này</h5>
+          <h5 className="fw-bold text-dark mb-1">
+            {tabType === 'required_docs' ? 'Chưa có công việc TODO nào cần nộp văn bản' : 'Chưa có văn bản nào trong mục này'}
+          </h5>
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
             {tabType === 'incoming_docs' 
               ? 'Tất cả văn bản/báo cáo do 30 Chi đoàn nộp sẽ tự động hiển thị tại đây.'
+              : tabType === 'required_docs'
+              ? 'Mục này chỉ hiển thị khi Quản trị viên giao công việc TODO cho Chi đoàn. Khi đó, Chi đoàn sẽ tải tệp lên và gửi về cho Quản trị viên tại đây.'
               : 'Tất cả văn bản ban hành từ Quản lý hoạt động sẽ tự động đưa lên đây và Lưu trữ văn bản.'}
           </p>
           {isDoanXa && (
@@ -885,9 +1020,9 @@ export function DocumentsView({
             <thead>
               <tr>
                 <th>Số / Ký hiệu</th>
-                <th>{tabType === 'incoming_docs' ? 'Nguồn phát hành (Chi đoàn)' : 'Đơn vị nhận'}</th>
-                <th>Tiêu đề & Trích yếu văn bản</th>
-                <th>{tabType === 'incoming_docs' ? 'Ngày giờ nộp / Tải tệp lên' : 'Ngày ban hành'}</th>
+                <th>{tabType === 'incoming_docs' ? 'Nguồn phát hành (Chi đoàn)' : tabType === 'required_docs' ? 'Chi đoàn thực hiện' : 'Đơn vị nhận'}</th>
+                <th>{tabType === 'required_docs' ? 'Tiêu đề & Nội dung công việc TODO' : 'Tiêu đề & Trích yếu văn bản'}</th>
+                <th>{tabType === 'incoming_docs' ? 'Ngày giờ nộp / Tải tệp lên' : tabType === 'required_docs' ? 'Hạn nộp / Ngày giao' : 'Ngày ban hành'}</th>
                 {tabType === 'incoming_docs' && <th>Trạng thái đọc</th>}
                 <th style={{ minWidth: '160px' }}>Trạng thái</th>
                 <th>Tệp đính kèm</th>
@@ -917,7 +1052,11 @@ export function DocumentsView({
                         {item.display_summary}
                       </div>
                     )}
-                    {item.category_label && (
+                    {tabType === 'required_docs' ? (
+                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 mt-1" style={{ fontSize: '10.5px' }}>
+                        📌 Công việc TODO
+                      </span>
+                    ) : item.category_label && (
                       <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 mt-1" style={{ fontSize: '10.5px' }}>
                         📌 {item.category_label}
                       </span>
@@ -965,6 +1104,28 @@ export function DocumentsView({
                         >
                           Xác nhận tiếp nhận
                         </button>
+                      )
+                    ) : tabType === 'required_docs' ? (
+                      item.is_submitted ? (
+                        <div>
+                          <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fw-bold" style={{ fontSize: '11.5px' }}>
+                            🟢 Đã nộp văn bản
+                          </span>
+                          {item.submitted_at && (
+                            <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
+                              lúc {item.submitted_at}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1.5 fw-bold" style={{ fontSize: '11.5px' }}>
+                            🟡 Chưa nộp văn bản
+                          </span>
+                          <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
+                            Hạn: {item.display_date}
+                          </div>
+                        </div>
                       )
                     ) : (
                       /* Outgoing Docs - Hiển thị chi đoàn nào đã xem, truyền dữ liệu về quản trị viên */
@@ -1061,28 +1222,39 @@ export function DocumentsView({
                         }}
                       >
                         <Download size={13} />
-                        <span>Tải PDF</span>
+                        <span>{tabType === 'required_docs' ? 'Tải PDF nộp' : 'Tải PDF'}</span>
                       </a>
                     ) : (
-                      <span className="text-muted" style={{ fontSize: '11px' }}>Không có tệp</span>
+                      <span className="text-muted" style={{ fontSize: '11px' }}>Chưa nộp tệp</span>
                     )}
                   </td>
 
                   {/* Thao tác */}
                   <td>
                     <div className="d-inline-flex align-items-center gap-1.5">
-                      <button 
-                        className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
-                        style={{ fontSize: '11.5px' }}
-                        title="Xem chi tiết & trích yếu văn bản"
-                        onClick={() => handleOpenPreview(item)}
-                      >
-                        <FileText size={13} />
-                        <span>Xem trước</span>
-                      </button>
+                      {tabType === 'required_docs' && !isDoanXa ? (
+                        <button 
+                          className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 px-3 py-1 rounded-2 fw-semibold shadow-xs hover-scale"
+                          style={{ fontSize: '11.5px', backgroundColor: '#0066FF', border: 'none' }}
+                          onClick={() => setSubmittingTask(item)}
+                        >
+                          <Upload size={13} />
+                          <span>{item.is_submitted ? 'Nộp lại file' : 'Nộp văn bản'}</span>
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xem chi tiết & trích yếu văn bản"
+                          onClick={() => handleOpenPreview(item)}
+                        >
+                          <FileText size={13} />
+                          <span>Xem trước</span>
+                        </button>
+                      )}
 
                       {/* Nút chỉnh sửa tiêu đề, ngày đăng */}
-                      {isDoanXa && (
+                      {isDoanXa && tabType !== 'required_docs' && (
                         <button 
                           className="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold text-warning-emphasis"
                           style={{ fontSize: '11.5px' }}
@@ -1633,6 +1805,117 @@ export function DocumentsView({
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nộp Văn Bản Cho Công Việc TODO (Chi đoàn) */}
+      {submittingTask && (
+        <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1085 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
+              <div className="modal-header border-bottom pb-3">
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16.5px' }}>
+                  <Upload className="text-primary" size={22} />
+                  <span>Nộp Văn Bản / Báo Cáo Cho Công Việc TODO</span>
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setSubmittingTask(null)}></button>
+              </div>
+              <form onSubmit={handleSubmitTaskDoc}>
+                <div className="modal-body p-4">
+                  <div className="alert bg-primary-subtle border border-primary-subtle rounded-3 p-3 mb-3">
+                    <div className="fw-bold text-primary mb-1" style={{ fontSize: '14px' }}>
+                      📋 Nhiệm vụ TODO: {submittingTask.display_title}
+                    </div>
+                    <div className="text-secondary" style={{ fontSize: '12.5px' }}>
+                      {submittingTask.display_summary}
+                    </div>
+                    <div className="mt-2 text-dark fw-semibold" style={{ fontSize: '12px' }}>
+                      📅 Hạn nộp: <span className="text-danger">{submittingTask.display_date}</span>
+                      <span className="ms-3 text-muted">📌 Đơn vị thực hiện: {submittingTask.source_branch}</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>
+                      Đơn vị nộp báo cáo <span className="text-danger">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      className="form-control bg-light fw-bold text-dark" 
+                      value={currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp'} 
+                      readOnly 
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold text-primary d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <Upload size={15} />
+                      <span>Tải tệp văn bản/báo cáo lên (PDF, DOCX, XLSX, Ảnh...) <span className="text-danger">*</span></span>
+                    </label>
+                    <input 
+                      type="file" 
+                      className="form-control" 
+                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx" 
+                      required={!submittingTask.is_submitted}
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setTaskDocFile(file);
+                          setIsUploadingTaskDoc(true);
+                          const res = await uploadPdfWithFailover(file);
+                          setIsUploadingTaskDoc(false);
+                          setTaskDocUploadStatus(res);
+                          setTaskDocFormData(prev => ({
+                            ...prev,
+                            file_name: file.name,
+                            file_url: res.file_url
+                          }));
+                        }
+                      }}
+                    />
+                    {isUploadingTaskDoc && (
+                      <div className="text-primary mt-1 fw-semibold" style={{ fontSize: '12px' }}>
+                        ⏳ Đang tải tệp lên hệ thống...
+                      </div>
+                    )}
+                    {taskDocUploadStatus && (
+                      <div className="text-success mt-1 fw-bold" style={{ fontSize: '12px' }}>
+                        ✓ Đã tải tệp lên thành công: {taskDocFile?.name}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>
+                      Ghi chú / Nội dung nộp kèm (Tùy chọn)
+                    </label>
+                    <textarea 
+                      className="form-control" 
+                      rows="3" 
+                      placeholder="Nhập ghi chú thêm cho Quản trị viên..."
+                      value={taskDocFormData.notes}
+                      onChange={(e) => setTaskDocFormData({ ...taskDocFormData, notes: e.target.value })}
+                      style={{ fontSize: '13px' }}
+                    ></textarea>
+                  </div>
+                </div>
+                <div className="modal-footer border-top pt-3">
+                  <button type="button" className="btn btn-light border text-secondary px-4 py-2 rounded-3 fw-semibold" onClick={() => setSubmittingTask(null)}>
+                    Hủy
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary px-4 py-2 rounded-3 fw-bold shadow-sm d-inline-flex align-items-center gap-2"
+                    style={{ backgroundColor: '#0066FF', border: 'none' }}
+                    disabled={isUploadingTaskDoc}
+                  >
+                    <Send size={16} />
+                    <span>Gửi văn bản cho Quản trị viên</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

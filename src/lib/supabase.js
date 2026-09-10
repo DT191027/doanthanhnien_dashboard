@@ -1574,27 +1574,51 @@ export async function syncSaveAttendance(activityId, recordData) {
 // MEMBERS SYNC (BẢNG QUẢN LÝ ĐOÀN VIÊN 30 CHI ĐOÀN ẤP)
 // ============================================================================
 export async function syncFetchMembers() {
-  let localList = getPersistedData('members', INITIAL_MEMBERS);
-  if (!localList || localList.length === 0) {
+  const deletedItems = getDeletedItems('members');
+  let localList = getPersistedData('members', null);
+  if (localList === null) {
     localList = INITIAL_MEMBERS;
-    setPersistedData('members', INITIAL_MEMBERS);
   }
+  
+  let filteredLocal = (localList || []).filter(item => 
+    !deletedItems.includes(String(item.id)) && 
+    !deletedItems.includes(String(item.full_name)) &&
+    !deletedItems.includes(String(item.name))
+  );
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
-        setPersistedData('members', data);
-        return data;
+        const filteredSupabase = data.filter(item => 
+          !deletedItems.includes(String(item.id)) && 
+          !deletedItems.includes(String(item.full_name)) &&
+          !deletedItems.includes(String(item.name))
+        );
+        setPersistedData('members', filteredSupabase);
+        return filteredSupabase;
       }
     } catch (e) {
       console.warn('Supabase fetch members error, using local fallback:', e);
     }
   }
-  return localList;
+
+  setPersistedData('members', filteredLocal);
+  return filteredLocal;
 }
 
 export async function syncSaveMember(memberItem) {
   const current = getPersistedData('members', INITIAL_MEMBERS);
+  const deletedItems = getDeletedItems('members');
+  const updatedDeleted = deletedItems.filter(d => 
+    d !== String(memberItem.id) && 
+    d !== String(memberItem.full_name) && 
+    d !== String(memberItem.name)
+  );
+  try {
+    localStorage.setItem('xts_deleted_members', JSON.stringify(updatedDeleted));
+  } catch (e) {}
+
   const exists = current.some(item => String(item.id) === String(memberItem.id));
   const updated = exists
     ? current.map(item => String(item.id) === String(memberItem.id) ? { ...item, ...memberItem } : item)
@@ -1613,11 +1637,15 @@ export async function syncSaveMember(memberItem) {
   return updated;
 }
 
-export async function syncDeleteMember(memberId) {
+export async function syncDeleteMember(memberId, memberName = '') {
+  addDeletedItem('members', memberId, memberName);
   const current = getPersistedData('members', INITIAL_MEMBERS);
-  const updated = current.filter(item => String(item.id) !== String(memberId));
+  const updated = current.filter(item => 
+    String(item.id) !== String(memberId) && 
+    (memberName ? item.full_name !== memberName && item.name !== memberName : true)
+  );
   setPersistedData('members', updated);
-  notifySyncEvent('DELETE_MEMBER', { id: memberId });
+  notifySyncEvent('DELETE_MEMBER', { id: memberId, name: memberName });
 
   if (supabase) {
     try {

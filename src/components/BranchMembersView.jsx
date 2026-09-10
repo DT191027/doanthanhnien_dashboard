@@ -171,7 +171,7 @@ export default function BranchMembersView({
     // If there was a previous pending deletion, purge it permanently before starting new timer
     if (pendingDeletedMember && pendingDeletedMember.id !== target.id) {
       if (countdownRef.current) clearInterval(countdownRef.current);
-      onDeleteMember && onDeleteMember(pendingDeletedMember.id);
+      onDeleteMember && onDeleteMember(pendingDeletedMember.id, pendingDeletedMember.full_name);
     }
 
     setPendingDeletedMember(target);
@@ -183,7 +183,7 @@ export default function BranchMembersView({
       setRestoreCountdown(count);
       if (count <= 0) {
         clearInterval(countdownRef.current);
-        onDeleteMember && onDeleteMember(target.id);
+        onDeleteMember && onDeleteMember(target.id, target.full_name);
         setPendingDeletedMember(null);
       }
     }, 1000);

@@ -155,10 +155,10 @@ export default function App() {
     triggerToast(memberData.id ? 'Đã cập nhật thông tin đoàn viên!' : 'Đã thêm mới đoàn viên!');
   };
 
-  const handleDeleteMember = async (memberId) => {
-    const updated = await syncDeleteMember(memberId);
+  const handleDeleteMember = async (memberId, memberName) => {
+    const updated = await syncDeleteMember(memberId, memberName);
     setMembersList(updated);
-    triggerToast('Đã xóa hồ sơ đoàn viên!');
+    triggerToast('Đã xóa vĩnh viễn hồ sơ đoàn viên!');
   };
 
   useEffect(() => {

@@ -577,23 +577,40 @@ export function DocumentsView({
 
   const processOutgoingItems = () => {
     const viewsMap = getDocViewsMap ? getDocViewsMap() : {};
-    return (documents || []).filter(d => d.type === 'outgoing' || !d.type).map(d => ({
-      ...d,
-      item_type: 'document',
-      doc_number: d.doc_number || `KH-${String(d.id).slice(-6)}`,
-      source_branch: d.sender || 'Đoàn xã Xuân Thới Sơn',
-      display_title: d.title || 'Văn bản ban hành',
-      display_summary: d.summary || d.description || 'Kế hoạch / Văn bản ban hành tới 30 Chi đoàn Ấp',
-      display_date: d.date || d.issue_date || 'Hôm nay',
-      display_time: d.time || '',
-      category: d.category || 'act_docs',
-      category_label: d.category_label || 'Văn bản thuộc ban hành hoạt động',
-      file_name: d.file_name || 'Van_Ban_Ban_Hanh.pdf',
-      file_url: d.file_url || '#',
-      viewed_by: (Array.isArray(d.viewed_by) && d.viewed_by.length > 0)
-        ? d.viewed_by
-        : (viewsMap[d.id] || viewsMap[d.title] || [])
-    }));
+    const categoryMap = {
+      decision_docs: 'Văn bản quyết định',
+      act_docs: 'Ban hành hoạt động',
+      implementation_docs: 'Văn bản triển khai',
+      meeting_docs: 'Văn bản cuộc họp'
+    };
+
+    return (documents || []).filter(d => d.type === 'outgoing' || !d.type).map(d => {
+      const catKey = d.category || (
+        d.category_label === 'Văn bản quyết định' ? 'decision_docs' :
+        d.category_label === 'Ban hành hoạt động' || d.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+        d.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+        d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+      );
+      const catLabel = d.category_label || categoryMap[catKey] || 'Văn bản quyết định';
+
+      return {
+        ...d,
+        item_type: 'document',
+        doc_number: d.doc_number || `KH-${String(d.id).slice(-6)}`,
+        source_branch: d.sender || 'Đoàn xã Xuân Thới Sơn',
+        display_title: d.title || 'Văn bản ban hành',
+        display_summary: d.summary || d.description || 'Kế hoạch / Văn bản ban hành tới 30 Chi đoàn Ấp',
+        display_date: d.date || d.issue_date || 'Hôm nay',
+        display_time: d.time || '',
+        category: catKey,
+        category_label: catLabel,
+        file_name: d.file_name || 'Van_Ban_Ban_Hanh.pdf',
+        file_url: d.file_url || '#',
+        viewed_by: (Array.isArray(d.viewed_by) && d.viewed_by.length > 0)
+          ? d.viewed_by
+          : (viewsMap[d.id] || viewsMap[d.title] || [])
+      };
+    });
   };
 
   const rawList = tabType === 'incoming_docs' ? processIncomingItems() : processOutgoingItems();
@@ -729,13 +746,21 @@ export function DocumentsView({
       'Văn bản cuộc họp': 'meeting_docs'
     };
 
+    const initialCat = item.category || categoryMap[item.category_label] || 'decision_docs';
+    const categoryLabels = {
+      decision_docs: 'Văn bản quyết định',
+      act_docs: 'Ban hành hoạt động',
+      implementation_docs: 'Văn bản triển khai',
+      meeting_docs: 'Văn bản cuộc họp'
+    };
+
     setEditingDoc({
       id: item.id,
       title: item.display_title || item.title || '',
       date: dateStr,
       doc_number: item.doc_number || '',
-      category: item.category || categoryMap[item.category_label] || 'decision_docs',
-      category_label: item.category_label || 'Văn bản quyết định',
+      category: initialCat,
+      category_label: item.category_label || categoryLabels[initialCat] || 'Văn bản quyết định',
       rawItem: item
     });
   };
@@ -775,7 +800,7 @@ export function DocumentsView({
     }
 
     setEditingDoc(null);
-    triggerToast && triggerToast(`Đã cập nhật tiêu đề và ngày đăng của văn bản "${updatedItem.title}" thành công!`);
+    triggerToast && triggerToast(`Đã cập nhật tiêu đề, ngày đăng và mục đích văn bản "${updatedItem.title}" thành công!`);
   };
 
   const titleMap = {
@@ -2750,12 +2775,18 @@ export function StorageArchiveView({ documents = [], submissions = [], onDeleteD
   // Categorization helper function
   const getDocCategory = (doc) => {
     if (doc.category) return doc.category;
-    const text = `${doc.title || ''} ${doc.doc_number || ''}`.toLowerCase();
-    if (text.includes('họp') || text.includes('biên bản') || text.includes('triệu tập') || text.includes('bb')) {
-      return 'meeting_docs';
+    if (doc.category_label) {
+      if (doc.category_label.includes('quyết định')) return 'decision_docs';
+      if (doc.category_label.includes('hoạt động')) return 'act_docs';
+      if (doc.category_label.includes('triển khai')) return 'implementation_docs';
+      if (doc.category_label.includes('cuộc họp')) return 'meeting_docs';
     }
+    const text = `${doc.title || ''} ${doc.doc_number || ''}`.toLowerCase();
     if (text.includes('qđ') || text.includes('quyết định')) {
       return 'decision_docs';
+    }
+    if (text.includes('họp') || text.includes('biên bản') || text.includes('triệu tập') || text.includes('bb')) {
+      return 'meeting_docs';
     }
     if (text.includes('kh') || text.includes('kế hoạch') || text.includes('hoạt động') || text.includes('ra quân') || text.includes('phát động') || text.includes('chương trình')) {
       return 'act_docs';

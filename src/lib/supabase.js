@@ -982,6 +982,8 @@ export async function syncFetchDocuments() {
     return true;
   }).map(d => ({
     ...d,
+    category: d.category || (d.category_label === 'Văn bản quyết định' ? 'decision_docs' : d.category_label === 'Ban hành hoạt động' ? 'act_docs' : d.category_label === 'Văn bản triển khai' ? 'implementation_docs' : d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'),
+    category_label: d.category_label || (d.category === 'decision_docs' ? 'Văn bản quyết định' : d.category === 'act_docs' ? 'Ban hành hoạt động' : d.category === 'implementation_docs' ? 'Văn bản triển khai' : d.category === 'meeting_docs' ? 'Văn bản cuộc họp' : 'Văn bản quyết định'),
     viewed_by: d.viewed_by || viewsMap[d.id] || viewsMap[d.title] || []
   }));
   setPersistedData('documents', localList);
@@ -1003,6 +1005,8 @@ export async function syncFetchDocuments() {
           file_name: item.pdf_url || '',
           file_url: item.file_url || item.pdf_url || '',
           storage_provider: item.storage_provider || 'supabase',
+          category: item.category || 'decision_docs',
+          category_label: item.category_label || (item.category === 'decision_docs' ? 'Văn bản quyết định' : item.category === 'act_docs' ? 'Ban hành hoạt động' : item.category === 'implementation_docs' ? 'Văn bản triển khai' : item.category === 'meeting_docs' ? 'Văn bản cuộc họp' : 'Văn bản quyết định'),
           viewed_by: item.viewed_by || viewsMap[item.id] || viewsMap[item.title] || []
         }));
         const seen = new Set();
@@ -1030,12 +1034,28 @@ export async function syncSaveDocument(docItem) {
     d && ((docItem.id && String(d.id) === String(docItem.id)) || (d.title && docItem.title && d.title.trim() === docItem.title.trim()))
   );
 
+  const categoryMap = {
+    decision_docs: 'Văn bản quyết định',
+    act_docs: 'Ban hành hoạt động',
+    implementation_docs: 'Văn bản triển khai',
+    meeting_docs: 'Văn bản cuộc họp'
+  };
+
+  const finalCat = docItem.category || 'decision_docs';
+  const finalCatLabel = docItem.category_label || categoryMap[finalCat] || 'Văn bản quyết định';
+
+  const normalizedDocItem = {
+    ...docItem,
+    category: finalCat,
+    category_label: finalCatLabel
+  };
+
   let updatedLocal;
   if (existsIndex >= 0) {
     updatedLocal = [...current];
-    updatedLocal[existsIndex] = { ...updatedLocal[existsIndex], ...docItem };
+    updatedLocal[existsIndex] = { ...updatedLocal[existsIndex], ...normalizedDocItem };
   } else {
-    updatedLocal = [docItem, ...current];
+    updatedLocal = [normalizedDocItem, ...current];
   }
 
   const seen = new Set();
@@ -1047,42 +1067,44 @@ export async function syncSaveDocument(docItem) {
     return true;
   });
 
-  if (Array.isArray(docItem.viewed_by) && docItem.viewed_by.length > 0) {
+  if (Array.isArray(normalizedDocItem.viewed_by) && normalizedDocItem.viewed_by.length > 0) {
     const map = getDocViewsMap();
-    const docKey = docItem.id || docItem.title;
-    setPersistedData('doc_views_map', { ...map, [docKey]: docItem.viewed_by });
+    const docKey = normalizedDocItem.id || normalizedDocItem.title;
+    setPersistedData('doc_views_map', { ...map, [docKey]: normalizedDocItem.viewed_by });
   }
 
   setPersistedData('documents', updatedLocal);
-  notifySyncEvent('SAVE_DOCUMENT', docItem);
+  notifySyncEvent('SAVE_DOCUMENT', normalizedDocItem);
 
   if (supabase) {
     try {
       let validDocStatus = 'unread';
-      if (docItem.status === 'Đã đọc' || docItem.status === 'read') validDocStatus = 'read';
-      else if (docItem.status === 'Đang xử lý' || docItem.status === 'pending') validDocStatus = 'pending';
+      if (normalizedDocItem.status === 'Đã đọc' || normalizedDocItem.status === 'read') validDocStatus = 'read';
+      else if (normalizedDocItem.status === 'Đang xử lý' || normalizedDocItem.status === 'pending') validDocStatus = 'pending';
 
       let validDocType = 'outgoing';
-      if (docItem.type === 'incoming') validDocType = 'incoming';
-      else if (docItem.type === 'submission') validDocType = 'submission';
+      if (normalizedDocItem.type === 'incoming') validDocType = 'incoming';
+      else if (normalizedDocItem.type === 'submission') validDocType = 'submission';
 
       const payload = {
-        doc_number: docItem.doc_number,
-        title: docItem.title,
+        doc_number: normalizedDocItem.doc_number,
+        title: normalizedDocItem.title,
         type: validDocType,
-        sender: docItem.sender || 'Đoàn xã Xuân Thới Sơn',
-        recipient_scope: docItem.recipient_scope || 'ALL',
-        issue_date: docItem.date || docItem.issue_date || new Date().toISOString().split('T')[0],
+        sender: normalizedDocItem.sender || 'Đoàn xã Xuân Thới Sơn',
+        recipient_scope: normalizedDocItem.recipient_scope || 'ALL',
+        issue_date: normalizedDocItem.date || normalizedDocItem.issue_date || new Date().toISOString().split('T')[0],
         status: validDocStatus,
-        pdf_url: docItem.file_url || docItem.file_name || '',
-        file_url: docItem.file_url || '',
-        storage_provider: docItem.storage_provider || 'supabase'
+        pdf_url: normalizedDocItem.file_url || normalizedDocItem.file_name || '',
+        file_url: normalizedDocItem.file_url || '',
+        storage_provider: normalizedDocItem.storage_provider || 'supabase',
+        category: finalCat,
+        category_label: finalCatLabel
       };
 
-      if (docItem.id && !String(docItem.id).startsWith('doc-')) {
-        await supabase.from('documents').upsert([{ id: docItem.id, ...payload }]);
+      if (normalizedDocItem.id && !String(normalizedDocItem.id).startsWith('doc-')) {
+        await supabase.from('documents').upsert([{ id: normalizedDocItem.id, ...payload }]);
       } else {
-        const { data: existing } = await supabase.from('documents').select('id').eq('title', docItem.title);
+        const { data: existing } = await supabase.from('documents').select('id').eq('title', normalizedDocItem.title);
         if (existing && existing.length > 0) {
           await supabase.from('documents').update(payload).eq('id', existing[0].id);
         } else {

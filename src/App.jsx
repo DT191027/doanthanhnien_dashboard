@@ -244,6 +244,28 @@ export default function App() {
     const updated = await syncSaveActivity(activityItem);
     setActivitiesList(updated);
 
+    // Nếu có đính kèm tệp văn bản khi tạo hoạt động, tự động đẩy lên phần Văn bản đi & Lưu trữ văn bản
+    if (newAct.file_name || newAct.file_url) {
+      const autoDoc = {
+        id: `doc-${Date.now()}`,
+        doc_number: `${Math.floor(Math.random() * 40) + 10}-KH/ĐX-XTS`,
+        title: `Kế hoạch ban hành: ${newAct.title}`,
+        summary: `Ban hành ngày ${dayVal}/${monthVal}/${yearVal} - Kế hoạch triển khai hoạt động "${newAct.title}"`,
+        sender: 'Đoàn xã Xuân Thới Sơn',
+        recipient_scope: assignedText,
+        status: 'unread',
+        type: 'outgoing',
+        category: 'act_docs',
+        category_label: 'Văn bản thuộc ban hành hoạt động',
+        date: `${dayVal}/${monthVal}/${yearVal}`,
+        file_name: newAct.file_name,
+        file_url: newAct.file_url,
+        storage_provider: 'supabase'
+      };
+      const updatedDocs = await syncSaveDocument(autoDoc);
+      setDocumentsList(updatedDocs);
+    }
+
     // Tự động phát thông báo tới đúng đơn vị được giao
     const targetText = assignedText;
     const autoNoti = {
@@ -264,7 +286,7 @@ export default function App() {
     const updatedNotis = await syncSaveNotification(autoNoti);
     setNotificationsList(updatedNotis);
 
-    triggerToast(`Đã tạo hoạt động "${newAct.title}" và gửi tới ${targetText}!`);
+    triggerToast(`Đã tạo hoạt động "${newAct.title}"${newAct.file_name ? ' & tự động ban hành văn bản đi' : ''}!`);
   };
 
   const handleToggleActivityStatus = async (activityId, newStatus) => {

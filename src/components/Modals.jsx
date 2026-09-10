@@ -168,6 +168,9 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     { id: 'sub-2', branch: 'Chi đoàn Ấp Dân Thắng', time: '08:00 - 10:00', location: 'Tuyến đường trước Trường Tiểu học Xuân Thới Sơn', description: 'Tuyên truyền phân loại rác thải' }
   ]);
 
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('11:30');
+
   const [formData, setFormData] = useState({
     title: '',
     priority: 'Bình thường',
@@ -200,24 +203,27 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
     setIsUploading(true);
     let cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
-    cleanTitle = cleanTitle.replace(/^(Ke hoach|Thong bao|Ke_hoach|Thong_bao)\s*/i, '');
-    cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    cleanTitle = cleanTitle.replace(/^(Ke hoach|Thong bao|Quyet dinh|Ke_hoach|Thong_bao|Quyet_dinh)\s*/i, '');
+    cleanTitle = cleanTitle ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Hoạt động Thanh niên mới';
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const months = ['THÁNG 1','THÁNG 2','THÁNG 3','THÁNG 4','THÁNG 5','THÁNG 6','THÁNG 7','THÁNG 8','THÁNG 9','THÁNG 10','THÁNG 11','THÁNG 12'];
 
     const uploaded = await uploadPdfWithFailover(file, 'activities_documents');
 
+    setStartTime('08:00');
+    setEndTime('11:30');
+
     setFormData(prev => ({
       ...prev,
-      title: prev.title || cleanTitle || 'Hoạt động Thanh niên mới',
-      time: prev.time || '07:30 - 11:30',
+      title: prev.title || cleanTitle,
+      time: '08:00 - 11:30',
       day: prev.day || String(today.getDate()).padStart(2, '0'),
       month: prev.month || String(today.getMonth() + 1).padStart(2, '0'),
       year: prev.year || today.getFullYear(),
       location: prev.location || OFFICIAL_ADDRESS,
-      notes: prev.notes || 'Đề nghị ĐVTN tham gia đúng giờ, trang phục áo màu xanh Thanh niên Việt Nam, mang dụng cụ lao động.',
+      notes: prev.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định. Trang phục áo màu xanh Thanh niên Việt Nam.',
+      description: prev.description || `Kế hoạch chi tiết chương trình theo văn bản triển khai đính kèm: ${file.name}`,
       assigned_to: prev.assigned_to || ['Tất cả 30 Chi đoàn Ấp'],
       file_name: uploaded.fileName || file.name,
       file_url: uploaded.url || '#'
@@ -260,8 +266,11 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       ? (formData.assigned_to.length === 0 || formData.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : formData.assigned_to.join(', '))
       : (formData.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
 
+    const formattedTime = startTime && endTime ? `${startTime} - ${endTime}` : (formData.time || '08:00 - 11:30');
+
     onSave && onSave({
       ...formData,
+      time: formattedTime,
       assigned_to: assignedStr,
       hasSubTasks: hasSubTasks,
       subTasks: hasSubTasks ? subTasks : [],
@@ -352,9 +361,9 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                     </div>
                   )}
                   {formData.file_name && !isUploading && (
-                    <div className="text-success mt-1 fw-bold d-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
-                      <CheckCircle size={14} />
-                      <span>Đã trích xuất & đính kèm văn bản: {formData.file_name}</span>
+                    <div className="text-success mt-1.5 fw-bold d-flex align-items-center gap-1.5 p-2 bg-white rounded border border-success-subtle" style={{ fontSize: '12px' }}>
+                      <CheckCircle size={15} className="text-success flex-shrink-0" />
+                      <span>✓ Đã trích xuất & tự động điền Tên hoạt động, Thời gian ({startTime} - {endTime}), Địa điểm từ văn bản: <strong>{formData.file_name}</strong></span>
                     </div>
                   )}
                 </div>
@@ -372,7 +381,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                 </div>
 
                 <div className="row g-2 mb-3">
-                  <div className="col-md-4">
+                  <div className="col-md-3">
                     <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
                     <select
                       className="form-select"
@@ -384,18 +393,35 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                       <option value="Bình thường">🟢 Bình thường</option>
                     </select>
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Thời gian <span className="text-danger">*</span></label>
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Giờ bắt đầu <span className="text-danger">*</span></label>
                     <input
-                      type="text"
+                      type="time"
                       className="form-control"
-                      placeholder="08:00 - 11:30"
                       required
-                      value={formData.time}
-                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      value={startTime}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStartTime(val);
+                        setFormData(prev => ({ ...prev, time: `${val} - ${endTime}` }));
+                      }}
                     />
                   </div>
-                  <div className="col-md-4">
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Giờ kết thúc <span className="text-danger">*</span></label>
+                    <input
+                      type="time"
+                      className="form-control"
+                      required
+                      value={endTime}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEndTime(val);
+                        setFormData(prev => ({ ...prev, time: `${startTime} - ${val}` }));
+                      }}
+                    />
+                  </div>
+                  <div className="col-md-3">
                     <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Ngày tổ chức <span className="text-danger">*</span></label>
                     <input
                       type="date"

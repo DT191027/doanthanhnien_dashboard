@@ -1793,25 +1793,81 @@ export function ReportsView({
 // 7. Full Storage Archive View
 export function StorageArchiveView({ documents = [], submissions = [] }) {
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+
+  // Categorization helper function
+  const getDocCategory = (doc) => {
+    if (doc.category) return doc.category;
+    const text = `${doc.title || ''} ${doc.doc_number || ''}`.toLowerCase();
+    if (text.includes('họp') || text.includes('biên bản') || text.includes('triệu tập') || text.includes('bb')) {
+      return 'meeting_docs';
+    }
+    if (text.includes('qđ') || text.includes('quyết định')) {
+      return 'decision_docs';
+    }
+    if (text.includes('kh') || text.includes('kế hoạch') || text.includes('hoạt động') || text.includes('ra quân') || text.includes('phát động') || text.includes('chương trình')) {
+      return 'act_docs';
+    }
+    return 'implementation_docs';
+  };
+
+  const categoryLabels = {
+    act_docs: 'Văn bản thuộc ban hành hoạt động',
+    meeting_docs: 'Văn bản cuộc họp',
+    implementation_docs: 'Văn bản triển khai',
+    decision_docs: 'Văn bản quyết định',
+    submissions: 'Báo cáo Chi đoàn nộp'
+  };
+
+  const categoryBadges = {
+    act_docs: { bg: 'bg-primary-subtle text-primary border-primary-subtle', icon: '📌' },
+    meeting_docs: { bg: 'bg-info-subtle text-info-emphasis border-info-subtle', icon: '🤝' },
+    implementation_docs: { bg: 'bg-warning-subtle text-warning-emphasis border-warning-subtle', icon: '📢' },
+    decision_docs: { bg: 'bg-danger-subtle text-danger border-danger-subtle', icon: '⚖️' },
+    submissions: { bg: 'bg-success-subtle text-success border-success-subtle', icon: '📑' }
+  };
 
   const allFiles = [
-    ...documents.filter(d => d.file_name || d.file_url).map(d => ({ 
-      id: d.id, 
-      name: d.file_name || 'Van_Ban.pdf', 
-      url: d.file_url || d.pdf_url || `/${d.file_name}`,
-      title: d.title, 
-      category: 'Văn bản ban hành', 
-      date: d.date || 'Hôm nay' 
-    })),
+    ...documents.filter(d => d.file_name || d.file_url).map(d => {
+      const catKey = getDocCategory(d);
+      return { 
+        id: d.id, 
+        name: d.file_name || 'Van_Ban.pdf', 
+        url: d.file_url || d.pdf_url || `/${d.file_name}`,
+        title: d.title, 
+        doc_number: d.doc_number,
+        categoryKey: catKey,
+        categoryLabel: categoryLabels[catKey] || 'Văn bản triển khai', 
+        date: d.date || d.issue_date || 'Hôm nay',
+        source: 'Văn bản Đoàn xã'
+      };
+    }),
     ...submissions.filter(s => s.file_name || s.file_url).map(s => ({ 
       id: s.id, 
       name: s.file_name || 'Bao_Cao.pdf', 
       url: s.file_url || `/${s.file_name}`,
       title: s.title, 
-      category: 'Báo cáo Chi đoàn', 
-      date: s.sub_date || 'Hôm nay' 
+      doc_number: null,
+      categoryKey: 'submissions',
+      categoryLabel: categoryLabels['submissions'], 
+      date: s.sub_date || 'Hôm nay',
+      source: s.branch_name || 'Chi đoàn Ấp'
     }))
-  ].filter(f => f.title.toLowerCase().includes(search.toLowerCase()) || f.name.toLowerCase().includes(search.toLowerCase()));
+  ];
+
+  const filteredFiles = allFiles.filter(f => {
+    const matchCategory = selectedCategory === 'ALL' || f.categoryKey === selectedCategory;
+    const matchSearch = !search || f.title.toLowerCase().includes(search.toLowerCase()) || 
+                        f.name.toLowerCase().includes(search.toLowerCase()) ||
+                        (f.doc_number && f.doc_number.toLowerCase().includes(search.toLowerCase()));
+    return matchCategory && matchSearch;
+  });
+
+  const countAct = allFiles.filter(f => f.categoryKey === 'act_docs').length;
+  const countMeeting = allFiles.filter(f => f.categoryKey === 'meeting_docs').length;
+  const countImpl = allFiles.filter(f => f.categoryKey === 'implementation_docs').length;
+  const countDecision = allFiles.filter(f => f.categoryKey === 'decision_docs').length;
+  const countSubmissions = allFiles.filter(f => f.categoryKey === 'submissions').length;
 
   return (
     <div className="content-card">
@@ -1819,10 +1875,10 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
             <Folder className="text-primary" size={24} />
-            Kho Lưu trữ Văn bản Số
+            Kho Lưu trữ Văn bản Số (Phân loại tự động)
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Lưu trữ và tra cứu tập trung toàn bộ hệ thống hồ sơ, công văn, báo cáo tệp PDF
+            Lưu trữ và tra cứu tập trung theo từng hạng mục văn bản ban hành, cuộc họp, triển khai và quyết định
           </div>
         </div>
 
@@ -1831,7 +1887,7 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
           <input 
             type="text" 
             className="form-control bg-light border-start-0 ps-0" 
-            placeholder="Tìm kiếm tệp hồ sơ..." 
+            placeholder="Tìm kiếm tệp hồ sơ, trích yếu..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ fontSize: '13px' }}
@@ -1839,42 +1895,119 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
         </div>
       </div>
 
-      {allFiles.length === 0 ? (
+      {/* Category Tabs according to User Requirements */}
+      <div className="d-flex align-items-center gap-2 flex-wrap mb-4">
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'ALL' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('ALL')}
+          style={{ fontSize: '12.5px' }}
+        >
+          📂 Tất cả ({allFiles.length})
+        </button>
+
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'act_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('act_docs')}
+          style={{ fontSize: '12.5px' }}
+        >
+          📌 Ban hành hoạt động ({countAct})
+        </button>
+
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'meeting_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('meeting_docs')}
+          style={{ fontSize: '12.5px' }}
+        >
+          🤝 Văn bản cuộc họp ({countMeeting})
+        </button>
+
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'implementation_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('implementation_docs')}
+          style={{ fontSize: '12.5px' }}
+        >
+          📢 Văn bản triển khai ({countImpl})
+        </button>
+
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'decision_docs' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('decision_docs')}
+          style={{ fontSize: '12.5px' }}
+        >
+          ⚖️ Văn bản quyết định ({countDecision})
+        </button>
+
+        <button 
+          type="button"
+          className={`btn btn-sm ${selectedCategory === 'submissions' ? 'btn-primary' : 'btn-light border'} fw-semibold px-3 py-1.5 rounded-3`}
+          onClick={() => setSelectedCategory('submissions')}
+          style={{ fontSize: '12.5px' }}
+        >
+          📑 Báo cáo Chi đoàn ({countSubmissions})
+        </button>
+      </div>
+
+      {filteredFiles.length === 0 ? (
         <div className="p-5 bg-light rounded-3 text-center border my-3">
           <div className="p-3 bg-white d-inline-block rounded-circle shadow-sm mb-3 text-primary">
             <Folder size={32} />
           </div>
-          <h5 className="fw-bold text-dark mb-1">Kho lưu trữ số sẵn sàng</h5>
+          <h5 className="fw-bold text-dark mb-1">Chưa có văn bản nào trong mục này</h5>
           <p className="text-secondary mb-0" style={{ fontSize: '13px' }}>
-            Tất cả các tệp đính kèm văn bản và báo cáo khi phát hành hoặc nộp sẽ tự động được lưu trữ tại đây.
+            Tất cả các tệp đính kèm văn bản và báo cáo thuộc danh mục lựa chọn sẽ tự động hiển thị tại đây.
           </p>
         </div>
       ) : (
         <div className="row g-3">
-          {allFiles.map(file => (
-            <div key={file.id} className="col-12 col-md-6 col-lg-4">
-              <div className="p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between hover-shadow transition">
-                <div className="d-flex align-items-center gap-2">
-                  <div className="p-2 rounded-2 bg-primary-subtle text-primary">
-                    <FileText size={20} />
-                  </div>
+          {filteredFiles.map(file => {
+            const badgeMeta = categoryBadges[file.categoryKey] || { bg: 'bg-light text-dark', icon: '📄' };
+            return (
+              <div key={file.id} className="col-12 col-md-6 col-lg-4">
+                <div className="p-3 bg-light rounded-3 border d-flex flex-column justify-content-between h-100 hover-shadow transition">
                   <div>
-                    <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>{file.title}</div>
-                    <div className="text-muted" style={{ fontSize: '11px' }}>{file.category} • {file.date}</div>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className={`badge ${badgeMeta.bg} border px-2 py-1 rounded-2`} style={{ fontSize: '11px', fontWeight: 600 }}>
+                        {badgeMeta.icon} {file.categoryLabel}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: '11px' }}>{file.date}</span>
+                    </div>
+
+                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '13.5px', lineHeight: '1.3' }}>
+                      {file.title}
+                    </div>
+
+                    {file.doc_number && (
+                      <div className="text-primary fw-semibold mb-2" style={{ fontSize: '11.5px' }}>
+                        Số hiệu: {file.doc_number}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 mt-2 border-top d-flex align-items-center justify-content-between">
+                    <span className="text-secondary" style={{ fontSize: '11.5px' }}>
+                      Nguồn: {file.source}
+                    </span>
+
+                    <a 
+                      href={file.url} 
+                      download={file.name}
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1"
+                      style={{ fontSize: '12px' }}
+                    >
+                      <Download size={13} /> Tải tệp
+                    </a>
                   </div>
                 </div>
-                <a 
-                  href={file.url} 
-                  download={file.name}
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="btn btn-sm btn-outline-primary"
-                >
-                  <Download size={14} />
-                </a>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

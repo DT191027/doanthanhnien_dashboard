@@ -1791,9 +1791,10 @@ export function ReportsView({
 }
 
 // 7. Full Storage Archive View
-export function StorageArchiveView({ documents = [], submissions = [] }) {
+export function StorageArchiveView({ documents = [], submissions = [], onDeleteDocument, onDeleteSubmission, isDoanXa }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
   // Categorization helper function
   const getDocCategory = (doc) => {
@@ -1828,30 +1829,38 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
   };
 
   const allFiles = [
-    ...documents.filter(d => d.file_name || d.file_url).map(d => {
+    ...documents.filter(d => d && (d.file_name || d.file_url)).map(d => {
       const catKey = getDocCategory(d);
       return { 
         id: d.id, 
+        type: 'document',
         name: d.file_name || 'Van_Ban.pdf', 
         url: d.file_url || d.pdf_url || `/${d.file_name}`,
-        title: d.title, 
+        title: d.title || 'Văn bản ban hành', 
+        content: d.summary || d.content || d.description || '',
         doc_number: d.doc_number,
         categoryKey: catKey,
         categoryLabel: categoryLabels[catKey] || 'Văn bản triển khai', 
         date: d.date || d.issue_date || 'Hôm nay',
-        source: 'Văn bản Đoàn xã'
+        time: d.time || d.created_at_time || '',
+        source: d.sender || d.branch_name || 'Văn bản Đoàn xã',
+        isBranchDoc: false
       };
     }),
-    ...submissions.filter(s => s.file_name || s.file_url).map(s => ({ 
+    ...submissions.filter(s => s && (s.file_name || s.file_url)).map(s => ({ 
       id: s.id, 
+      type: 'submission',
       name: s.file_name || 'Bao_Cao.pdf', 
       url: s.file_url || `/${s.file_name}`,
-      title: s.title, 
-      doc_number: null,
+      title: s.doc_title || s.title || `Báo cáo ${s.branch_name || 'Chi đoàn Ấp'}`, 
+      content: s.notes || s.content || s.summary || s.description || 'Báo cáo/văn bản đã được Chi đoàn gửi trực tuyến.',
+      doc_number: s.doc_number || null,
       categoryKey: 'submissions',
       categoryLabel: categoryLabels['submissions'], 
-      date: s.sub_date || 'Hôm nay',
-      source: s.branch_name || 'Chi đoàn Ấp'
+      date: s.submitted_at || s.sub_date || s.submission_date || 'Hôm nay',
+      time: s.sub_time || s.time || '',
+      source: s.branch_name || s.sender || 'Chi đoàn Ấp',
+      isBranchDoc: true
     }))
   ];
 
@@ -1859,7 +1868,8 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
     const matchCategory = selectedCategory === 'ALL' || f.categoryKey === selectedCategory;
     const matchSearch = !search || f.title.toLowerCase().includes(search.toLowerCase()) || 
                         f.name.toLowerCase().includes(search.toLowerCase()) ||
-                        (f.doc_number && f.doc_number.toLowerCase().includes(search.toLowerCase()));
+                        (f.doc_number && f.doc_number.toLowerCase().includes(search.toLowerCase())) ||
+                        (f.source && f.source.toLowerCase().includes(search.toLowerCase()));
     return matchCategory && matchSearch;
   });
 
@@ -1968,16 +1978,20 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
             const badgeMeta = categoryBadges[file.categoryKey] || { bg: 'bg-light text-dark', icon: '📄' };
             return (
               <div key={file.id} className="col-12 col-md-6 col-lg-4">
-                <div className="p-3 bg-light rounded-3 border d-flex flex-column justify-content-between h-100 hover-shadow transition">
+                <div className="p-3.5 bg-light rounded-3 border d-flex flex-column justify-content-between h-100 hover-shadow transition">
                   <div>
+                    {/* Header Badge & Upload Date/Time */}
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <span className={`badge ${badgeMeta.bg} border px-2 py-1 rounded-2`} style={{ fontSize: '11px', fontWeight: 600 }}>
                         {badgeMeta.icon} {file.categoryLabel}
                       </span>
-                      <span className="text-muted" style={{ fontSize: '11px' }}>{file.date}</span>
+                      <span className="text-secondary fw-semibold" style={{ fontSize: '11.5px' }} title="Ngày giờ tải tệp lên">
+                        ⏰ {file.date} {file.time ? `• ${file.time}` : ''}
+                      </span>
                     </div>
 
-                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '13.5px', lineHeight: '1.3' }}>
+                    {/* Bolded Document Title */}
+                    <div className="fw-extrabold text-dark mb-1.5" style={{ fontSize: '14.5px', lineHeight: '1.35' }}>
                       {file.title}
                     </div>
 
@@ -1986,28 +2000,107 @@ export function StorageArchiveView({ documents = [], submissions = [] }) {
                         Số hiệu: {file.doc_number}
                       </div>
                     )}
+
+                    {/* Display Content/Notes for Submissions and Documents */}
+                    {file.content && (
+                      <div className="p-2 my-2 bg-white rounded border border-light-subtle text-secondary" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                        <strong>📝 Nội dung:</strong> {file.content}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="pt-2 mt-2 border-top d-flex align-items-center justify-content-between">
-                    <span className="text-secondary" style={{ fontSize: '11.5px' }}>
-                      Nguồn: {file.source}
-                    </span>
+                  {/* Footer: Source (Bolded) & Download / Delete buttons */}
+                  <div className="pt-2.5 mt-2 border-top d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                    <div className="text-secondary" style={{ fontSize: '12px' }}>
+                      Nguồn: <strong className="fw-extrabold text-dark me-1">{file.source}</strong>
+                    </div>
 
-                    <a 
-                      href={file.url} 
-                      download={file.name}
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1"
-                      style={{ fontSize: '12px' }}
-                    >
-                      <Download size={13} /> Tải tệp
-                    </a>
+                    <div className="d-flex align-items-center gap-1.5">
+                      <a 
+                        href={file.url} 
+                        download={file.name}
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1"
+                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                      >
+                        <Download size={13} /> Tải tệp
+                      </a>
+
+                      <button 
+                        type="button"
+                        className="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center gap-1 px-2 py-1"
+                        style={{ fontSize: '11.5px', borderRadius: '6px' }}
+                        title="Xóa tệp khỏi lưu trữ"
+                        onClick={() => setDeleteConfirmTarget(file)}
+                      >
+                        <Trash2 size={13} />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal Xác Nhận Xóa Tệp Văn Bản / Báo Cáo */}
+      {deleteConfirmTarget && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-50" 
+          style={{ zIndex: 1080 }}
+          onClick={() => setDeleteConfirmTarget(null)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered shadow-lg" 
+            style={{ maxWidth: '420px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 rounded-4 text-center p-4">
+              <div className="d-flex justify-content-center mb-3">
+                <div className="p-3 bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center">
+                  <AlertTriangle size={36} />
+                </div>
+              </div>
+
+              <h5 className="fw-bold text-danger mb-2" style={{ fontSize: '18px' }}>
+                Xác nhận xóa tệp khỏi kho lưu trữ?
+              </h5>
+
+              <p className="text-secondary mb-4" style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                Tệp <strong className="text-dark">"{deleteConfirmTarget.title}"</strong> (Nguồn: <strong>{deleteConfirmTarget.source}</strong>) sẽ được xóa hoàn toàn khỏi hệ thống lưu trữ.
+              </p>
+
+              <div className="d-flex align-items-center justify-content-center gap-2.5">
+                <button 
+                  type="button" 
+                  className="btn btn-light border text-secondary fw-semibold px-4 py-2 rounded-3 flex-fill"
+                  style={{ fontSize: '13.5px' }}
+                  onClick={() => setDeleteConfirmTarget(null)}
+                >
+                  Quay lại
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger fw-bold px-4 py-2 rounded-3 flex-fill shadow-sm"
+                  style={{ fontSize: '13.5px' }}
+                  onClick={() => {
+                    const file = deleteConfirmTarget;
+                    setDeleteConfirmTarget(null);
+                    if (file.type === 'document') {
+                      onDeleteDocument && onDeleteDocument(file.id, file.title);
+                    } else if (file.type === 'submission') {
+                      onDeleteSubmission && onDeleteSubmission(file.id, file.title);
+                    }
+                  }}
+                >
+                  Xác nhận xóa
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

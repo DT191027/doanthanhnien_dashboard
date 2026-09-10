@@ -1053,21 +1053,29 @@ export async function syncDeleteDocument(docId, docTitle = '') {
 // 3. DOCUMENT SUBMISSIONS SYNC (BẢNG NỘP BÁO CÁO CHI ĐOÀN)
 // ============================================================================
 export async function syncFetchSubmissions() {
+  const deleted = getDeletedItems('submissions');
   let localList = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
   if (!localList || localList.length === 0) {
     localList = INITIAL_SUBMISSION_HISTORY;
     setPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
   }
+
+  localList = (localList || []).filter(s => s && !deleted.includes(String(s.id)) && (!s.title || !deleted.includes(s.title)) && (!s.doc_title || !deleted.includes(s.doc_title)));
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from('document_submissions').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
         const mapped = data.map(item => ({
           id: item.id,
-          title: item.doc_title,
+          title: item.doc_title || item.title || 'Báo cáo Chi đoàn',
+          doc_title: item.doc_title || item.title || 'Báo cáo Chi đoàn',
+          notes: item.notes || item.summary || item.content || item.description || '',
           branch_name: item.branch_name || 'Chi đoàn Ấp',
+          sender: item.sender || item.branch_name || 'Chi đoàn Ấp',
           due_date: new Date().toLocaleDateString('vi-VN'),
-          sub_date: new Date(item.submission_date || Date.now()).toLocaleDateString('vi-VN'),
+          sub_date: item.submitted_at || (item.submission_date ? new Date(item.submission_date).toLocaleDateString('vi-VN') + ' ' + new Date(item.submission_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Hôm nay'),
+          submitted_at: item.submitted_at || (item.submission_date ? new Date(item.submission_date).toLocaleDateString('vi-VN') + ' ' + new Date(item.submission_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Hôm nay'),
           status: item.status || 'Đã nộp',
           file_name: item.file_name || 'Bao_cao.pdf',
           file_url: item.file_url || item.file_name || '',
@@ -1076,6 +1084,7 @@ export async function syncFetchSubmissions() {
         const seen = new Set();
         const clean = mapped.filter(s => {
           if (!s || !s.id || seen.has(s.id)) return false;
+          if (deleted.includes(String(s.id)) || (s.title && deleted.includes(s.title)) || (s.doc_title && deleted.includes(s.doc_title))) return false;
           seen.add(s.id);
           return true;
         });
@@ -1099,7 +1108,7 @@ export async function syncSaveSubmission(subItem) {
     try {
       const { data, error } = await supabase.from('document_submissions').insert([{
         branch_name: subItem.branch_name || 'Chi đoàn Ấp',
-        doc_title: subItem.title,
+        doc_title: subItem.title || subItem.doc_title || 'Báo cáo Chi đoàn',
         submission_date: new Date().toISOString(),
         status: subItem.status || 'Đã nộp',
         file_name: subItem.file_name || 'Bao_cao.pdf',
@@ -1116,6 +1125,34 @@ export async function syncSaveSubmission(subItem) {
       console.error('Supabase save submission exception:', e);
     }
     return await syncFetchSubmissions();
+  }
+  return updatedLocal;
+}
+
+export async function syncDeleteSubmission(subId, subTitle = '') {
+  addDeletedItem('submissions', subId, subTitle);
+  const deleted = getDeletedItems('submissions');
+
+  const current = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
+  const updatedLocal = current.filter(s => s && !deleted.includes(String(s.id)) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
+  setPersistedData('submissions', updatedLocal);
+
+  if (supabase) {
+    try {
+      await supabase.from('document_submissions').delete().eq('id', subId);
+      if (subTitle) {
+        await supabase.from('document_submissions').delete().eq('doc_title', subTitle);
+      }
+    } catch (e) {
+      console.error('Supabase delete submission error:', e);
+    }
+  }
+
+  notifySyncEvent('DELETE_SUBMISSION', { subId, subTitle });
+
+  if (supabase) {
+    const fetched = await syncFetchSubmissions();
+    return fetched.filter(s => s && !deleted.includes(String(s.id)) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
   }
   return updatedLocal;
 }

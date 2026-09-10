@@ -47,6 +47,7 @@ import {
   syncDeleteDocument,
   syncFetchSubmissions,
   syncSaveSubmission,
+  syncDeleteSubmission,
   syncFetchNotifications,
   syncSaveNotification,
   syncUpdateNotification,
@@ -348,6 +349,15 @@ export default function App() {
     const updated = await syncDeleteDocument(docId, docTitle);
     const filtered = (updated || []).filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
     setDocumentsList(filtered);
+  };
+
+  const handleDeleteSubmission = async (subId, subTitle = '') => {
+    setSubmissionsList(prev => prev.filter(s => String(s.id) !== String(subId) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle))));
+    triggerToast('Đã xóa tệp báo cáo / văn bản khỏi kho lưu trữ thành công!');
+
+    const updated = await syncDeleteSubmission(subId, subTitle);
+    const filtered = (updated || []).filter(s => String(s.id) !== String(subId) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
+    setSubmissionsList(filtered);
   };
 
   const handleSubmitDocument = async (newSub) => {
@@ -888,6 +898,9 @@ export default function App() {
             <StorageArchiveView 
               documents={userDocuments}
               submissions={submissionsList}
+              onDeleteDocument={handleDeleteDocument}
+              onDeleteSubmission={handleDeleteSubmission}
+              isDoanXa={isDoanXa}
             />
           ) : activeTab === 'settings' ? (
             /* SETTINGS VIEW */

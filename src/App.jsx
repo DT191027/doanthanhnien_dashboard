@@ -179,6 +179,11 @@ export default function App() {
     window.addEventListener('storage', handleSync);
     window.addEventListener('doanthanhnien_sync', handleSync);
 
+    // Fail-safe 15-second Heartbeat Sync for multi-device & multi-IP consistency
+    const pollInterval = setInterval(() => {
+      loadAllData();
+    }, 15000);
+
     let supabaseChannel = null;
     if (supabase) {
       supabaseChannel = supabase
@@ -190,6 +195,7 @@ export default function App() {
     }
 
     return () => {
+      if (pollInterval) clearInterval(pollInterval);
       if (syncChannel) syncChannel.close();
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('doanthanhnien_sync', handleSync);

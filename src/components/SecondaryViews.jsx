@@ -810,6 +810,20 @@ export function DocumentsView({
   // Record Chi doan viewing document and transmit data back to administrator
   const handleRecordDocView = (item, branchName) => {
     if (!item || !branchName) return;
+
+    // Check if branch already recorded view/receipt to prevent duplicate calls or overwriting timestamps
+    const existingViews = item.viewed_by || [];
+    const alreadyRecorded = existingViews.some(v => 
+      v.branch_name === branchName || 
+      v.branch_name?.includes(branchName) || 
+      branchName.includes(v.branch_name)
+    );
+
+    if (alreadyRecorded) {
+      triggerToast && triggerToast(`Chi đoàn ${branchName} đã xác nhận tiếp nhận văn bản này trước đó.`);
+      return;
+    }
+
     const updatedViews = recordDocView(item.id || item.title, branchName);
     const updatedDoc = {
       ...item,
@@ -817,39 +831,32 @@ export function DocumentsView({
       read_status: 'read',
       status: 'Đã đọc'
     };
+
     if (item.item_type === 'submission') {
       onSaveSubmission && onSaveSubmission(updatedDoc);
     } else {
       onSaveDocument && onSaveDocument(updatedDoc);
     }
+
     if (previewDoc && (previewDoc.id === item.id || previewDoc.title === item.title)) {
       setPreviewDoc(updatedDoc);
     }
     if (viewHistoryDoc && (viewHistoryDoc.id === item.id || viewHistoryDoc.title === item.title)) {
       setViewHistoryDoc(updatedDoc);
     }
-    triggerToast && triggerToast(`Đã truyền dữ liệu: ${branchName} đã xem văn bản về Quản trị viên!`);
+
+    const latestView = updatedViews.find(v => v.branch_name === branchName) || updatedViews[updatedViews.length - 1];
+    triggerToast && triggerToast(`✓ Đã xác nhận tiếp nhận văn bản lúc ${latestView?.viewed_at || ''} và truyền dữ liệu về Quản trị viên!`);
   };
 
-  // Open Preview Modal & auto transmit view record if Chi doan is viewing
+  // Open Preview Modal cleanly without auto-confirming or auto-saving duplicate records
   const handleOpenPreview = (item) => {
     let readItem = {
       ...item,
       read_status: 'read'
     };
 
-    if (!isDoanXa) {
-      const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
-      const updatedViews = recordDocView(item.id || item.title, branchName);
-      readItem.viewed_by = updatedViews;
-      readItem.status = 'Đã đọc';
-      if (item.item_type === 'submission') {
-        onSaveSubmission && onSaveSubmission(readItem);
-      } else {
-        onSaveDocument && onSaveDocument(readItem);
-      }
-      triggerToast && triggerToast(`Đã gửi xác nhận: ${branchName} đã xem văn bản lúc ${updatedViews[updatedViews.length - 1]?.viewed_at}!`);
-    } else if (item.read_status !== 'read') {
+    if (isDoanXa && item.read_status !== 'read') {
       if (item.item_type === 'submission') {
         onSaveSubmission && onSaveSubmission(readItem);
       } else {
@@ -1180,12 +1187,16 @@ export function DocumentsView({
                           /* Chi đoàn User View: Check if current branch has viewed */
                           (() => {
                             const myBranch = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
-                            const myView = (item.viewed_by || []).find(v => v.branch_name === myBranch);
+                            const myView = (item.viewed_by || []).find(v => 
+                              v.branch_name === myBranch || 
+                              v.branch_name?.includes(myBranch) || 
+                              myBranch.includes(v.branch_name)
+                            );
                             if (myView) {
                               return (
                                 <div>
                                   <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
-                                    ✓ Đã xem
+                                    ✓ Đã xác nhận
                                   </span>
                                   <div className="text-muted mt-0.5" style={{ fontSize: '10px' }}>
                                     lúc {myView.viewed_at}
@@ -1194,9 +1205,14 @@ export function DocumentsView({
                               );
                             }
                             return (
-                              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
-                                🔴 Chưa xem
-                              </span>
+                              <div>
+                                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                                  🔴 Chưa xác nhận
+                                </span>
+                                <div className="text-muted mt-0.5" style={{ fontSize: '10px' }}>
+                                  (Xem trước để xác nhận)
+                                </div>
+                              </div>
                             );
                           })()
                         )}
@@ -1214,12 +1230,6 @@ export function DocumentsView({
                         rel="noreferrer" 
                         className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 fw-semibold px-2.5 py-1 rounded-2"
                         style={{ fontSize: '11.5px' }}
-                        onClick={() => {
-                          if (!isDoanXa) {
-                            const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
-                            handleRecordDocView(item, branchName);
-                          }
-                        }}
                       >
                         <Download size={13} />
                         <span>{tabType === 'required_docs' ? 'Tải PDF nộp' : 'Tải PDF'}</span>
@@ -1751,12 +1761,6 @@ export function DocumentsView({
                     rel="noreferrer" 
                     className="btn btn-primary d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-2 rounded-3 shadow-xs"
                     style={{ backgroundColor: '#0066FF' }}
-                    onClick={() => {
-                      if (!isDoanXa) {
-                        const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
-                        handleRecordDocView(previewDoc, branchName);
-                      }
-                    }}
                   >
                     <Download size={16} />
                     <span>Tải PDF về máy</span>
@@ -1777,31 +1781,73 @@ export function DocumentsView({
                 </button>
 
                 <div className="d-flex align-items-center gap-2">
-                  {isDoanXa && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-warning fw-semibold px-3 py-2 rounded-3 d-inline-flex align-items-center gap-1.5"
-                      onClick={() => {
-                        const itemToEdit = previewDoc;
-                        setPreviewDoc(null);
-                        handleOpenEdit(itemToEdit);
-                      }}
-                    >
-                      <Edit3 size={15} />
-                      <span>Sửa văn bản này</span>
-                    </button>
-                  )}
+                  {isDoanXa ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline-warning fw-semibold px-3 py-2 rounded-3 d-inline-flex align-items-center gap-1.5"
+                        onClick={() => {
+                          const itemToEdit = previewDoc;
+                          setPreviewDoc(null);
+                          handleOpenEdit(itemToEdit);
+                        }}
+                      >
+                        <Edit3 size={15} />
+                        <span>Sửa văn bản này</span>
+                      </button>
 
-                  {previewDoc.receipt_status !== 'Đã tiếp nhận' && (
-                    <button 
-                      type="button" 
-                      className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5"
-                      style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
-                      onClick={(e) => handleConfirmReceipt(previewDoc, e)}
-                    >
-                      <CheckCircle2 size={16} />
-                      <span>Xác nhận tiếp nhận văn bản này</span>
-                    </button>
+                      {previewDoc.receipt_status !== 'Đã tiếp nhận' && (
+                        <button 
+                          type="button" 
+                          className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5"
+                          style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                          onClick={(e) => handleConfirmReceipt(previewDoc, e)}
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Xác nhận tiếp nhận văn bản này</span>
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    /* Chi đoàn User View: Check if current branch has confirmed receipt */
+                    (() => {
+                      const myBranch = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
+                      const myViewRecord = (previewDoc.viewed_by || []).find(v => 
+                        v.branch_name === myBranch || 
+                        v.branch_name?.includes(myBranch) || 
+                        myBranch.includes(v.branch_name)
+                      );
+                      const hasConfirmed = !!myViewRecord;
+
+                      if (hasConfirmed) {
+                        return (
+                          <button 
+                            type="button" 
+                            disabled
+                            className="btn btn-light border text-success fw-bold px-4 py-2 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-none"
+                            style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', cursor: 'not-allowed', pointerEvents: 'none' }}
+                          >
+                            <CheckCircle2 size={16} className="text-success" />
+                            <span>✓ Đã xác nhận tiếp nhận lúc {myViewRecord.viewed_at}</span>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <button 
+                          type="button" 
+                          className="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-1.5 hover-scale"
+                          style={{ backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRecordDocView(previewDoc, myBranch);
+                          }}
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Xác nhận tiếp nhận văn bản này</span>
+                        </button>
+                      );
+                    })()
                   )}
                 </div>
               </div>

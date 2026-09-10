@@ -940,12 +940,19 @@ export function recordDocView(docIdentifier, branchName) {
   if (!docIdentifier || !branchName) return [];
   const map = getDocViewsMap();
   const current = map[docIdentifier] || [];
+
+  // If this branch already recorded view/receipt, preserve existing timestamp and return current list
+  const existing = current.find(v => v.branch_name === branchName);
+  if (existing) {
+    return current;
+  }
+
   const now = new Date();
   const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('vi-VN');
   
   const updatedList = [
-    ...current.filter(v => v.branch_name !== branchName),
+    ...current,
     {
       branch_name: branchName,
       viewed_at: `${timeStr} ngày ${dateStr}`,

@@ -32,7 +32,7 @@ import {
   Eye,
   MoreVertical
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, getDocViewsMap } from '../lib/supabase';
+import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
@@ -577,6 +577,7 @@ export function DocumentsView({
 
   const processOutgoingItems = () => {
     const viewsMap = getDocViewsMap ? getDocViewsMap() : {};
+    const categoriesMap = getDocCategoriesMap ? getDocCategoriesMap() : {};
     const categoryMap = {
       decision_docs: 'Văn bản quyết định',
       act_docs: 'Ban hành hoạt động',
@@ -585,13 +586,16 @@ export function DocumentsView({
     };
 
     return (documents || []).filter(d => d.type === 'outgoing' || !d.type).map(d => {
-      const catKey = d.category || (
+      const docKey = d.id || d.title;
+      const savedCat = categoriesMap[docKey] || categoriesMap[d.title] || (d.id ? categoriesMap[d.id] : null);
+
+      const catKey = savedCat?.category || d.category || (
         d.category_label === 'Văn bản quyết định' ? 'decision_docs' :
         d.category_label === 'Ban hành hoạt động' || d.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
         d.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
         d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
       );
-      const catLabel = d.category_label || categoryMap[catKey] || 'Văn bản quyết định';
+      const catLabel = savedCat?.category_label || d.category_label || categoryMap[catKey] || 'Văn bản quyết định';
 
       return {
         ...d,

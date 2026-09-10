@@ -962,12 +962,40 @@ export function recordDocView(docIdentifier, branchName) {
   return updatedList;
 }
 
+export function getDocCategoriesMap() {
+  return getPersistedData('doc_categories_map', {});
+}
+
+export function recordDocCategory(docIdentifier, categoryKey, categoryLabel) {
+  if (!docIdentifier || !categoryKey) return;
+  const map = getDocCategoriesMap();
+  const updatedMap = {
+    ...map,
+    [docIdentifier]: {
+      category: categoryKey,
+      category_label: categoryLabel
+    }
+  };
+  setPersistedData('doc_categories_map', updatedMap);
+  notifySyncEvent('DOC_CATEGORY_UPDATED', { docIdentifier, categoryKey, categoryLabel });
+  return updatedMap;
+}
+
 // ============================================================================
 // 2. DOCUMENTS SYNC (BẢNG VĂN BẢN BAN HÀNH)
 // ============================================================================
 export async function syncFetchDocuments() {
   const deleted = getDeletedItems('documents');
   const viewsMap = getDocViewsMap();
+  const categoriesMap = getDocCategoriesMap();
+
+  const categoryMap = {
+    decision_docs: 'Văn bản quyết định',
+    act_docs: 'Ban hành hoạt động',
+    implementation_docs: 'Văn bản triển khai',
+    meeting_docs: 'Văn bản cuộc họp'
+  };
+
   let localList = getPersistedData('documents', null);
   if (localList === null) {
     localList = INITIAL_DOCUMENTS;
@@ -980,35 +1008,57 @@ export async function syncFetchDocuments() {
     if (seenLocal.has(key)) return false;
     seenLocal.add(key);
     return true;
-  }).map(d => ({
-    ...d,
-    category: d.category || (d.category_label === 'Văn bản quyết định' ? 'decision_docs' : d.category_label === 'Ban hành hoạt động' ? 'act_docs' : d.category_label === 'Văn bản triển khai' ? 'implementation_docs' : d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'),
-    category_label: d.category_label || (d.category === 'decision_docs' ? 'Văn bản quyết định' : d.category === 'act_docs' ? 'Ban hành hoạt động' : d.category === 'implementation_docs' ? 'Văn bản triển khai' : d.category === 'meeting_docs' ? 'Văn bản cuộc họp' : 'Văn bản quyết định'),
-    viewed_by: d.viewed_by || viewsMap[d.id] || viewsMap[d.title] || []
-  }));
+  }).map(d => {
+    const savedCat = categoriesMap[d.id] || categoriesMap[d.title];
+    const cat = savedCat?.category || d.category || (
+      d.category_label === 'Văn bản quyết định' ? 'decision_docs' :
+      d.category_label === 'Ban hành hoạt động' || d.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+      d.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+      d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+    );
+    const catLabel = savedCat?.category_label || d.category_label || categoryMap[cat] || 'Văn bản quyết định';
+
+    return {
+      ...d,
+      category: cat,
+      category_label: catLabel,
+      viewed_by: d.viewed_by || viewsMap[d.id] || viewsMap[d.title] || []
+    };
+  });
   setPersistedData('documents', localList);
 
   if (supabase) {
     try {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
-        const mapped = data.map(item => ({
-          id: item.id,
-          doc_number: item.doc_number,
-          title: item.title,
-          summary: `Ban hành ngày ${item.issue_date || new Date().toLocaleDateString('vi-VN')}`,
-          sender: item.sender || 'Đoàn xã Xuân Thới Sơn',
-          recipient_scope: item.recipient_scope || 'ALL',
-          status: item.status === 'unread' ? 'Chưa đọc' : item.status === 'read' ? 'Đã đọc' : (item.status || 'Chưa đọc'),
-          type: item.type || 'outgoing',
-          date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
-          file_name: item.pdf_url || '',
-          file_url: item.file_url || item.pdf_url || '',
-          storage_provider: item.storage_provider || 'supabase',
-          category: item.category || 'decision_docs',
-          category_label: item.category_label || (item.category === 'decision_docs' ? 'Văn bản quyết định' : item.category === 'act_docs' ? 'Ban hành hoạt động' : item.category === 'implementation_docs' ? 'Văn bản triển khai' : item.category === 'meeting_docs' ? 'Văn bản cuộc họp' : 'Văn bản quyết định'),
-          viewed_by: item.viewed_by || viewsMap[item.id] || viewsMap[item.title] || []
-        }));
+        const mapped = data.map(item => {
+          const savedCat = categoriesMap[item.id] || categoriesMap[item.title];
+          const cat = savedCat?.category || item.category || (
+            item.category_label === 'Văn bản quyết định' ? 'decision_docs' :
+            item.category_label === 'Ban hành hoạt động' || item.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+            item.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+            item.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+          );
+          const catLabel = savedCat?.category_label || item.category_label || categoryMap[cat] || 'Văn bản quyết định';
+
+          return {
+            id: item.id,
+            doc_number: item.doc_number,
+            title: item.title,
+            summary: `Ban hành ngày ${item.issue_date || new Date().toLocaleDateString('vi-VN')}`,
+            sender: item.sender || 'Đoàn xã Xuân Thới Sơn',
+            recipient_scope: item.recipient_scope || 'ALL',
+            status: item.status === 'unread' ? 'Chưa đọc' : item.status === 'read' ? 'Đã đọc' : (item.status || 'Chưa đọc'),
+            type: item.type || 'outgoing',
+            date: item.issue_date || new Date().toLocaleDateString('vi-VN'),
+            file_name: item.pdf_url || '',
+            file_url: item.file_url || item.pdf_url || '',
+            storage_provider: item.storage_provider || 'supabase',
+            category: cat,
+            category_label: catLabel,
+            viewed_by: item.viewed_by || viewsMap[item.id] || viewsMap[item.title] || []
+          };
+        });
         const seen = new Set();
         const clean = mapped.filter(d => {
           if (!d) return false;
@@ -1030,9 +1080,6 @@ export async function syncFetchDocuments() {
 
 export async function syncSaveDocument(docItem) {
   const current = getPersistedData('documents', INITIAL_DOCUMENTS);
-  const existsIndex = (current || []).findIndex(d => 
-    d && ((docItem.id && String(d.id) === String(docItem.id)) || (d.title && docItem.title && d.title.trim() === docItem.title.trim()))
-  );
 
   const categoryMap = {
     decision_docs: 'Văn bản quyết định',
@@ -1041,14 +1088,26 @@ export async function syncSaveDocument(docItem) {
     meeting_docs: 'Văn bản cuộc họp'
   };
 
-  const finalCat = docItem.category || 'decision_docs';
+  const finalCat = docItem.category || (
+    docItem.category_label === 'Văn bản quyết định' ? 'decision_docs' :
+    docItem.category_label === 'Ban hành hoạt động' || docItem.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+    docItem.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+    docItem.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+  );
   const finalCatLabel = docItem.category_label || categoryMap[finalCat] || 'Văn bản quyết định';
+
+  if (docItem.id) recordDocCategory(docItem.id, finalCat, finalCatLabel);
+  if (docItem.title) recordDocCategory(docItem.title, finalCat, finalCatLabel);
 
   const normalizedDocItem = {
     ...docItem,
     category: finalCat,
     category_label: finalCatLabel
   };
+
+  const existsIndex = (current || []).findIndex(d => 
+    d && ((docItem.id && String(d.id) === String(docItem.id)) || (d.title && docItem.title && d.title.trim() === docItem.title.trim()))
+  );
 
   let updatedLocal;
   if (existsIndex >= 0) {
@@ -1096,9 +1155,7 @@ export async function syncSaveDocument(docItem) {
         status: validDocStatus,
         pdf_url: normalizedDocItem.file_url || normalizedDocItem.file_name || '',
         file_url: normalizedDocItem.file_url || '',
-        storage_provider: normalizedDocItem.storage_provider || 'supabase',
-        category: finalCat,
-        category_label: finalCatLabel
+        storage_provider: normalizedDocItem.storage_provider || 'supabase'
       };
 
       if (normalizedDocItem.id && !String(normalizedDocItem.id).startsWith('doc-')) {

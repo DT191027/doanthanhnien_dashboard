@@ -189,11 +189,18 @@ export default function App() {
 
     window.addEventListener('storage', handleSync);
     window.addEventListener('doanthanhnien_sync', handleSync);
+    window.addEventListener('focus', handleSync);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleSync();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
 
-    // Fail-safe 15-second Heartbeat Sync for multi-device & multi-IP consistency
+    // Fail-safe 10-second Heartbeat Sync for multi-device & multi-IP consistency
     const pollInterval = setInterval(() => {
       loadAllData();
-    }, 15000);
+    }, 10000);
 
     let supabaseChannel = null;
     if (supabase) {
@@ -210,6 +217,8 @@ export default function App() {
       if (syncChannel) syncChannel.close();
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('doanthanhnien_sync', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('visibilitychange', handleVisibility);
       if (supabaseChannel && supabase) supabase.removeChannel(supabaseChannel);
     };
   }, []);

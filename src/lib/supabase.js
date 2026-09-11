@@ -1449,26 +1449,50 @@ export async function syncFetchSubmissions() {
 
 export async function syncSaveSubmission(subItem) {
   const current = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
-  const updatedLocal = [subItem, ...current];
+  const targetTitle = subItem.title || subItem.doc_title || 'Báo cáo Chi đoàn';
+  const targetBranch = subItem.branch_name || subItem.sender || 'Chi đoàn Ấp';
+
+  const existsIndex = (current || []).findIndex(s =>
+    s && ((subItem.id && String(s.id) === String(subItem.id)) || ((s.doc_title === targetTitle || s.title === targetTitle) && s.branch_name === targetBranch))
+  );
+
+  let updatedLocal;
+  if (existsIndex >= 0) {
+    updatedLocal = [...current];
+    updatedLocal[existsIndex] = { ...updatedLocal[existsIndex], ...subItem, doc_title: targetTitle, title: targetTitle };
+  } else {
+    updatedLocal = [{ ...subItem, doc_title: targetTitle, title: targetTitle }, ...current];
+  }
+
   setPersistedData('submissions', updatedLocal);
   notifySyncEvent('SAVE_SUBMISSION', subItem);
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('document_submissions').insert([{
-        branch_name: subItem.branch_name || 'Chi đoàn Ấp',
-        doc_title: subItem.title || subItem.doc_title || 'Báo cáo Chi đoàn',
-        submission_date: new Date().toISOString(),
+      const payload = {
+        branch_name: targetBranch,
+        doc_title: targetTitle,
+        submission_date: subItem.submission_date || new Date().toISOString(),
+        submitted_at: subItem.submitted_at || subItem.sub_date || 'Hôm nay',
+        admin_receipt_time: subItem.admin_receipt_time || null,
         status: subItem.status || 'Đã nộp',
         file_name: subItem.file_name || 'Bao_cao.pdf',
         file_url: subItem.file_url || subItem.file_name || '',
         storage_provider: subItem.storage_provider || 'supabase'
-      }]).select();
+      };
 
-      if (error) {
-        console.error('Supabase error inserting submission:', error);
+      if (subItem.id && typeof subItem.id === 'number') {
+        await supabase.from('document_submissions').upsert([{ id: subItem.id, ...payload }]);
       } else {
-        console.log('Supabase submission inserted successfully:', data);
+        const { data: existing } = await supabase.from('document_submissions')
+          .select('id')
+          .eq('doc_title', targetTitle)
+          .eq('branch_name', targetBranch);
+        if (existing && existing.length > 0) {
+          await supabase.from('document_submissions').update(payload).eq('id', existing[0].id);
+        } else {
+          await supabase.from('document_submissions').insert([payload]);
+        }
       }
     } catch (e) {
       console.error('Supabase save submission exception:', e);

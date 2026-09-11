@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
+import { ALL_BRANCHES, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
@@ -13,9 +13,9 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
 
   const selectedList = Array.isArray(selected)
     ? selected
-    : (selected && selected !== 'ALL' && selected !== 'Tất cả 30 Chi đoàn Ấp' ? [selected] : ['Tất cả 30 Chi đoàn Ấp']);
+    : (selected && selected !== 'ALL' && selected !== 'Tất cả 30 Chi đoàn Ấp' && selected !== 'Tất cả 56 Chi đoàn / Đơn vị' ? [selected] : ['Tất cả 56 Chi đoàn / Đơn vị']);
 
-  const isAllSelected = selectedList.includes('Tất cả 30 Chi đoàn Ấp') || selectedList.includes('ALL') || selectedList.length === INITIAL_BRANCHES.length;
+  const isAllSelected = selectedList.includes('Tất cả 30 Chi đoàn Ấp') || selectedList.includes('Tất cả 56 Chi đoàn / Đơn vị') || selectedList.includes('ALL') || selectedList.length === ALL_BRANCHES.length;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -31,13 +31,13 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     if (isAllSelected) {
       onChange([]);
     } else {
-      onChange(['Tất cả 30 Chi đoàn Ấp']);
+      onChange(['Tất cả 56 Chi đoàn / Đơn vị']);
     }
   };
 
   const handleToggleCluster = (cluster) => {
     const clusterBranchNames = cluster.branches || [];
-    let current = isAllSelected ? INITIAL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'ALL');
+    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
     const hasAllCluster = clusterBranchNames.every(b => current.includes(b));
 
     let updated;
@@ -46,28 +46,28 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     } else {
       updated = Array.from(new Set([...current, ...clusterBranchNames]));
     }
-    if (updated.length === INITIAL_BRANCHES.length || updated.length === 0) {
-      updated = ['Tất cả 30 Chi đoàn Ấp'];
+    if (updated.length === ALL_BRANCHES.length || updated.length === 0) {
+      updated = ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
     onChange(updated);
   };
 
   const handleToggleBranch = (branchName) => {
-    let current = isAllSelected ? INITIAL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'ALL');
+    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
     if (current.includes(branchName)) {
       current = current.filter(b => b !== branchName);
     } else {
       current = [...current, branchName];
     }
-    if (current.length === INITIAL_BRANCHES.length || current.length === 0) {
-      current = ['Tất cả 30 Chi đoàn Ấp'];
+    if (current.length === ALL_BRANCHES.length || current.length === 0) {
+      current = ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
     onChange(current);
   };
 
   const renderDisplayText = () => {
     if (isAllSelected || selectedList.length === 0) {
-      return '📢 Tất cả 30 Chi đoàn Ấp trực thuộc';
+      return '📢 Tất cả 56 Chi đoàn / Đơn vị trực thuộc';
     }
     if (selectedList.length === 1) {
       return `📍 ${selectedList[0]}`;
@@ -102,7 +102,7 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
               checked={isAllSelected}
               onChange={() => {}}
             />
-            <span>📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</span>
+            <span>📢 Gửi tất cả 56 Chi đoàn / Đơn vị trực thuộc</span>
           </div>
 
           <div className="fw-bold text-secondary px-2 pt-1 pb-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
@@ -133,9 +133,9 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
           })}
 
           <div className="fw-bold text-secondary px-2 pt-2 pb-1 border-top mt-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
-            📍 Các Chi đoàn Ấp trực thuộc
+            📍 Các Chi đoàn / Đơn vị trực thuộc
           </div>
-          {INITIAL_BRANCHES.map(branch => {
+          {ALL_BRANCHES.map(branch => {
             const isBranchChecked = isAllSelected || selectedList.includes(branch.name);
             return (
               <div 
@@ -261,7 +261,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
 
   const handleAddSubTask = () => {
     const newId = `sub-${Date.now()}`;
-    const defaultBranch = INITIAL_BRANCHES[subTasks.length % INITIAL_BRANCHES.length]?.name || 'Chi đoàn Ấp Bùi Môn';
+    const defaultBranch = ALL_BRANCHES[subTasks.length % ALL_BRANCHES.length]?.name || 'Chi đoàn Ấp Bùi Môn';
     setSubTasks([
       ...subTasks,
       {
@@ -653,7 +653,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                           value={sub.branch}
                           onChange={(e) => handleUpdateSubTask(sub.id, 'branch', e.target.value)}
                         >
-                          {INITIAL_BRANCHES.map(b => (
+                          {ALL_BRANCHES.map(b => (
                             <option key={b.id} value={b.name}>📍 {b.name}</option>
                           ))}
                         </select>
@@ -959,14 +959,14 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                   value={formData.recipient_scope}
                   onChange={(e) => setFormData({ ...formData, recipient_scope: e.target.value })}
                 >
-                  <option value="ALL">📢 Gửi tất cả 30 Chi đoàn Ấp trực thuộc</option>
+                  <option value="ALL">📢 Gửi tất cả 56 Chi đoàn / Đơn vị trực thuộc</option>
                   <optgroup label="🏆 Cụm Thi Đua">
                     {COMPETITION_CLUSTERS.map(c => (
                       <option key={c.id} value={c.name}>🏆 {c.label}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="📍 Chi đoàn Ấp cụ thể">
-                    {INITIAL_BRANCHES.map(b => (
+                  <optgroup label="📍 Chi đoàn / Đơn vị cụ thể">
+                    {ALL_BRANCHES.map(b => (
                       <option key={b.id} value={b.name}>📍 {b.name}</option>
                     ))}
                   </optgroup>
@@ -1558,7 +1558,7 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
     if (selectedActivityId) {
       const record = attendanceRecords[selectedActivityId] || attendanceRecords[String(selectedActivityId)] || {};
       const initialMap = {};
-      INITIAL_BRANCHES.forEach(b => {
+      ALL_BRANCHES.forEach(b => {
         const item = record[b.name];
         if (typeof item === 'boolean') {
           initialMap[b.name] = item;
@@ -1584,7 +1584,7 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
 
   const handleSelectAll = (val) => {
     const nextMap = {};
-    INITIAL_BRANCHES.forEach(b => {
+    ALL_BRANCHES.forEach(b => {
       nextMap[b.name] = val;
     });
     setAttendanceData(nextMap);
@@ -1689,9 +1689,9 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
                 </div>
               </div>
 
-              {/* 30 Hamlets Checklist Grid */}
+              {/* 56 Units Checklist Grid */}
               <div className="row g-2" style={{ maxHeight: '340px', overflowY: 'auto' }}>
-                {INITIAL_BRANCHES.map((b) => {
+                {ALL_BRANCHES.map((b) => {
                   const isChecked = Boolean(attendanceData[b.name]);
                   return (
                     <div key={b.id} className="col-12 col-md-6 col-lg-4">

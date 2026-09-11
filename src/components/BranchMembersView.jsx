@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   RotateCcw
 } from 'lucide-react';
-import { INITIAL_BRANCHES, OFFICIAL_HAMLETS } from '../lib/supabase';
+import { ALL_BRANCHES, OFFICIAL_HAMLETS } from '../lib/supabase';
 
 export default function BranchMembersView({ 
   members = [], 
@@ -317,8 +317,8 @@ export default function BranchMembersView({
                 onChange={(e) => setSelectedBranch(e.target.value)}
                 disabled={!isDoanXa}
               >
-                <option value="ALL">🏛️ Tất cả 30 Chi đoàn Ấp</option>
-                {INITIAL_BRANCHES.map(b => (
+                <option value="ALL">🏛️ Tất cả 56 Chi đoàn / Đơn vị</option>
+                {ALL_BRANCHES.map(b => (
                   <option key={b.id} value={b.name}>{b.name}</option>
                 ))}
               </select>
@@ -520,7 +520,7 @@ export default function BranchMembersView({
                       onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
                       disabled={!isDoanXa}
                     >
-                      {INITIAL_BRANCHES.map(b => (
+                      {ALL_BRANCHES.map(b => (
                         <option key={b.id} value={b.name}>{b.name}</option>
                       ))}
                     </select>

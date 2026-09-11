@@ -34,7 +34,7 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import { ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
@@ -537,7 +537,7 @@ export function DocumentsView({
   const [viewHistoryDoc, setViewHistoryDoc] = useState(null);
   const [historyTab, setHistoryTab] = useState('ALL'); // 'ALL' | 'VIEWED' | 'NOT_VIEWED'
   const [historySearch, setHistorySearch] = useState('');
-  const [simulateBranch, setSimulateBranch] = useState(INITIAL_BRANCHES[0]?.name || 'Chi đoàn Ấp Bùi Môn');
+  const [simulateBranch, setSimulateBranch] = useState(ALL_BRANCHES[0]?.name || 'Chi đoàn Ấp Bùi Môn');
 
   // State for submitting documents for required TODO tasks
   const [submittingTask, setSubmittingTask] = useState(null);
@@ -903,7 +903,7 @@ export function DocumentsView({
   const handleRemoveDocView = (item, branchName) => {
     if (!item || !branchName) return;
 
-    const matchedBranch = INITIAL_BRANCHES.find(b => 
+    const matchedBranch = ALL_BRANCHES.find(b => 
       b.name === branchName || 
       b.name.includes(branchName) || 
       branchName.includes(b.name)
@@ -950,7 +950,7 @@ export function DocumentsView({
 
     currentViews.forEach(v => {
       if (!v || !v.branch_name) return;
-      const matched = INITIAL_BRANCHES.find(b => 
+      const matched = ALL_BRANCHES.find(b => 
         b.name === v.branch_name || 
         b.name.includes(v.branch_name) || 
         v.branch_name.includes(b.name)
@@ -1303,7 +1303,7 @@ export function DocumentsView({
                             const viewedMap = new Map();
                             (item.viewed_by || []).forEach(v => {
                               if (v && v.branch_name) {
-                                const matchedBranch = INITIAL_BRANCHES.find(b => 
+                                const matchedBranch = ALL_BRANCHES.find(b => 
                                   b.name === v.branch_name || 
                                   b.name.includes(v.branch_name) || 
                                   v.branch_name.includes(b.name)
@@ -1314,7 +1314,7 @@ export function DocumentsView({
                               }
                             });
                             const count = viewedMap.size;
-                            const total = INITIAL_BRANCHES.length; // 30
+                            const total = ALL_BRANCHES.length; // 56
                             if (count === 0) {
                               return (
                                 <button
@@ -1322,7 +1322,7 @@ export function DocumentsView({
                                   className="btn btn-sm btn-light border border-secondary-subtle text-secondary px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold hover-scale"
                                   style={{ fontSize: '11px', cursor: 'pointer', background: '#f8fafc' }}
                                   onClick={() => setViewHistoryDoc(item)}
-                                  title="Bấm để xem danh sách 30 Chi đoàn và thời gian xem"
+                                  title="Bấm để xem danh sách 56 Chi đoàn / Đơn vị và thời gian xem"
                                 >
                                   <Eye size={12} className="text-secondary" />
                                   <span>Chưa có Chi đoàn xem</span>
@@ -1475,7 +1475,7 @@ export function DocumentsView({
                           style={{ fontSize: '11.5px' }}
                           title="Thu hồi văn bản tức thì"
                           onClick={() => {
-                            if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${item.display_title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 30 Chi đoàn.`)) {
+                            if (window.confirm(`Bạn có chắc chắn muốn THU HỒI văn bản "${item.display_title}" không? Văn bản sẽ được xóa đồng bộ trên toàn bộ 56 Chi đoàn / Đơn vị.`)) {
                               onDeleteDocument && onDeleteDocument(item.id, item.display_title);
                             }
                           }}
@@ -1648,7 +1648,7 @@ export function DocumentsView({
                 const viewedMap = new Map();
                 (viewHistoryDoc.viewed_by || []).forEach(v => {
                   if (v && v.branch_name) {
-                    const matchedBranch = INITIAL_BRANCHES.find(b => 
+                    const matchedBranch = ALL_BRANCHES.find(b => 
                       b.name === v.branch_name || 
                       b.name.includes(v.branch_name) || 
                       v.branch_name.includes(b.name)
@@ -1658,11 +1658,11 @@ export function DocumentsView({
                     }
                   }
                 });
-                const totalBranches = INITIAL_BRANCHES.length;
+                const totalBranches = ALL_BRANCHES.length;
                 const viewedCount = viewedMap.size;
                 const percentage = Math.round((viewedCount / totalBranches) * 100);
 
-                const filteredBranchList = INITIAL_BRANCHES.filter(branch => {
+                const filteredBranchList = ALL_BRANCHES.filter(branch => {
                   const isViewed = viewedMap.has(branch.name);
                   if (historyTab === 'VIEWED' && !isViewed) return false;
                   if (historyTab === 'NOT_VIEWED' && isViewed) return false;
@@ -1676,7 +1676,7 @@ export function DocumentsView({
                     <div className="p-3 bg-light rounded-3 border mb-3">
                       <div className="d-flex align-items-center justify-content-between mb-2">
                         <span className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
-                          Tình hình tiếp nhận của 30 Chi đoàn Ấp:
+                          Tình hình tiếp nhận của 56 Chi đoàn / Đơn vị:
                         </span>
                         <span className="badge bg-success text-white fw-bold px-2.5 py-1">
                           {viewedCount}/{totalBranches} Chi đoàn đã xem ({percentage}%)
@@ -1834,7 +1834,7 @@ export function DocumentsView({
                             value={simulateBranch}
                             onChange={(e) => setSimulateBranch(e.target.value)}
                           >
-                            {INITIAL_BRANCHES.map(b => (
+                            {ALL_BRANCHES.map(b => (
                               <option key={b.name} value={b.name}>{b.name}</option>
                             ))}
                           </select>
@@ -1913,7 +1913,7 @@ export function DocumentsView({
                           const viewedMap = new Map();
                           (previewDoc.viewed_by || []).forEach(v => {
                             if (v && v.branch_name) {
-                              const matchedBranch = INITIAL_BRANCHES.find(b => 
+                              const matchedBranch = ALL_BRANCHES.find(b => 
                                 b.name === v.branch_name || 
                                 b.name.includes(v.branch_name) || 
                                 v.branch_name.includes(b.name)
@@ -1924,7 +1924,7 @@ export function DocumentsView({
                             }
                           });
                           return viewedMap.size;
-                        })()}/30 Chi đoàn đã xem
+                        })()}/56 Chi đoàn / Đơn vị đã xem
                       </span>
                     </button>
                   ) : (
@@ -2899,7 +2899,7 @@ export function ReportsView({
   const safeActivities = Array.isArray(activities) ? activities : [];
 
   // Calculate participation & evaluation rating per Hamlet branch dynamically based on activities issued by Admin
-  const branchStats = (INITIAL_BRANCHES || []).map(branch => {
+  const branchStats = (ALL_BRANCHES || []).map(branch => {
     if (!branch) return null;
     const branchName = branch.name || '';
     const clusterName = getBranchClusterName(branchName);

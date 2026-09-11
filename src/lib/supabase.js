@@ -673,7 +673,13 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 
   // Handle Array of target scopes (when multiple units are selected)
   if (Array.isArray(targetScope)) {
-    if (targetScope.length === 0 || targetScope.includes('ALL') || targetScope.includes('Tất cả 30 Chi đoàn Ấp') || targetScope.includes('Tất cả')) {
+    if (
+      targetScope.length === 0 || 
+      targetScope.includes('ALL') || 
+      targetScope.includes('Tất cả 30 Chi đoàn Ấp') || 
+      targetScope.includes('Tất cả 56 Chi đoàn / Đơn vị') || 
+      targetScope.includes('Tất cả')
+    ) {
       return true;
     }
     return targetScope.some(scope => {
@@ -690,7 +696,14 @@ export function isItemTargetedToUser(targetScope, currentUser) {
   // Ensure targetScope is string
   const scopeStr = String(targetScope);
 
-  if (scopeStr === 'ALL' || scopeStr === 'Tất cả 30 Chi đoàn Ấp' || scopeStr.includes('30 Chi đoàn') || scopeStr === 'Tất cả') {
+  if (
+    scopeStr === 'ALL' || 
+    scopeStr === 'Tất cả 30 Chi đoàn Ấp' || 
+    scopeStr === 'Tất cả 56 Chi đoàn / Đơn vị' || 
+    scopeStr.includes('30 Chi đoàn') || 
+    scopeStr.includes('56 Chi đoàn') || 
+    scopeStr === 'Tất cả'
+  ) {
     return true;
   }
 
@@ -1061,8 +1074,8 @@ export function recordDocView(docIdentifier, branchName) {
   const map = getDocViewsMap();
   const current = map[docIdentifier] || [];
 
-  // Match canonical branch name if branchName matches one in INITIAL_BRANCHES
-  const matchedBranch = INITIAL_BRANCHES.find(b =>
+  // Match canonical branch name if branchName matches one in ALL_BRANCHES
+  const matchedBranch = ALL_BRANCHES.find(b =>
     b.name === branchName ||
     b.name.includes(branchName) ||
     branchName.includes(b.name)
@@ -1107,7 +1120,7 @@ export function removeDocView(docIdentifier, branchName) {
   const map = getDocViewsMap();
   const current = map[docIdentifier] || [];
 
-  const matchedBranch = INITIAL_BRANCHES.find(b =>
+  const matchedBranch = ALL_BRANCHES.find(b =>
     b.name === branchName ||
     b.name.includes(branchName) ||
     branchName.includes(b.name)
@@ -1844,9 +1857,9 @@ export async function syncDeleteTask(taskId) {
 
 export function getBranchClusterName(branchName) {
   if (!branchName || typeof branchName !== 'string') return 'Chưa phân cụm';
-  const cleanName = branchName.replace('Chi đoàn Ấp ', '');
+  const cleanName = branchName.replace(/^Chi đoàn\s*(Ấp\s*)?/i, '').replace(/^Đoàn trường\s*/i, '').trim();
   const cluster = COMPETITION_CLUSTERS.find(c =>
-    c.branches && c.branches.some(b => typeof b === 'string' && (b === branchName || b.includes(cleanName)))
+    c.branches && c.branches.some(b => typeof b === 'string' && (b === branchName || b.includes(cleanName) || cleanName.includes(b.replace(/^Chi đoàn\s*(Ấp\s*)?/i, '').replace(/^Đoàn trường\s*/i, '').trim())))
   );
   return cluster ? cluster.name : 'Chưa phân cụm';
 }

@@ -9,7 +9,17 @@ export default function Login({ onLoginSuccess }) {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    const foundUser = INITIAL_ROLES.find(r => r.email.toLowerCase() === email.trim().toLowerCase());
+    let cleanInput = email.trim().toLowerCase();
+    if (!cleanInput.includes('@')) {
+      cleanInput = `${cleanInput}@xuanthoison.gov.vn`;
+    }
+
+    const foundUser = INITIAL_ROLES.find(r => 
+      r.email.toLowerCase() === cleanInput ||
+      r.email.split('@')[0].toLowerCase() === cleanInput.split('@')[0] ||
+      (r.branch_name && r.branch_name.toLowerCase().replace(/\s+/g, '').includes(cleanInput.split('@')[0].replace(/\s+/g, '')))
+    );
+
     if (foundUser) {
       setErrorMsg('');
       onLoginSuccess(foundUser);
@@ -40,7 +50,7 @@ export default function Login({ onLoginSuccess }) {
                 Hệ thống Quản lý Văn bản và Điều hành
               </h3>
               <p className="text-white-50" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                Nền tảng quản lý số tập trung dành cho Đoàn xã Xuân Thới Sơn và 30 Chi đoàn Ấp trực thuộc. Đồng bộ thời gian thực và bảo mật 2 cấp chính quyền.
+                Nền tảng quản lý số tập trung dành cho Đoàn xã Xuân Thới Sơn và 56 Chi đoàn / Đơn vị (thuộc 11 Cụm thi đua). Đồng bộ thời gian thực và bảo mật 2 cấp chính quyền.
               </p>
             </div>
 
@@ -70,13 +80,13 @@ export default function Login({ onLoginSuccess }) {
 
             <form onSubmit={handleLoginSubmit}>
               <div className="mb-3">
-                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Email tài khoản</label>
+                <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Tài khoản / Email</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0 text-secondary"><Mail size={16} /></span>
                   <input 
-                    type="email" 
+                    type="text" 
                     className="form-control bg-light border-start-0 ps-0" 
-                    placeholder="doanxa@xuanthoison.gov.vn hoặc apbuimon@xuanthoison.gov.vn"
+                    placeholder="tên_trường@xuanthoison.gov.vn hoặc tên_trường"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

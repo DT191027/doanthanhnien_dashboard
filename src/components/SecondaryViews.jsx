@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
+import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
 export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false, attendanceRecords = {} }) {
@@ -2576,8 +2577,9 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                     </button>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                        <span>Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
+                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5 mt-1" style={{ fontSize: '10.5px' }}>
+                        <span>Hạn: {formatDeadlineDisplay(t.dueDate || t.due_date || 'Hôm nay')}</span>
+                        <TaskCountdown dueDate={t.dueDate || t.due_date} status={t.status} compact={true} />
                         {t.assigned_to && (
                           <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
                         )}
@@ -2626,8 +2628,10 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                     </button>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-dark pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                        <span>Ưu tiên: {t.priority}</span>
+                      <div className="text-muted d-flex flex-wrap align-items-center gap-1.5 mt-1" style={{ fontSize: '10.5px' }}>
+                        <span>Hạn: {formatDeadlineDisplay(t.dueDate || t.due_date || 'Hôm nay')}</span>
+                        <TaskCountdown dueDate={t.dueDate || t.due_date} status={t.status} compact={true} />
+                        <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-1.5 py-0.5">Ưu tiên: {t.priority}</span>
                         {t.assigned_to && (
                           <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
                         )}
@@ -2676,8 +2680,8 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                     </button>
                     <div className="flex-grow-1 text-decoration-line-through text-muted">
                       <div className="fw-semibold text-muted pe-3" style={{ fontSize: '12.5px' }}>{t.title}</div>
-                      <div className="text-success d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '10.5px' }}>
-                        <span>Đã hoàn tất</span>
+                      <div className="text-success d-flex flex-wrap align-items-center gap-1.5 mt-1" style={{ fontSize: '10.5px' }}>
+                        <TaskCountdown dueDate={t.dueDate || t.due_date} status="completed" compact={true} />
                         {t.assigned_to && (
                           <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">📌 {t.assigned_to}</span>
                         )}

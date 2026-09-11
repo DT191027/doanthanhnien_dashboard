@@ -1691,7 +1691,7 @@ export async function syncSaveTask(taskItem) {
         title: taskItem.title,
         status: validTaskStatus,
         priority: validPriority,
-        due_date: new Date().toISOString().split('T')[0],
+        due_date: taskItem.dueDate || taskItem.due_date || new Date().toISOString(),
         assigned_to: taskItem.assigned_to || 'Đoàn xã'
       };
 

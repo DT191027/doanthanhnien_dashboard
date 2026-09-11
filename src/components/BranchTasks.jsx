@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckSquare, Trash2 } from 'lucide-react';
 import { COMPETITION_CLUSTERS } from '../lib/supabase';
 import { ReceiptConfirmationBox } from './SecondaryViews';
+import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
 export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onDeleteTask, onConfirmReceipt }) {
   const branchName = currentRole?.full_name || currentRole?.branch_name || currentRole?.title || '';
@@ -51,9 +52,10 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onD
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <div>
                   <div className="fw-semibold text-dark" style={{ fontSize: '12.5px' }}>{task.title}</div>
-                  <div className="text-muted" style={{ fontSize: '10.5px' }}>
-                    <span>Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
-                    <span className="ms-2 text-primary fw-semibold">📌 {task.assigned_to}</span>
+                  <div className="text-muted d-flex flex-wrap align-items-center gap-1.5 mt-1" style={{ fontSize: '10.5px' }}>
+                    <span>Hạn: {formatDeadlineDisplay(task.dueDate || task.due_date || 'Hôm nay')}</span>
+                    <TaskCountdown dueDate={task.dueDate || task.due_date} status={task.status} compact={true} />
+                    <span className="text-primary fw-semibold">📌 {task.assigned_to}</span>
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-2">

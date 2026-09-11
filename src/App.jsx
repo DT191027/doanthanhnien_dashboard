@@ -11,6 +11,7 @@ import PendingDocs from './components/PendingDocs';
 import DocHistoryTable from './components/DocHistoryTable';
 import BranchTasks from './components/BranchTasks';
 import NotificationsList from './components/NotificationsList';
+import { formatDeadlineDisplay } from './components/TaskCountdown';
 import ChiDoanDocsList from './components/ChiDoanDocsList';
 import Login from './components/Login';
 import { 
@@ -546,11 +547,13 @@ export default function App() {
     setTasksList(updated);
 
     // Gửi thông báo tự động khi giao nhiệm vụ cho 30 Chi đoàn hoặc Các Cụm thi đua
+    const formattedDeadline = formatDeadlineDisplay(taskItem.dueDate);
+
     if (newTask.assigned_to === 'Tất cả 30 Chi đoàn Ấp' || newTask.assigned_to.includes('30 Chi đoàn')) {
       const autoNoti = {
         id: `noti-${Date.now()}`,
         title: `📋 Nhiệm vụ mới: ${newTask.title}`,
-        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) tới Tất cả 30 Chi đoàn Ấp. Đề nghị các Chi đoàn khẩn trương thực hiện.`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${formattedDeadline}) tới Tất cả 30 Chi đoàn Ấp. Đề nghị các Chi đoàn khẩn trương thực hiện.`,
         target_scope: 'Tất cả 30 Chi đoàn Ấp',
         time_ago: 'Vừa xong'
       };
@@ -563,7 +566,7 @@ export default function App() {
       const autoNoti = {
         id: `noti-${Date.now()}`,
         title: `📋 Nhiệm vụ mới - ${newTask.assigned_to}: ${newTask.title}`,
-        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) cho ${newTask.assigned_to}${branchInfo}. Đề nghị các đơn vị trong cụm phối hợp triển khai.`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${formattedDeadline}) cho ${newTask.assigned_to}${branchInfo}. Đề nghị các đơn vị trong cụm phối hợp triển khai.`,
         target_scope: newTask.assigned_to,
         time_ago: 'Vừa xong'
       };
@@ -574,7 +577,7 @@ export default function App() {
       const autoNoti = {
         id: `noti-${Date.now()}`,
         title: `📋 Nhiệm vụ mới: ${newTask.title}`,
-        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${taskItem.dueDate}) cho ${newTask.assigned_to}.`,
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${formattedDeadline}) cho ${newTask.assigned_to}.`,
         target_scope: newTask.assigned_to,
         time_ago: 'Vừa xong'
       };

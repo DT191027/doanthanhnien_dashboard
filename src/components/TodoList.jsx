@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { CheckSquare, Plus } from 'lucide-react';
 
+import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
+
 export default function TodoList({ tasks = [], setActiveTab, onOpenCreateTask }) {
   const [activeSubTab, setActiveSubTab] = useState('todo'); // 'todo', 'inProgress', 'completed'
 
@@ -89,12 +91,13 @@ export default function TodoList({ tasks = [], setActiveTab, onOpenCreateTask })
                 <div className="fw-semibold text-dark mb-1" style={{ fontSize: '13px' }}>
                   {task.title}
                 </div>
-                <div className="d-flex align-items-center gap-2" style={{ fontSize: '11px' }}>
-                  <span className="text-muted">Hạn: {task.dueDate || task.due_date || 'Hôm nay'}</span>
+                <div className="d-flex flex-wrap align-items-center gap-2" style={{ fontSize: '11px' }}>
+                  <span className="text-muted">Hạn: {formatDeadlineDisplay(task.dueDate || task.due_date || 'Hôm nay')}</span>
+                  <TaskCountdown dueDate={task.dueDate || task.due_date} status={task.status} compact={true} />
                 </div>
               </div>
               <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`}>
-                {task.status === 'completed' ? 'Done' : 'In Progress'}
+                {task.status === 'completed' ? 'Đã xong' : 'Đang làm'}
               </span>
             </div>
           ))}

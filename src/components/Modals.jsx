@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
+import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
 // Component chọn nhiều đơn vị nhận / phân công
 export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công đơn vị' }) {
@@ -1348,28 +1349,51 @@ export function SupportModal({ show, onClose }) {
 
 // 6. Create Task / Todo Modal
 export function CreateTaskModal({ show, onClose, onSave }) {
+  const getDefaultDateTime = () => {
+    const d = new Date();
+    d.setHours(d.getHours() + 24);
+    d.setMinutes(0, 0, 0);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  };
+
   const [formData, setFormData] = useState({
     title: '',
     assigned_to: 'Đoàn xã Xuân Thới Sơn',
     priority: 'Bình thường',
-    dueDate: 'Hôm nay'
+    dueDate: getDefaultDateTime()
   });
 
   if (!show) return null;
+
+  const applyTimePreset = (hours) => {
+    const now = new Date();
+    now.setHours(now.getHours() + hours);
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, dueDate: `${yyyy}-${mm}-${dd}T${hh}:${min}` }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
     onSave && onSave(formData);
-    setFormData({ title: '', assigned_to: 'Đoàn xã Xuân Thới Sơn', priority: 'Bình thường', dueDate: 'Hôm nay' });
+    setFormData({ title: '', assigned_to: 'Đoàn xã Xuân Thới Sơn', priority: 'Bình thường', dueDate: getDefaultDateTime() });
     onClose();
   };
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
+      <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-content border-0 shadow-lg rounded-3 overflow-hidden">
+          <div className="modal-header bg-light">
             <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
               <CheckSquare className="text-primary" size={20} />
               Giao Nhiệm vụ / Thêm Công việc Mới
@@ -1390,8 +1414,8 @@ export function CreateTaskModal({ show, onClose, onSave }) {
                 />
               </div>
 
-              <div className="row g-2 mb-3">
-                <div className="col-6">
+              <div className="row g-3 mb-3">
+                <div className="col-md-6">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Phân công thực hiện</label>
                   <select
                     className="form-select"
@@ -1416,7 +1440,7 @@ export function CreateTaskModal({ show, onClose, onSave }) {
                     </optgroup>
                   </select>
                 </div>
-                <div className="col-6">
+                <div className="col-md-6">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>
                   <select
                     className="form-select"
@@ -1430,22 +1454,58 @@ export function CreateTaskModal({ show, onClose, onSave }) {
                 </div>
               </div>
 
-              <div className="mb-2">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Hạn hoàn thành <span className="text-danger">*</span></label>
-                <input
-                  type="date"
-                  className="form-control"
-                  required
-                  onChange={(e) => {
-                    const parts = e.target.value.split('-');
-                    if (parts.length === 3) {
-                      setFormData({ ...formData, dueDate: `${parts[2]}/${parts[1]}/${parts[0]}` });
-                    }
-                  }}
-                />
+              {/* Set Time & Deadline Section */}
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <label className="form-label fw-semibold mb-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                    <Clock size={15} className="text-primary" />
+                    Hạn hoàn thành & Cài đặt thời gian (Set time) <span className="text-danger">*</span>
+                  </label>
+                  <span className="text-muted" style={{ fontSize: '11px' }}>Chọn thời điểm chính xác cần nộp</span>
+                </div>
+
+                {/* Quick set time presets */}
+                <div className="mb-2">
+                  <div className="text-secondary mb-1 fw-semibold" style={{ fontSize: '11px' }}>⚡ Phím tắt chọn nhanh thời hạn:</div>
+                  <div className="d-flex flex-wrap gap-1.5">
+                    <button type="button" className="btn btn-sm btn-outline-primary py-1 px-2 rounded-2" style={{ fontSize: '11px' }} onClick={() => applyTimePreset(4)}>
+                      ⚡ +4 Giờ
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline-primary py-1 px-2 rounded-2" style={{ fontSize: '11px' }} onClick={() => applyTimePreset(12)}>
+                      ⚡ +12 Giờ
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline-primary py-1 px-2 rounded-2" style={{ fontSize: '11px' }} onClick={() => applyTimePreset(24)}>
+                      📅 +24 Giờ (1 Ngày)
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline-primary py-1 px-2 rounded-2" style={{ fontSize: '11px' }} onClick={() => applyTimePreset(72)}>
+                      📅 3 Ngày
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline-primary py-1 px-2 rounded-2" style={{ fontSize: '11px' }} onClick={() => applyTimePreset(168)}>
+                      📅 7 Ngày
+                    </button>
+                  </div>
+                </div>
+
+                <div className="row g-2 align-items-center">
+                  <div className="col-12 col-md-7">
+                    <input
+                      type="datetime-local"
+                      className="form-control fw-medium"
+                      required
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-12 col-md-5">
+                    <div className="p-2 bg-white rounded-2 border d-flex align-items-center justify-content-between">
+                      <span className="text-muted" style={{ fontSize: '11px' }}>Đếm ngược:</span>
+                      <TaskCountdown dueDate={formData.dueDate} status="todo" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer bg-light">
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
               <button type="submit" className="btn btn-primary px-4 fw-semibold" style={{ backgroundColor: '#0066FF' }}>
                 Tạo Công Việc Ngay

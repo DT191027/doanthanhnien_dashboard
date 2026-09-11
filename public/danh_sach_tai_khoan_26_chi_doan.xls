@@ -1,0 +1,52 @@
+﻿<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8"/>
+<style>
+  body { font-family: Calibri, sans-serif; }
+  th { background-color: #0066FF; color: #ffffff; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #0040B8; }
+  td { padding: 8px; border: 1px solid #E2E8F0; text-align: left; }
+  tr:nth-child(even) { background-color: #F8FAFC; }
+</style>
+</head>
+<body>
+<h2>Danh Sách Tài Khoản & Mật Khẩu 26 Chi Đoàn / Đơn Vị (Cụm 7 - Cụm 11)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>STT</th>
+      <th>Tên Chi đoàn / Đơn vị</th>
+      <th>Tài khoản</th>
+      <th>Mật khẩu</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Chi đoàn MN Hướng Dương</td><td>mnhuongduong@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>2</td><td>Chi đoàn MN Cúc Họa Mi</td><td>mncuchoami@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>3</td><td>Chi đoàn MN Xuân Thới Đông</td><td>mnxuanthoidong@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>4</td><td>Chi đoàn MN Nhị Xuân</td><td>mnnhixuan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>5</td><td>Chi đoàn MN 19/8</td><td>mn198@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>6</td><td>Chi đoàn TH Lý Chính Thắng 2</td><td>thlychinhthang2@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>7</td><td>Chi đoàn TH Lê Văn Phiên</td><td>thlevanphien@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>8</td><td>Chi đoàn TH Nhị Tân</td><td>thnhitan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>9</td><td>Chi đoàn TH Nhị Xuân</td><td>thnhixuan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>10</td><td>Chi đoàn TH Dương Công Khi</td><td>thduongcongkhi@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>11</td><td>Chi đoàn TH Trần Văn Mười</td><td>thtranvanmuoi@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>12</td><td>Chi đoàn TH Tân Xuân</td><td>thtanxuan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>13</td><td>Chi đoàn THCS Võ Văn Tần</td><td>thcsvovantan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>14</td><td>Chi đoàn THCS Tân Xuân</td><td>thcstanxuan@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>15</td><td>Chi đoàn THCS Nguyễn Hồng Đào</td><td>thcsnguyenhongdao@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>16</td><td>Chi đoàn TiH - THCS Tạ Uyên</td><td>tihthcstauyen@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>17</td><td>Chi đoàn GV THPT Phạm Văn Sáng</td><td>cdgvthptphamvansang@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>18</td><td>Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn</td><td>cdgvgdnngdtxhocmon@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>19</td><td>Đoàn trường THPT Phạm Văn Sáng</td><td>thptphamvansang@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>20</td><td>Đoàn trường Trung tâm GDNN - GDTX Hóc Môn</td><td>gdnngdtxhocmon@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>21</td><td>Đoàn trường Tre Việt</td><td>treviet@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>22</td><td>Chi đoàn Mẫu giáo Bút chì Màu</td><td>mgbutchimau@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>23</td><td>Chi đoàn lớp MN Độc lập Hoa Lài</td><td>mnhoalai@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>24</td><td>Chi đoàn Cty Sambu Vina Sports</td><td>sambuvinasports@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>25</td><td>Chi đoàn UBND xã</td><td>ubndxa@xuanthoison.gov.vn</td><td>123456</td></tr>
+    <tr><td>26</td><td>Chi đoàn Trạm Y tế xã</td><td>tramytexa@xuanthoison.gov.vn</td><td>123456</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

@@ -410,9 +410,9 @@ export function CreateActivityModal({ show, onClose, onSave }) {
                       value={formData.priority || 'Bình thường'}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                     >
-                      <option value="Khẩn cấp">🔥 Khẩn cấp (Cao)</option>
+                      <option value="Khẩn cấp">🔥 Cao (Khẩn cấp)</option>
                       <option value="Trung bình">⚡ Trung bình</option>
-                      <option value="Bình thường">🟢 Bình thường</option>
+                      <option value="Bình thường">🟢 Thấp (Bình thường)</option>
                     </select>
                   </div>
                   <div className="col-md-3">
@@ -1213,9 +1213,9 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
                   >
-                    <option value="Khẩn cấp">🔥 Khẩn cấp (Cao)</option>
+                    <option value="Khẩn cấp">🔥 Cao (Khẩn cấp)</option>
                     <option value="Trung bình">⚡ Trung bình</option>
-                    <option value="Bình thường">🟢 Bình thường</option>
+                    <option value="Bình thường">🟢 Thấp (Bình thường)</option>
                   </select>
                 </div>
               </div>
@@ -1364,7 +1364,7 @@ export function CreateTaskModal({ show, onClose, onSave }) {
   const [formData, setFormData] = useState({
     title: '',
     assigned_to: 'Đoàn xã Xuân Thới Sơn',
-    priority: 'Bình thường',
+    priority: 'Cao',
     dueDate: getDefaultDateTime()
   });
 
@@ -1385,7 +1385,7 @@ export function CreateTaskModal({ show, onClose, onSave }) {
     e.preventDefault();
     confetti({ particleCount: 75, spread: 75, origin: { y: 0.6 } });
     onSave && onSave(formData);
-    setFormData({ title: '', assigned_to: 'Đoàn xã Xuân Thới Sơn', priority: 'Bình thường', dueDate: getDefaultDateTime() });
+    setFormData({ title: '', assigned_to: 'Đoàn xã Xuân Thới Sơn', priority: 'Cao', dueDate: getDefaultDateTime() });
     onClose();
   };
 
@@ -1447,9 +1447,9 @@ export function CreateTaskModal({ show, onClose, onSave }) {
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   >
-                    <option value="Bình thường">Bình thường</option>
                     <option value="Cao">🔥 Cao (Khẩn)</option>
-                    <option value="Trung bình">Trung bình</option>
+                    <option value="Trung bình">⚡ Trung bình</option>
+                    <option value="Bình thường">🟢 Thấp (Bình thường)</option>
                   </select>
                 </div>
               </div>

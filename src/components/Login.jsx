@@ -86,7 +86,7 @@ export default function Login({ onLoginSuccess }) {
                   <input 
                     type="text" 
                     className="form-control bg-light border-start-0 ps-0" 
-                    placeholder="tên_trường@xuanthoison.gov.vn hoặc tên_trường"
+                    placeholder="ap...@xuanthoison.gov.vn hoặc mn...@xuanthoison.gov.vn"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

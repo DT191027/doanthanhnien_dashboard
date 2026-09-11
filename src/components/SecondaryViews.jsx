@@ -680,7 +680,10 @@ export function DocumentsView({
 
       const fileUrl = t.submitted_file || (matchedSub ? matchedSub.file_url : null) || t.file_url || null;
       const fileName = t.submitted_file_name || (matchedSub ? matchedSub.file_name : null) || t.file_name || null;
-      const submittedAt = t.submitted_at || (matchedSub ? matchedSub.submitted_at : null) || null;
+      const rawSubmittedAt = t.submitted_at || (matchedSub ? matchedSub.submitted_at : null) || null;
+      const submittedAt = rawSubmittedAt 
+        ? String(rawSubmittedAt).replace(/ngày\s*Chưa chọn ngày/gi, `ngày ${formatDateDDMMYYYY(new Date())}`).replace(/Chưa chọn ngày/gi, formatDateDDMMYYYY(new Date()))
+        : null;
       const submittedBy = t.submitted_by || (matchedSub ? matchedSub.branch_name : null) || t.assigned_to;
 
       return {
@@ -816,21 +819,42 @@ export function DocumentsView({
 
   const handleConfirmReceipt = (item, e) => {
     if (e) e.stopPropagation();
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const dateStr = formatDateDDMMYYYY(now);
+    const timeStr = `${hours}:${minutes} ngày ${dateStr}`;
+
     const updatedPayload = {
       ...item,
       receipt_status: 'Đã tiếp nhận',
       status: 'Đã tiếp nhận',
+      admin_received: true,
+      admin_receipt_time: timeStr,
       read_status: 'read'
     };
-    if (item.item_type === 'submission') {
+    if (item.item_type === 'submission' || item.submission_id) {
       onSaveSubmission && onSaveSubmission(updatedPayload);
     } else {
       onSaveDocument && onSaveDocument(updatedPayload);
     }
+
+    if (item.task_id || item.rawTask) {
+      const rawT = item.rawTask || {};
+      const updatedTask = {
+        ...rawT,
+        id: item.task_id || item.id,
+        receipt_status: 'Đã tiếp nhận',
+        admin_received: true,
+        admin_receipt_time: timeStr
+      };
+      onSaveTask && onSaveTask(updatedTask);
+    }
+
     if (previewDoc && previewDoc.id === item.id) {
       setPreviewDoc(updatedPayload);
     }
-    triggerToast && triggerToast(`Đã xác nhận tiếp nhận văn bản "${item.display_title}" từ ${item.source_branch}!`);
+    triggerToast && triggerToast(`Quản trị viên đã tiếp nhận văn bản "${item.display_title}" từ ${item.source_branch} lúc ${timeStr}!`);
   };
 
   // Record Chi doan viewing document and transmit data back to administrator
@@ -1230,12 +1254,34 @@ export function DocumentsView({
                     ) : tabType === 'required_docs' ? (
                       item.is_submitted ? (
                         <div>
-                          <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fw-bold" style={{ fontSize: '11.5px' }}>
-                            🟢 Đã nộp văn bản
-                          </span>
-                          {item.submitted_at && (
-                            <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
-                              lúc {item.submitted_at}
+                          {item.receipt_status === 'Đã tiếp nhận' || item.status === 'Đã tiếp nhận' || item.admin_received ? (
+                            <div>
+                              <span className="badge bg-success text-white border border-success px-2.5 py-1.5 fw-bold shadow-xs" style={{ fontSize: '11.5px' }}>
+                                ✓ Quản trị viên đã tiếp nhận
+                              </span>
+                              <div className="text-success fw-bold mt-0.5" style={{ fontSize: '10.5px' }}>
+                                lúc {item.admin_receipt_time || item.submitted_at || item.display_date}
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fw-bold" style={{ fontSize: '11.5px' }}>
+                                🟢 Đã nộp văn bản
+                              </span>
+                              {item.submitted_at && (
+                                <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
+                                  lúc {item.submitted_at}
+                                </div>
+                              )}
+                              {isDoanXa && (
+                                <button 
+                                  className="btn btn-sm btn-outline-success fw-bold px-2 py-0.5 mt-1 rounded-2 shadow-xs"
+                                  style={{ fontSize: '10.5px' }}
+                                  onClick={(e) => handleConfirmReceipt(item, e)}
+                                >
+                                  ✓ Tiếp nhận báo cáo này
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2282,9 +2328,25 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc, onDeleteSub
                   <td className="fw-semibold text-primary">{s.branch_name || 'Chi đoàn Ấp'}</td>
                   <td className="text-secondary">{s.sub_date || 'Hôm nay'}</td>
                   <td>
-                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                      ● {s.status || 'Đã nộp'}
-                    </span>
+                    {s.receipt_status === 'Đã tiếp nhận' || s.status === 'Đã tiếp nhận' || s.admin_received ? (
+                      <div>
+                        <span className="badge bg-success text-white border border-success px-2.5 py-1 fw-bold shadow-xs" style={{ fontSize: '11px' }}>
+                          ✓ Quản trị viên đã tiếp nhận
+                        </span>
+                        <div className="text-success fw-bold mt-0.5" style={{ fontSize: '10.5px' }}>
+                          lúc {s.admin_receipt_time || s.submitted_at || s.sub_date}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                          🟢 Đã nộp - Chờ tiếp nhận
+                        </span>
+                        <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
+                          lúc {s.submitted_at || s.sub_date || 'Vừa xong'}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td>
                     {s.file_url || s.file_name ? (

@@ -550,7 +550,20 @@ export function deduplicateActivities(activities) {
 
 // Universal Date Formatter to dd/mm/yyyy
 export function formatDateDDMMYYYY(dayOrObj, month, year) {
-  if (!dayOrObj && !month) return 'Chưa chọn ngày';
+  if (dayOrObj instanceof Date) {
+    const d = String(dayOrObj.getDate()).padStart(2, '0');
+    const m = String(dayOrObj.getMonth() + 1).padStart(2, '0');
+    const y = dayOrObj.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+
+  if (!dayOrObj && !month) {
+    const today = new Date();
+    const d = String(today.getDate()).padStart(2, '0');
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = today.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
 
   if (typeof dayOrObj === 'object' && dayOrObj !== null) {
     const obj = dayOrObj;
@@ -562,12 +575,20 @@ export function formatDateDDMMYYYY(dayOrObj, month, year) {
       const [y, m, d] = obj.dateIso.split('-');
       if (y && m && d) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
     }
-    return formatDateDDMMYYYY(obj.day, obj.month, obj.year);
+    if (obj.day && obj.month) {
+      return formatDateDDMMYYYY(obj.day, obj.month, obj.year);
+    }
   }
 
   if (typeof dayOrObj === 'string') {
     const str = dayOrObj.trim();
-    if (!str) return 'Chưa chọn ngày';
+    if (!str || str === 'Chưa chọn ngày') {
+      const today = new Date();
+      const d = String(today.getDate()).padStart(2, '0');
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const y = today.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
     if (str === 'Hôm nay') return 'Hôm nay';
 
     // Handle ISO or YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss

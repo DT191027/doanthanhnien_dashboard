@@ -44,9 +44,25 @@ export default function DocHistoryTable({ submissions = [], setActiveTab, onDele
                   <td className="text-secondary">{row.due_date}</td>
                   <td className="text-secondary">{row.sub_date}</td>
                   <td>
-                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                      <CheckCircle size={12} className="me-1" /> {row.status}
-                    </span>
+                    {row.receipt_status === 'Đã tiếp nhận' || row.status === 'Đã tiếp nhận' || row.admin_received ? (
+                      <div>
+                        <span className="badge bg-success text-white border border-success px-2.5 py-1 fw-bold shadow-xs" style={{ fontSize: '11px' }}>
+                          ✓ Quản trị viên đã tiếp nhận
+                        </span>
+                        <div className="text-success fw-bold mt-0.5" style={{ fontSize: '10.5px' }}>
+                          lúc {row.admin_receipt_time || row.submitted_at || row.sub_date}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                          🟢 Đã nộp văn bản
+                        </span>
+                        <div className="text-muted mt-0.5" style={{ fontSize: '10.5px' }}>
+                          lúc {row.submitted_at || row.sub_date || 'Vừa xong'}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td>
                     {row.file_url || row.file_name ? (

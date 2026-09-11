@@ -825,6 +825,7 @@ export default function App() {
                     <DocHistoryTable 
                       submissions={submissionsList}
                       setActiveTab={setActiveTab} 
+                      onDeleteSubmission={handleDeleteSubmission}
                     />
                   )}
                 </div>
@@ -881,6 +882,7 @@ export default function App() {
               tabType={activeTab}
               onOpenIssueDocument={() => setShowIssueDocModal(true)}
               onDeleteDocument={handleDeleteDocument}
+              onDeleteSubmission={handleDeleteSubmission}
               onSaveDocument={handleSaveDocumentItem}
               onSaveSubmission={handleSaveSubmissionItem}
               onSaveTask={async (taskItem) => {
@@ -896,6 +898,7 @@ export default function App() {
             <SubmissionsView 
               submissions={submissionsList}
               onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
+              onDeleteSubmission={handleDeleteSubmission}
             />
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */

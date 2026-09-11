@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileText, Download, FileSpreadsheet, CheckCircle } from 'lucide-react';
+import { FileText, Download, FileSpreadsheet, CheckCircle, Eye, Trash2 } from 'lucide-react';
 
-export default function DocHistoryTable({ submissions = [], setActiveTab }) {
+export default function DocHistoryTable({ submissions = [], setActiveTab, onDeleteSubmission, onOpenPreview }) {
   return (
     <div className="content-card mb-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -34,6 +34,7 @@ export default function DocHistoryTable({ submissions = [], setActiveTab }) {
                 <th>Ngày nộp</th>
                 <th>Trạng thái</th>
                 <th>Tệp tin</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -48,18 +49,52 @@ export default function DocHistoryTable({ submissions = [], setActiveTab }) {
                     </span>
                   </td>
                   <td>
-                    <a 
-                      href={row.file_url || `/${row.file_name}`} 
-                      download={row.file_name || 'Bao_Cao.pdf'}
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="d-inline-flex align-items-center gap-1 text-danger text-decoration-none fw-semibold"
-                      style={{ fontSize: '12px' }}
-                    >
-                      <FileText size={16} />
-                      <span>{row.file_name}</span>
-                      <Download size={14} className="text-secondary ms-1" />
-                    </a>
+                    {row.file_url || row.file_name ? (
+                      <a 
+                        href={row.file_url || `/${row.file_name}`} 
+                        download={row.file_name || 'Bao_Cao.pdf'}
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="d-inline-flex align-items-center gap-1 text-primary text-decoration-none fw-semibold"
+                        style={{ fontSize: '12px' }}
+                      >
+                        <FileText size={16} />
+                        <span>{row.file_name}</span>
+                        <Download size={14} className="text-secondary ms-1" />
+                      </a>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: '11px' }}>Chưa nộp tệp</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="d-inline-flex align-items-center gap-1.5">
+                      {onOpenPreview && (
+                        <button 
+                          className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xem trước văn bản"
+                          onClick={() => onOpenPreview(row)}
+                        >
+                          <Eye size={12} />
+                          <span>Xem trước</span>
+                        </button>
+                      )}
+                      {onDeleteSubmission && (
+                        <button 
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xóa tệp báo cáo do chọn sai file"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa file nộp "${row.file_name || row.title}" do đưa sai file không?`)) {
+                              onDeleteSubmission(row.id, row.title);
+                            }
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>Xóa file</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

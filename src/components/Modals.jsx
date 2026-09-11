@@ -1110,11 +1110,27 @@ export function SubmitDocumentModal({ show, onClose, onSave, currentRole }) {
                         Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
-                    {uploadStatus && (
-                      <span className={`badge ${uploadStatus.storage_provider === 'google_drive' ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
-                        {uploadStatus.storage_provider === 'google_drive' ? '☁️ Google Drive Backup' : '⚡ Supabase Storage'}
-                      </span>
-                    )}
+                    <div className="d-flex align-items-center gap-2">
+                      {uploadStatus && (
+                        <span className={`badge ${uploadStatus.storage_provider === 'google_drive' ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
+                          {uploadStatus.storage_provider === 'google_drive' ? '☁️ Google Drive Backup' : '⚡ Supabase Storage'}
+                        </span>
+                      )}
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 fw-semibold"
+                        style={{ fontSize: '11px' }}
+                        title="Xóa tệp chọn sai"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setUploadStatus(null);
+                          setFormData(prev => ({ ...prev, file_name: '', file_url: '' }));
+                        }}
+                      >
+                        <Trash2 size={12} className="me-1" />
+                        <span>Xóa file chọn sai</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

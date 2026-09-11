@@ -65,7 +65,7 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onD
                   <span className={`badge ${task.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ fontSize: '10px' }}>
                     {task.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
                   </span>
-                  {onDeleteTask && (
+                  {isDoanXa && onDeleteTask && (
                     <button 
                       className="btn btn-link text-danger p-0 ms-1"
                       title="Xóa công việc"

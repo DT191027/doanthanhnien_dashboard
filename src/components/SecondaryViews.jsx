@@ -523,6 +523,7 @@ export function DocumentsView({
   tabType = 'incoming_docs', 
   onOpenIssueDocument, 
   onDeleteDocument, 
+  onDeleteSubmission,
   onSaveDocument,
   onSaveSubmission,
   onSaveTask,
@@ -544,6 +545,30 @@ export function DocumentsView({
   const [isUploadingTaskDoc, setIsUploadingTaskDoc] = useState(false);
   const [taskDocUploadStatus, setTaskDocUploadStatus] = useState(null);
   const [taskDocFormData, setTaskDocFormData] = useState({ file_name: '', file_url: '', notes: '' });
+
+  // Xóa tệp nộp do đưa sai file
+  const handleDeleteWrongFile = async (item) => {
+    if (item.item_type === 'submission' || item.submission_id || item.is_submitted) {
+      const subId = item.submission_id || item.id;
+      if (onDeleteSubmission) {
+        await onDeleteSubmission(subId, item.display_title || item.title);
+      }
+    }
+    const updatedItem = {
+      ...item,
+      file_url: '',
+      file_name: '',
+      is_submitted: false,
+      status: 'Chưa nộp',
+      receipt_status: 'Chờ nộp'
+    };
+    if (onSaveSubmission && item.item_type === 'submission') {
+      await onSaveSubmission(updatedItem);
+    } else if (onSaveDocument) {
+      await onSaveDocument(updatedItem);
+    }
+    triggerToast && triggerToast(`Đã xóa file nộp "${item.file_name || item.display_title}" do đưa sai file thành công! Bạn có thể chọn nộp lại file mới.`);
+  };
 
   // Process incoming items combining submissions and incoming documents
   const processIncomingItems = () => {
@@ -1344,7 +1369,19 @@ export function DocumentsView({
                   {/* Thao tác */}
                   <td>
                     <div className="d-inline-flex align-items-center gap-1.5">
-                      {tabType === 'required_docs' && !isDoanXa ? (
+                      {/* Xem trước văn bản: Có mặt cho cả Quản trị viên và Chi đoàn */}
+                      <button 
+                        className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
+                        style={{ fontSize: '11.5px' }}
+                        title="Xem chi tiết & trích yếu văn bản"
+                        onClick={() => handleOpenPreview(item)}
+                      >
+                        <FileText size={13} />
+                        <span>Xem trước</span>
+                      </button>
+
+                      {/* Nộp văn bản cho công việc TODO (Chi đoàn) */}
+                      {tabType === 'required_docs' && !isDoanXa && (
                         <button 
                           className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 px-3 py-1 rounded-2 fw-semibold shadow-xs hover-scale"
                           style={{ fontSize: '11.5px', backgroundColor: '#0066FF', border: 'none' }}
@@ -1353,20 +1390,10 @@ export function DocumentsView({
                           <Upload size={13} />
                           <span>{item.is_submitted ? 'Nộp lại file' : 'Nộp văn bản'}</span>
                         </button>
-                      ) : (
-                        <button 
-                          className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
-                          style={{ fontSize: '11.5px' }}
-                          title="Xem chi tiết & trích yếu văn bản"
-                          onClick={() => handleOpenPreview(item)}
-                        >
-                          <FileText size={13} />
-                          <span>Xem trước</span>
-                        </button>
                       )}
 
-                      {/* Nút chỉnh sửa tiêu đề, ngày đăng */}
-                      {isDoanXa && tabType !== 'required_docs' && (
+                      {/* Nút chỉnh sửa tiêu đề, ngày đăng văn bản: Quản trị viên và Chi đoàn */}
+                      {tabType !== 'required_docs' && (
                         <button 
                           className="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold text-warning-emphasis"
                           style={{ fontSize: '11.5px' }}
@@ -1378,6 +1405,24 @@ export function DocumentsView({
                         </button>
                       )}
 
+                      {/* Nút Xóa file nộp khi chọn sai file */}
+                      {(item.is_submitted || (item.file_url && item.file_url !== '#')) && (
+                        <button 
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xóa tệp đính kèm do nộp sai file"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa file nộp "${item.file_name || item.display_title}" do đưa sai file không?`)) {
+                              handleDeleteWrongFile(item);
+                            }
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Xóa file</span>
+                        </button>
+                      )}
+
+                      {/* Thu hồi văn bản đi từ Đoàn xã */}
                       {isDoanXa && tabType === 'outgoing_docs' && (
                         <button 
                           className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 py-1 px-2.5 rounded-2 fw-semibold"
@@ -2093,9 +2138,28 @@ export function DocumentsView({
                         ⏳ Đang tải tệp lên hệ thống...
                       </div>
                     )}
-                    {taskDocUploadStatus && (
-                      <div className="text-success mt-1 fw-bold" style={{ fontSize: '12px' }}>
-                        ✓ Đã tải tệp lên thành công: {taskDocFile?.name}
+                    {(taskDocFile || taskDocFormData.file_name) && (
+                      <div className="d-flex align-items-center justify-content-between p-2 bg-success-subtle rounded-2 border mt-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <FileText size={16} className="text-success" />
+                          <span className="text-success fw-bold" style={{ fontSize: '12px' }}>
+                            ✓ Tệp đã chọn: {taskDocFile?.name || taskDocFormData.file_name}
+                          </span>
+                        </div>
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 fw-semibold d-inline-flex align-items-center gap-1"
+                          style={{ fontSize: '11px' }}
+                          title="Xóa tệp vừa chọn nếu bị sai"
+                          onClick={() => {
+                            setTaskDocFile(null);
+                            setTaskDocUploadStatus(null);
+                            setTaskDocFormData(prev => ({ ...prev, file_name: '', file_url: '' }));
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>Xóa file chọn sai</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -2138,7 +2202,7 @@ export function DocumentsView({
 }
 
 // 3. Full Submissions History Management View
-export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
+export function SubmissionsView({ submissions = [], onOpenSubmitDoc, onDeleteSubmission, onOpenPreview }) {
   const [search, setSearch] = useState('');
 
   const filtered = submissions.filter(s => 
@@ -2208,6 +2272,7 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
                 <th>Thời gian nộp</th>
                 <th>Trạng thái</th>
                 <th>Tệp báo cáo</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -2235,6 +2300,36 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc }) {
                     ) : (
                       <span className="text-muted" style={{ fontSize: '11px' }}>Không có tệp</span>
                     )}
+                  </td>
+                  <td>
+                    <div className="d-inline-flex align-items-center gap-1.5">
+                      {onOpenPreview && (
+                        <button 
+                          className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xem trước báo cáo"
+                          onClick={() => onOpenPreview(s)}
+                        >
+                          <Eye size={12} />
+                          <span>Xem trước</span>
+                        </button>
+                      )}
+                      {onDeleteSubmission && (
+                        <button 
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 fw-semibold"
+                          style={{ fontSize: '11.5px' }}
+                          title="Xóa tệp báo cáo do chọn sai file"
+                          onClick={() => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa file nộp "${s.file_name || s.title}" do đưa sai file không?`)) {
+                              onDeleteSubmission(s.id, s.title);
+                            }
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>Xóa file</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -2585,17 +2680,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                         )}
                       </div>
                     </div>
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id, t.title);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {isDoanXa && (
+                      <button 
+                        className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                        title="Thu hồi / Xóa nhiệm vụ"
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                            onDeleteTask && onDeleteTask(t.id, t.title);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                   <div className="mt-2 pt-1 border-top d-flex justify-content-end">
                     <ReceiptConfirmationBox 
@@ -2637,17 +2734,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                         )}
                       </div>
                     </div>
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id, t.title);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {isDoanXa && (
+                      <button 
+                        className="btn btn-link text-danger p-0 ms-1 flex-shrink-0"
+                        title="Thu hồi / Xóa nhiệm vụ"
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                            onDeleteTask && onDeleteTask(t.id, t.title);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                   <div className="mt-2 pt-1 border-top d-flex justify-content-end">
                     <ReceiptConfirmationBox 
@@ -2687,17 +2786,19 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                         )}
                       </div>
                     </div>
-                    <button 
-                      className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
-                      title="Thu hồi / Xóa nhiệm vụ"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
-                          onDeleteTask && onDeleteTask(t.id, t.title);
-                        }
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {isDoanXa && (
+                      <button 
+                        className="btn btn-link text-danger p-0 ms-1 flex-shrink-0 text-decoration-none"
+                        title="Thu hồi / Xóa nhiệm vụ"
+                        onClick={() => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${t.title}" không?`)) {
+                            onDeleteTask && onDeleteTask(t.id, t.title);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                   <div className="mt-2 pt-1 border-top d-flex justify-content-end">
                     <ReceiptConfirmationBox 

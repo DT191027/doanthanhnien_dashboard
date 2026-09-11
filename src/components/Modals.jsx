@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
+import { INITIAL_BRANCHES, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
@@ -151,6 +151,29 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
                   onChange={() => {}}
                 />
                 <span>📍 {branch.name}</span>
+              </div>
+            );
+          })}
+
+          <div className="fw-bold text-secondary px-2 pt-2 pb-1 border-top mt-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
+            🏫 các Chi đoàn Trường học & Đơn vị
+          </div>
+          {SCHOOL_BRANCHES.map(branch => {
+            const isBranchChecked = isAllSelected || selectedList.includes(branch.name);
+            return (
+              <div 
+                key={branch.id}
+                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
+                onClick={() => handleToggleBranch(branch.name)}
+                style={{ fontSize: '12.5px' }}
+              >
+                <input 
+                  type="checkbox" 
+                  className="form-check-input mt-0 cursor-pointer" 
+                  checked={isBranchChecked}
+                  onChange={() => {}}
+                />
+                <span>🏫 {branch.name}</span>
               </div>
             );
           })}
@@ -1416,29 +1439,14 @@ export function CreateTaskModal({ show, onClose, onSave }) {
 
               <div className="row g-3 mb-3">
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Phân công thực hiện</label>
-                  <select
-                    className="form-select"
-                    value={formData.assigned_to}
-                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                  >
-                    <option value="Đoàn xã Xuân Thới Sơn">🏛️ Đoàn xã Xuân Thới Sơn</option>
-                    <option value="Tất cả 30 Chi đoàn Ấp">📢 30 Chi đoàn (gửi thông báo đến toàn bộ 30 chi đoàn)</option>
-
-                    <optgroup label="🏆 Cụm Thi Đua">
-                      {COMPETITION_CLUSTERS.map(c => (
-                        <option key={c.id} value={c.name}>
-                          🏆 {c.label}
-                        </option>
-                      ))}
-                    </optgroup>
-
-                    <optgroup label="📍 Các Chi đoàn Ấp trực thuộc">
-                      {INITIAL_BRANCHES.map(b => (
-                        <option key={b.id} value={b.name}>📍 {b.name}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                  <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>
+                    Phân công đơn vị thực hiện <span className="text-muted fw-normal">(Có thể chọn nhiều)</span>
+                  </label>
+                  <MultiUnitSelect
+                    selected={formData.assigned_to}
+                    onChange={(selectedUnits) => setFormData({ ...formData, assigned_to: selectedUnits })}
+                    label="Phân công đơn vị"
+                  />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Mức độ ưu tiên</label>

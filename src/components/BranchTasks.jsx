@@ -14,11 +14,14 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onD
   // 3. Assigned to a Cụm thi đua that contains this branchName
   const myTasks = tasks.filter(t => {
     if (!t.assigned_to) return false;
-    if (t.assigned_to === 'Tất cả 30 Chi đoàn Ấp' || t.assigned_to.includes('30 Chi đoàn')) return true;
-    if (t.assigned_to === branchName) return true;
-    if (t.assigned_to.startsWith('Cụm thi đua')) {
-      const cluster = COMPETITION_CLUSTERS.find(c => c.name === t.assigned_to);
-      if (cluster && cluster.branches.some(b => b.includes(branchName) || branchName.includes(b))) {
+    const assignedStr = Array.isArray(t.assigned_to) ? t.assigned_to.join(', ') : String(t.assigned_to);
+
+    if (assignedStr === 'Tất cả 30 Chi đoàn Ấp' || assignedStr.includes('30 Chi đoàn') || assignedStr === 'ALL') return true;
+    if (assignedStr.includes(branchName) || (branchName && branchName.includes(assignedStr))) return true;
+
+    const matchedClusters = COMPETITION_CLUSTERS.filter(c => assignedStr.includes(c.name) || assignedStr.includes(c.id));
+    for (const cluster of matchedClusters) {
+      if (cluster.branches.some(b => b.includes(branchName) || (branchName && branchName.includes(b)))) {
         return true;
       }
     }

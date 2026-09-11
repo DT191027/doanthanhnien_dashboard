@@ -16,19 +16,29 @@ export function parseDeadline(deadlineStr) {
     return d;
   }
 
-  // Handle DD/MM/YYYY format
-  if (typeof deadlineStr === 'string' && deadlineStr.includes('/')) {
-    const parts = deadlineStr.trim().split(' ');
-    const datePart = parts[0]; // e.g. "15/09/2026"
-    const timePart = parts[1] || '23:59:59'; // e.g. "18:00"
+  const str = String(deadlineStr).trim();
+
+  // Handle DD/MM/YYYY format (e.g., "11/09/2026 - 21:21", "11/09/2026 21:21", "11/09/2026 09:21 CH")
+  if (str.includes('/')) {
+    const cleaned = str.replace(/\s*-\s*/g, ' ');
+    const parts = cleaned.split(/\s+/);
+    const datePart = parts[0];
+    let timePart = parts[1] || '23:59:59';
+    const ampm = parts[2] ? parts[2].toUpperCase() : '';
 
     const dateBits = datePart.split('/').map(Number);
     if (dateBits.length === 3) {
       const [day, month, year] = dateBits;
       const timeBits = timePart.split(':').map(Number);
-      const hours = timeBits[0] !== undefined ? timeBits[0] : 23;
-      const minutes = timeBits[1] !== undefined ? timeBits[1] : 59;
-      const seconds = timeBits[2] !== undefined ? timeBits[2] : 59;
+      let hours = timeBits[0] !== undefined ? timeBits[0] : 23;
+      let minutes = timeBits[1] !== undefined ? timeBits[1] : 59;
+      let seconds = timeBits[2] !== undefined ? timeBits[2] : 0;
+
+      if (ampm === 'CH' || ampm === 'PM') {
+        if (hours < 12) hours += 12;
+      } else if (ampm === 'SA' || ampm === 'AM') {
+        if (hours === 12) hours = 0;
+      }
 
       if (day && month && year) {
         return new Date(year, month - 1, day, hours, minutes, seconds);
@@ -36,18 +46,17 @@ export function parseDeadline(deadlineStr) {
     }
   }
 
-  // Handle YYYY-MM-DD or ISO
-  if (typeof deadlineStr === 'string' && deadlineStr.includes('-')) {
-    // If format is YYYY-MM-DD (10 chars), set time to end of day 23:59:59
-    if (deadlineStr.length === 10) {
-      const [y, m, d] = deadlineStr.split('-').map(Number);
+  // Handle YYYY-MM-DD or ISO string
+  if (str.includes('-')) {
+    if (str.length === 10) {
+      const [y, m, d] = str.split('-').map(Number);
       if (y && m && d) {
         return new Date(y, m - 1, d, 23, 59, 59, 999);
       }
     }
   }
 
-  const parsed = new Date(deadlineStr);
+  const parsed = new Date(str);
   if (!isNaN(parsed.getTime())) {
     return parsed;
   }
@@ -68,7 +77,7 @@ export function formatDeadlineDisplay(deadlineStr) {
   if (h === '23' && min === '59') {
     return `${d}/${m}/${y}`;
   }
-  return `${d}/${m}/${y} ${h}:${min}`;
+  return `${d}/${m}/${y} - ${h}:${min}`;
 }
 
 export function getDeadlineCountdown(deadlineStr, status) {

@@ -58,7 +58,48 @@ export const INITIAL_BRANCHES = OFFICIAL_HAMLETS.map((h, i) => ({
   member_count: 0
 }));
 
-// Official 6 Competition Clusters (Cụm thi đua số 1 - số 6)
+// Additional School & Unit Branches (Cụm 7 - Cụm 11)
+export const SCHOOL_BRANCHES = [
+  // Cụm 7: Mầm non
+  { id: 'truong-1', name: 'Chi đoàn MN Hướng Dương', email: 'mnhuongduong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Hướng Dương', member_count: 0 },
+  { id: 'truong-2', name: 'Chi đoàn MN Cúc Họa Mi', email: 'mncuchoami@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Cúc Họa Mi', member_count: 0 },
+  { id: 'truong-3', name: 'Chi đoàn MN Xuân Thới Đông', email: 'mnxuanthoidong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Xuân Thới Đông', member_count: 0 },
+  { id: 'truong-4', name: 'Chi đoàn MN Nhị Xuân', email: 'mnnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Nhị Xuân', member_count: 0 },
+  { id: 'truong-5', name: 'Chi đoàn MN 19/8', email: 'mn198@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN 19/8', member_count: 0 },
+
+  // Cụm 8: Tiểu học
+  { id: 'truong-6', name: 'Chi đoàn TH Lý Chính Thắng 2', email: 'thlychinhthang2@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lý Chính Thắng 2', member_count: 0 },
+  { id: 'truong-7', name: 'Chi đoàn TH Lê Văn Phiên', email: 'thlevanphien@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lê Văn Phiên', member_count: 0 },
+  { id: 'truong-8', name: 'Chi đoàn TH Nhị Tân', email: 'thnhitan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Tân', member_count: 0 },
+  { id: 'truong-9', name: 'Chi đoàn TH Nhị Xuân', email: 'thnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Xuân', member_count: 0 },
+  { id: 'truong-10', name: 'Chi đoàn TH Dương Công Khi', email: 'thduongcongkhi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Dương Công Khi', member_count: 0 },
+  { id: 'truong-11', name: 'Chi đoàn TH Trần Văn Mười', email: 'thtranvanmuoi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Trần Văn Mười', member_count: 0 },
+  { id: 'truong-12', name: 'Chi đoàn TH Tân Xuân', email: 'thtanxuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Tân Xuân', member_count: 0 },
+
+  // Cụm 9: THCS & Chi đoàn Giáo viên
+  { id: 'truong-13', name: 'Chi đoàn THCS Võ Văn Tần', email: 'thcsvovantan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Võ Văn Tần', member_count: 0 },
+  { id: 'truong-14', name: 'Chi đoàn THCS Tân Xuân', email: 'thcstanxuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Tân Xuân', member_count: 0 },
+  { id: 'truong-15', name: 'Chi đoàn THCS Nguyễn Hồng Đào', email: 'thcsnguyenhongdao@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Nguyễn Hồng Đào', member_count: 0 },
+  { id: 'truong-16', name: 'Chi đoàn TiH - THCS Tạ Uyên', email: 'tihthcstauyen@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TiH - THCS Tạ Uyên', member_count: 0 },
+  { id: 'truong-17', name: 'Chi đoàn GV THPT Phạm Văn Sáng', email: 'cdgvthptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV THPT Phạm Văn Sáng', member_count: 0 },
+  { id: 'truong-18', name: 'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn', email: 'cdgvgdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn', member_count: 0 },
+
+  // Cụm 10: Đoàn trường
+  { id: 'truong-19', name: 'Đoàn trường THPT Phạm Văn Sáng', email: 'thptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường THPT Phạm Văn Sáng', member_count: 0 },
+  { id: 'truong-20', name: 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', email: 'gdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', member_count: 0 },
+  { id: 'truong-21', name: 'Đoàn trường Tre Việt', email: 'treviet@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường Tre Việt', member_count: 0 },
+
+  // Cụm 11: Doanh nghiệp, Khối cơ quan, Tư thục
+  { id: 'truong-22', name: 'Chi đoàn Mẫu giáo Bút chì Màu', email: 'mgbutchimau@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Mẫu giáo Bút chì Màu', member_count: 0 },
+  { id: 'truong-23', name: 'Chi đoàn lớp MN Độc lập Hoa Lài', email: 'mnhoalai@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Độc lập Hoa Lài', member_count: 0 },
+  { id: 'truong-24', name: 'Chi đoàn Cty Sambu Vina Sports', email: 'sambuvinasports@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Cty Sambu Vina Sports', member_count: 0 },
+  { id: 'truong-25', name: 'Chi đoàn UBND xã', email: 'ubndxa@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn UBND xã', member_count: 0 },
+  { id: 'truong-26', name: 'Chi đoàn Trạm Y tế xã', email: 'tramytexa@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Trạm Y tế xã', member_count: 0 }
+];
+
+export const ALL_BRANCHES = [...INITIAL_BRANCHES, ...SCHOOL_BRANCHES];
+
+// Official 11 Competition Clusters (Cụm thi đua số 1 - số 11)
 export const COMPETITION_CLUSTERS = [
   {
     id: 'cum-1',
@@ -95,6 +136,36 @@ export const COMPETITION_CLUSTERS = [
     name: 'Cụm thi đua số 6',
     label: 'Cụm thi đua số 6 (Nhị Tân 2, Tân Lập, Nhị Xuân 1, Nhị Xuân, Nhị Tân)',
     branches: ['Chi đoàn Ấp Nhị Tân 2', 'Chi đoàn Ấp Tân Lập', 'Chi đoàn Ấp Nhị Xuân 1', 'Chi đoàn Ấp Nhị Xuân', 'Chi đoàn Ấp Nhị Tân']
+  },
+  {
+    id: 'cum-7',
+    name: 'Cụm thi đua số 7',
+    label: 'Cụm thi đua số 7 (MN Hướng Dương, MN Cúc Họa Mi, MN Xuân Thới Đông, MN Nhị Xuân, MN 19/8)',
+    branches: ['Chi đoàn MN Hướng Dương', 'Chi đoàn MN Cúc Họa Mi', 'Chi đoàn MN Xuân Thới Đông', 'Chi đoàn MN Nhị Xuân', 'Chi đoàn MN 19/8']
+  },
+  {
+    id: 'cum-8',
+    name: 'Cụm thi đua số 8',
+    label: 'Cụm thi đua số 8 (TH Lý Chính Thắng 2, TH Lê Văn Phiên, TH Nhị Tân, TH Nhị Xuân, TH Dương Công Khi, TH Trần Văn Mười, TH Tân Xuân)',
+    branches: ['Chi đoàn TH Lý Chính Thắng 2', 'Chi đoàn TH Lê Văn Phiên', 'Chi đoàn TH Nhị Tân', 'Chi đoàn TH Nhị Xuân', 'Chi đoàn TH Dương Công Khi', 'Chi đoàn TH Trần Văn Mười', 'Chi đoàn TH Tân Xuân']
+  },
+  {
+    id: 'cum-9',
+    name: 'Cụm thi đua số 9',
+    label: 'Cụm thi đua số 9 (THCS Võ Văn Tần, THCS Tân Xuân, THCS Nguyễn Hồng Đào, TiH - THCS Tạ Uyên, THPT Phạm Văn Sáng, GDNN - GDTX Hóc Môn)',
+    branches: ['Chi đoàn THCS Võ Văn Tần', 'Chi đoàn THCS Tân Xuân', 'Chi đoàn THCS Nguyễn Hồng Đào', 'Chi đoàn TiH - THCS Tạ Uyên', 'Chi đoàn GV THPT Phạm Văn Sáng', 'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn']
+  },
+  {
+    id: 'cum-10',
+    name: 'Cụm thi đua số 10',
+    label: 'Cụm thi đua số 10 (THPT Phạm Văn Sáng, Trung tâm GDNN - GDTX Hóc Môn, Tre Việt)',
+    branches: ['Đoàn trường THPT Phạm Văn Sáng', 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', 'Đoàn trường Tre Việt']
+  },
+  {
+    id: 'cum-11',
+    name: 'Cụm thi đua số 11',
+    label: 'Cụm thi đua số 11 (MG Bút chì Màu, MN Độc lập Hoa Lài, Cty Sambu Vina Sports, UBND xã, Trạm Y tế xã)',
+    branches: ['Chi đoàn Mẫu giáo Bút chì Màu', 'Chi đoàn lớp MN Độc lập Hoa Lài', 'Chi đoàn Cty Sambu Vina Sports', 'Chi đoàn UBND xã', 'Chi đoàn Trạm Y tế xã']
   }
 ];
 
@@ -109,11 +180,11 @@ export const INITIAL_ROLES = [
     branch_name: 'Đoàn xã Xuân Thới Sơn',
     avatar: '/logo.png'
   },
-  ...INITIAL_BRANCHES.map(b => ({
+  ...ALL_BRANCHES.map(b => ({
     id: b.id,
     email: b.email,
     role: 'chi_doan',
-    full_name: `Bí thư ${b.name}`,
+    full_name: b.secretary_name || `Bí thư ${b.name}`,
     title: b.name,
     branch_name: b.name,
     avatar: '/logo.png'
@@ -466,11 +537,11 @@ export function deduplicateActivities(activities) {
   return activities.filter(act => {
     if (!act) return false;
     if (act.id && seenIds.has(act.id)) return false;
-    
+
     const dateKey = act.dateIso || `${act.year || ''}-${act.month || ''}-${act.day || ''}`;
     const comboKey = `${(act.title || '').trim().toLowerCase()}_${dateKey}`;
     if (seenKeys.has(comboKey)) return false;
-    
+
     if (act.id) seenIds.add(act.id);
     seenKeys.add(comboKey);
     return true;
@@ -480,7 +551,7 @@ export function deduplicateActivities(activities) {
 // Universal Date Formatter to dd/mm/yyyy
 export function formatDateDDMMYYYY(dayOrObj, month, year) {
   if (!dayOrObj && !month) return 'Chưa chọn ngày';
-  
+
   if (typeof dayOrObj === 'object' && dayOrObj !== null) {
     const obj = dayOrObj;
     if (obj.formattedDate) return formatDateDDMMYYYY(obj.formattedDate);
@@ -493,7 +564,7 @@ export function formatDateDDMMYYYY(dayOrObj, month, year) {
     }
     return formatDateDDMMYYYY(obj.day, obj.month, obj.year);
   }
-  
+
   if (typeof dayOrObj === 'string') {
     const str = dayOrObj.trim();
     if (!str) return 'Chưa chọn ngày';
@@ -513,7 +584,7 @@ export function formatDateDDMMYYYY(dayOrObj, month, year) {
         }
       }
     }
-    
+
     // Handle DD/MM/YYYY or YYYY/MM/DD or MM/DD/YYYY
     if (str.includes('/')) {
       const datePart = str.split('T')[0].split(' ')[0];
@@ -532,10 +603,10 @@ export function formatDateDDMMYYYY(dayOrObj, month, year) {
       }
     }
   }
-  
+
   const day = dayOrObj;
   if (!day && !month) return 'Chưa chọn ngày';
-  
+
   const d = String(day || '01').padStart(2, '0');
   let mNum = month;
   if (typeof month === 'string') {
@@ -587,9 +658,9 @@ export function isItemTargetedToUser(targetScope, currentUser) {
     return targetScope.some(scope => {
       if (typeof scope !== 'string') return false;
       const cleanScope = scope.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
-      return scope === userBranch || 
-        scope.includes(userBranch) || 
-        userBranch.includes(scope) || 
+      return scope === userBranch ||
+        scope.includes(userBranch) ||
+        userBranch.includes(scope) ||
         (cleanUserBranch && scope.includes(cleanUserBranch)) ||
         (cleanUserBranch && cleanScope && (cleanScope.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScope)));
     });
@@ -606,9 +677,9 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 
   // 1. Direct match with branch name or code
   if (
-    scopeStr === userBranch || 
-    scopeStr.includes(userBranch) || 
-    userBranch.includes(scopeStr) || 
+    scopeStr === userBranch ||
+    scopeStr.includes(userBranch) ||
+    userBranch.includes(scopeStr) ||
     (cleanUserBranch && scopeStr.includes(cleanUserBranch)) ||
     (cleanUserBranch && cleanScopeStr && (cleanScopeStr.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScopeStr)))
   ) {
@@ -617,18 +688,18 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 
   // 2. Check if targetScope is a Competition Cluster (Cụm thi đua số 1 - 6)
   if (scopeStr.startsWith('Cụm thi đua') || scopeStr.startsWith('cum-')) {
-    const cluster = COMPETITION_CLUSTERS.find(c => 
-      c.name === scopeStr || 
-      c.id === scopeStr || 
+    const cluster = COMPETITION_CLUSTERS.find(c =>
+      c.name === scopeStr ||
+      c.id === scopeStr ||
       (c.label && c.label.includes(scopeStr)) ||
       scopeStr.includes(c.name)
     );
     if (cluster) {
       const isInCluster = cluster.branches.some(b => {
         const cleanB = b.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
-        return b === userBranch || 
-          b.includes(userBranch) || 
-          userBranch.includes(b) || 
+        return b === userBranch ||
+          b.includes(userBranch) ||
+          userBranch.includes(b) ||
           (cleanUserBranch && b.includes(cleanUserBranch)) ||
           (cleanUserBranch && cleanB && cleanB === cleanUserBranch);
       });
@@ -706,7 +777,7 @@ export function getActivityTimeStatus(act) {
   }
 
   const now = new Date();
-  
+
   let year = parseInt(act.year, 10);
   let month = parseInt(act.month, 10);
   let day = parseInt(act.day, 10);
@@ -970,18 +1041,18 @@ export function recordDocView(docIdentifier, branchName) {
   const current = map[docIdentifier] || [];
 
   // Match canonical branch name if branchName matches one in INITIAL_BRANCHES
-  const matchedBranch = INITIAL_BRANCHES.find(b => 
-    b.name === branchName || 
-    b.name.includes(branchName) || 
+  const matchedBranch = INITIAL_BRANCHES.find(b =>
+    b.name === branchName ||
+    b.name.includes(branchName) ||
     branchName.includes(b.name)
   );
   const canonicalName = matchedBranch ? matchedBranch.name : branchName;
 
   // If this branch already recorded view/receipt, preserve existing timestamp and return current list
-  const existing = current.find(v => 
-    v.branch_name === canonicalName || 
-    v.branch_name === branchName || 
-    v.branch_name?.includes(branchName) || 
+  const existing = current.find(v =>
+    v.branch_name === canonicalName ||
+    v.branch_name === branchName ||
+    v.branch_name?.includes(branchName) ||
     branchName.includes(v.branch_name)
   );
   if (existing) {
@@ -991,7 +1062,7 @@ export function recordDocView(docIdentifier, branchName) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('vi-VN');
-  
+
   const updatedList = [
     ...current.filter(v => v.branch_name !== canonicalName && v.branch_name !== branchName),
     {
@@ -1000,7 +1071,7 @@ export function recordDocView(docIdentifier, branchName) {
       timestamp: now.toISOString()
     }
   ];
-  
+
   const newMap = {
     ...map,
     [docIdentifier]: updatedList
@@ -1015,18 +1086,18 @@ export function removeDocView(docIdentifier, branchName) {
   const map = getDocViewsMap();
   const current = map[docIdentifier] || [];
 
-  const matchedBranch = INITIAL_BRANCHES.find(b => 
-    b.name === branchName || 
-    b.name.includes(branchName) || 
+  const matchedBranch = INITIAL_BRANCHES.find(b =>
+    b.name === branchName ||
+    b.name.includes(branchName) ||
     branchName.includes(b.name)
   );
   const canonicalName = matchedBranch ? matchedBranch.name : branchName;
 
-  const updatedList = current.filter(v => 
-    v && 
-    v.branch_name !== canonicalName && 
-    v.branch_name !== branchName && 
-    !v.branch_name?.includes(canonicalName) && 
+  const updatedList = current.filter(v =>
+    v &&
+    v.branch_name !== canonicalName &&
+    v.branch_name !== branchName &&
+    !v.branch_name?.includes(canonicalName) &&
     !canonicalName.includes(v.branch_name)
   );
 
@@ -1101,9 +1172,9 @@ export async function syncFetchDocuments() {
     const savedCat = categoriesMap[d.id] || categoriesMap[d.title];
     const cat = savedCat?.category || d.category || (
       d.category_label === 'Văn bản quyết định' ? 'decision_docs' :
-      d.category_label === 'Ban hành hoạt động' || d.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
-      d.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
-      d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+        d.category_label === 'Ban hành hoạt động' || d.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+          d.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+            d.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
     );
     const catLabel = savedCat?.category_label || d.category_label || categoryMap[cat] || 'Văn bản quyết định';
 
@@ -1124,9 +1195,9 @@ export async function syncFetchDocuments() {
           const savedCat = categoriesMap[item.id] || categoriesMap[item.title];
           const cat = savedCat?.category || item.category || (
             item.category_label === 'Văn bản quyết định' ? 'decision_docs' :
-            item.category_label === 'Ban hành hoạt động' || item.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
-            item.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
-            item.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+              item.category_label === 'Ban hành hoạt động' || item.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+                item.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+                  item.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
           );
           const catLabel = savedCat?.category_label || item.category_label || categoryMap[cat] || 'Văn bản quyết định';
 
@@ -1179,9 +1250,9 @@ export async function syncSaveDocument(docItem) {
 
   const finalCat = docItem.category || (
     docItem.category_label === 'Văn bản quyết định' ? 'decision_docs' :
-    docItem.category_label === 'Ban hành hoạt động' || docItem.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
-    docItem.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
-    docItem.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
+      docItem.category_label === 'Ban hành hoạt động' || docItem.category_label === 'Văn bản thuộc ban hành hoạt động' ? 'act_docs' :
+        docItem.category_label === 'Văn bản triển khai' ? 'implementation_docs' :
+          docItem.category_label === 'Văn bản cuộc họp' ? 'meeting_docs' : 'decision_docs'
   );
   const finalCatLabel = docItem.category_label || categoryMap[finalCat] || 'Văn bản quyết định';
 
@@ -1194,7 +1265,7 @@ export async function syncSaveDocument(docItem) {
     category_label: finalCatLabel
   };
 
-  const existsIndex = (current || []).findIndex(d => 
+  const existsIndex = (current || []).findIndex(d =>
     d && ((docItem.id && String(d.id) === String(docItem.id)) || (d.title && docItem.title && d.title.trim() === docItem.title.trim()))
   );
 
@@ -1405,35 +1476,35 @@ export async function syncDeleteSubmission(subId, subTitle = '') {
 export function getPriorityBadgeStyle(priority) {
   const p = String(priority || '').toLowerCase();
   if (p.includes('khẩn') || p.includes('cao')) {
-    return { 
-      bg: 'bg-danger-subtle text-danger border-danger-subtle', 
+    return {
+      bg: 'bg-danger-subtle text-danger border-danger-subtle',
       badgeSolid: 'bg-danger text-white',
       badgeDot: 'bg-danger',
-      label: '🔥 Khẩn cấp', 
+      label: '🔥 Khẩn cấp',
       fullLabel: '🔥 Khẩn cấp (Cao)',
       color: '#DC2626',
-      borderColor: '#EF4444' 
+      borderColor: '#EF4444'
     };
   }
   if (p.includes('trung bình')) {
-    return { 
-      bg: 'bg-warning-subtle text-warning-emphasis border-warning-subtle', 
+    return {
+      bg: 'bg-warning-subtle text-warning-emphasis border-warning-subtle',
       badgeSolid: 'bg-warning text-dark',
       badgeDot: 'bg-warning',
-      label: '⚡ Trung bình', 
+      label: '⚡ Trung bình',
       fullLabel: '⚡ Trung bình',
       color: '#D97706',
-      borderColor: '#EAB308' 
+      borderColor: '#EAB308'
     };
   }
-  return { 
-    bg: 'bg-success-subtle text-success border-success-subtle', 
+  return {
+    bg: 'bg-success-subtle text-success border-success-subtle',
     badgeSolid: 'bg-success text-white',
     badgeDot: 'bg-success',
-    label: '🟢 Bình thường', 
+    label: '🟢 Bình thường',
     fullLabel: '🟢 Bình thường',
     color: '#16A34A',
-    borderColor: '#22C55E' 
+    borderColor: '#22C55E'
   };
 }
 
@@ -1691,7 +1762,7 @@ export async function syncSaveTask(taskItem) {
         title: taskItem.title,
         status: validTaskStatus,
         priority: validPriority,
-        due_date: taskItem.dueDate || taskItem.due_date || new Date().toISOString(),
+        due_date: new Date().toISOString().split('T')[0],
         assigned_to: taskItem.assigned_to || 'Đoàn xã'
       };
 
@@ -1753,7 +1824,7 @@ export async function syncDeleteTask(taskId) {
 export function getBranchClusterName(branchName) {
   if (!branchName || typeof branchName !== 'string') return 'Chưa phân cụm';
   const cleanName = branchName.replace('Chi đoàn Ấp ', '');
-  const cluster = COMPETITION_CLUSTERS.find(c => 
+  const cluster = COMPETITION_CLUSTERS.find(c =>
     c.branches && c.branches.some(b => typeof b === 'string' && (b === branchName || b.includes(cleanName)))
   );
   return cluster ? cluster.name : 'Chưa phân cụm';
@@ -1823,9 +1894,9 @@ export async function syncFetchMembers() {
   if (localList === null) {
     localList = INITIAL_MEMBERS;
   }
-  
-  let filteredLocal = (localList || []).filter(item => 
-    !deletedItems.includes(String(item.id)) && 
+
+  let filteredLocal = (localList || []).filter(item =>
+    !deletedItems.includes(String(item.id)) &&
     !deletedItems.includes(String(item.full_name)) &&
     !deletedItems.includes(String(item.name))
   );
@@ -1834,8 +1905,8 @@ export async function syncFetchMembers() {
     try {
       const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) {
-        const filteredSupabase = data.filter(item => 
-          !deletedItems.includes(String(item.id)) && 
+        const filteredSupabase = data.filter(item =>
+          !deletedItems.includes(String(item.id)) &&
           !deletedItems.includes(String(item.full_name)) &&
           !deletedItems.includes(String(item.name))
         );
@@ -1854,14 +1925,14 @@ export async function syncFetchMembers() {
 export async function syncSaveMember(memberItem) {
   const current = getPersistedData('members', INITIAL_MEMBERS);
   const deletedItems = getDeletedItems('members');
-  const updatedDeleted = deletedItems.filter(d => 
-    d !== String(memberItem.id) && 
-    d !== String(memberItem.full_name) && 
+  const updatedDeleted = deletedItems.filter(d =>
+    d !== String(memberItem.id) &&
+    d !== String(memberItem.full_name) &&
     d !== String(memberItem.name)
   );
   try {
     localStorage.setItem('xts_deleted_members', JSON.stringify(updatedDeleted));
-  } catch (e) {}
+  } catch (e) { }
 
   const exists = current.some(item => String(item.id) === String(memberItem.id));
   const updated = exists
@@ -1884,8 +1955,8 @@ export async function syncSaveMember(memberItem) {
 export async function syncDeleteMember(memberId, memberName = '') {
   addDeletedItem('members', memberId, memberName);
   const current = getPersistedData('members', INITIAL_MEMBERS);
-  const updated = current.filter(item => 
-    String(item.id) !== String(memberId) && 
+  const updated = current.filter(item =>
+    String(item.id) !== String(memberId) &&
     (memberName ? item.full_name !== memberName && item.name !== memberName : true)
   );
   setPersistedData('members', updated);

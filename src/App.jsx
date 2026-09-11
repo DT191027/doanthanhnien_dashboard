@@ -535,13 +535,17 @@ export default function App() {
   };
 
   const handleAddTask = async (newTask) => {
+    const assignedStr = Array.isArray(newTask.assigned_to)
+      ? (newTask.assigned_to.length === 1 ? newTask.assigned_to[0] : (newTask.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newTask.assigned_to.join(', ')))
+      : (newTask.assigned_to || 'Đoàn xã Xuân Thới Sơn');
+
     const taskItem = {
       id: `task-${Date.now()}`,
       title: newTask.title,
       status: 'todo',
-      priority: newTask.priority || 'Bình thường',
+      priority: newTask.priority || 'Cao',
       dueDate: newTask.dueDate || 'Hôm nay',
-      assigned_to: newTask.assigned_to || 'Đoàn xã Xuân Thới Sơn'
+      assigned_to: assignedStr
     };
     const updated = await syncSaveTask(taskItem);
     setTasksList(updated);

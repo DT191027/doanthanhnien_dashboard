@@ -37,6 +37,7 @@ import {
 import BranchMembersView from './components/BranchMembersView';
 import { 
   INITIAL_BRANCHES, 
+  SCHOOL_BRANCHES,
   supabase, 
   isSupabaseConfigured,
   syncFetchActivities,
@@ -789,6 +790,8 @@ export default function App() {
                       activitiesCount={userActivities.length}
                       incomingDocsCount={incomingDocsCount}
                       outgoingDocsCount={outgoingDocsCount}
+                      hamletBranchesCount={INITIAL_BRANCHES.length}
+                      schoolBranchesCount={SCHOOL_BRANCHES.length}
                     />
                   )}
 

@@ -2538,7 +2538,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
           </div>
           <h5 className="fw-bold text-dark mb-1">Chưa có thông báo nào trong hệ thống</h5>
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
-            Bấm nút "Gửi thông báo / Tin nhắn" ở trên để gửi tin tức điều hành tới Đoàn xã và 30 Chi đoàn Ấp.
+            Bấm nút "Gửi thông báo / Tin nhắn" ở trên để gửi tin tức điều hành tới Đoàn xã và 56 Chi đoàn / Đơn vị trực thuộc.
           </p>
         </div>
       ) : (
@@ -2550,7 +2550,13 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
             const timeVal = n.activity_details?.time || n.time || '08:00 - 11:30';
             const dateVal = formatDateDDMMYYYY(n.activity_details || n.date);
             const locationVal = n.activity_details?.location || n.location || '';
-            const notesVal = n.activity_details?.notes || n.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+            const notesVal = n.activity_details?.notes || n.notes || (
+              n.target_scope 
+                ? (n.target_scope.includes('30') || n.target_scope.includes('Dân cư') 
+                    ? 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.' 
+                    : `Đề nghị ${n.target_scope} triển khai thực hiện đầy đủ và đúng thời gian quy định.`)
+                : 'Đề nghị các đơn vị triển khai thực hiện đầy đủ và đúng thời gian quy định.'
+            );
 
             return (
               <div 
@@ -2622,7 +2628,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
                 <div className="p-2.5 px-3 rounded-3 bg-primary-subtle bg-opacity-25 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 border border-primary-subtle">
                   <div className="d-flex align-items-center gap-2 text-primary fw-bold" style={{ fontSize: '13px' }}>
                     <Send size={15} />
-                    <span>Gửi đến: {n.target_scope || 'Tất cả 30 Chi đoàn Ấp'}</span>
+                    <span>Gửi đến: {n.target_scope || 'Tất cả 56 Chi đoàn / Đơn vị'}</span>
                   </div>
 
                   <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">

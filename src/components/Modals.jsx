@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { INITIAL_BRANCHES, ALL_BRANCHES, getBranchClusterName, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
+import { INITIAL_BRANCHES, ALL_BRANCHES, getBranchClusterName, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, TARGET_BLOCKS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
@@ -33,6 +33,23 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     } else {
       onChange(['Tất cả 56 Chi đoàn / Đơn vị']);
     }
+  };
+
+  const handleToggleBlock = (block) => {
+    const blockBranchNames = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id) : [];
+    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
+    const hasAll = blockBranchNames.length > 0 && blockBranchNames.every(b => current.includes(b));
+
+    let updated;
+    if (hasAll) {
+      updated = current.filter(b => !blockBranchNames.includes(b));
+    } else {
+      updated = Array.from(new Set([...current, ...blockBranchNames]));
+    }
+    if (updated.length === ALL_BRANCHES.length || updated.length === 0) {
+      updated = ['Tất cả 56 Chi đoàn / Đơn vị'];
+    }
+    onChange(updated);
   };
 
   const handleToggleCluster = (cluster) => {
@@ -780,7 +797,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     title: '',
     date: new Date().toISOString().split('T')[0],
     category: 'decision_docs',
-    recipient_scope: 'ALL',
+    recipient_scope: 'Khối Dân cư (30 Chi đoàn Ấp)',
     file_name: '',
     file_url: ''
   });
@@ -952,25 +969,143 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                 </div>
               </div>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '13px' }}>Đơn vị nhận văn bản</label>
-                <select
-                  className="form-select"
-                  value={formData.recipient_scope}
-                  onChange={(e) => setFormData({ ...formData, recipient_scope: e.target.value })}
-                >
-                  <option value="ALL">📢 Gửi tất cả 56 Chi đoàn / Đơn vị trực thuộc</option>
-                  <optgroup label="🏆 Cụm Thi Đua">
-                    {COMPETITION_CLUSTERS.map(c => (
-                      <option key={c.id} value={c.name}>🏆 {c.label}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="📍 Chi đoàn / Đơn vị cụ thể">
-                    {ALL_BRANCHES.map(b => (
-                      <option key={b.id} value={b.name}>📍 {b.name}</option>
-                    ))}
-                  </optgroup>
-                </select>
+              {/* Chọn nơi gửi đến theo Khối đối tượng theo yêu cầu: Khối Dân cư 30 ấp, Khối Trường học, Khối Ngoài nhà nước, Khối LLVT, Tất cả */}
+              <div className="mb-3 p-3 rounded-3 bg-light border">
+                <label className="form-label fw-semibold text-primary d-flex align-items-center justify-content-between mb-2" style={{ fontSize: '13px' }}>
+                  <span className="d-flex align-items-center gap-1.5">
+                    <Send size={15} />
+                    <span>Chọn nơi gửi đến (Khối đối tượng nhận văn bản) <span className="text-danger">*</span></span>
+                  </span>
+                  <span className="badge bg-primary text-white fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
+                    {formData.recipient_scope === 'ALL' || formData.recipient_scope === 'Tất cả 56 Chi đoàn / Đơn vị'
+                      ? '📢 Tất cả 56 Đơn vị'
+                      : formData.recipient_scope}
+                  </span>
+                </label>
+
+                {/* 5 Nút chọn nhanh Khối nổi bật */}
+                <div className="row g-2 mb-2">
+                  {[
+                    {
+                      id: 'res',
+                      scope: 'Khối Dân cư (30 Chi đoàn Ấp)',
+                      title: 'Khối Dân cư',
+                      sub: '30 Chi đoàn Ấp',
+                      icon: '🏘️',
+                      badge: '30 Ấp',
+                      desc: 'Cụm 1 đến Cụm 6'
+                    },
+                    {
+                      id: 'school',
+                      scope: 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)',
+                      title: 'Khối Trường học',
+                      sub: 'Cấp 3, 2, TH, Mầm non',
+                      icon: '🏫',
+                      badge: 'Trường học',
+                      desc: 'Cụm 7, 8, 9, 10'
+                    },
+                    {
+                      id: 'corp',
+                      scope: 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)',
+                      title: 'Khối Ngoài NN',
+                      sub: 'Doanh nghiệp, Cty',
+                      icon: '🏢',
+                      badge: 'Công ty / DN',
+                      desc: 'Cụm thi đua 11'
+                    },
+                    {
+                      id: 'armed',
+                      scope: 'Khối Lực lượng vũ trang & Cơ quan',
+                      title: 'Khối LLVT & CQ',
+                      sub: 'Công an, Y tế, QS',
+                      icon: '🛡️',
+                      badge: 'LLVT & CQ',
+                      desc: 'Cụm thi đua 12'
+                    },
+                    {
+                      id: 'all',
+                      scope: 'Tất cả 56 Chi đoàn / Đơn vị',
+                      title: 'Tất cả đơn vị',
+                      sub: 'Toàn xã (56 đơn vị)',
+                      icon: '📢',
+                      badge: 'Toàn xã',
+                      desc: '56 Chi đoàn / ĐV'
+                    }
+                  ].map((blk) => {
+                    const isSelected = formData.recipient_scope === blk.scope || 
+                      (blk.id === 'all' && (formData.recipient_scope === 'ALL' || formData.recipient_scope === 'Tất cả 56 Chi đoàn / Đơn vị'));
+                    return (
+                      <div className="col-6 col-md" key={blk.id}>
+                        <button
+                          type="button"
+                          className={`btn w-100 p-2 text-start rounded-3 border d-flex flex-column justify-content-between transition-all ${
+                            isSelected 
+                              ? 'btn-primary shadow-sm border-primary text-white' 
+                              : 'btn-white bg-white border-secondary-subtle text-dark hover-shadow'
+                          }`}
+                          onClick={() => setFormData({ ...formData, recipient_scope: blk.scope })}
+                          style={{ minHeight: '68px', cursor: 'pointer' }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between w-100 mb-1">
+                            <span style={{ fontSize: '16px' }}>{blk.icon}</span>
+                            <span className={`badge ${isSelected ? 'bg-white text-primary' : 'bg-light text-secondary'} rounded-pill`} style={{ fontSize: '9px' }}>
+                              {blk.badge}
+                            </span>
+                          </div>
+                          <div className="fw-bold" style={{ fontSize: '11.5px', lineHeight: '1.2' }}>{blk.title}</div>
+                          <div className={`mt-0.5 text-truncate ${isSelected ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '9.5px' }}>
+                            {blk.sub}
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Dropdown tùy chọn mở rộng (Cụm thi đua 1-12 hoặc Đích danh Chi đoàn) */}
+                <div className="mt-2">
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <span className="text-secondary fw-medium" style={{ fontSize: '11.5px' }}>Hoặc chọn chi tiết Cụm thi đua / Chi đoàn nhận:</span>
+                  </div>
+                  <select
+                    className="form-select form-select-sm bg-white"
+                    value={formData.recipient_scope}
+                    onChange={(e) => setFormData({ ...formData, recipient_scope: e.target.value })}
+                    style={{ fontSize: '12.5px' }}
+                  >
+                    <optgroup label="🌐 Chọn theo Khối đối tượng">
+                      <option value="Khối Dân cư (30 Chi đoàn Ấp)">🏘️ Khối Dân cư (30 Chi đoàn Ấp - Cụm 1 đến Cụm 6)</option>
+                      <option value="Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)">🏫 Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non - Cụm 7, 8, 9, 10)</option>
+                      <option value="Khối Ngoài nhà nước (Doanh nghiệp, Công ty)">🏢 Khối Ngoài nhà nước (Doanh nghiệp, Công ty - Cụm 11)</option>
+                      <option value="Khối Lực lượng vũ trang & Cơ quan">🛡️ Khối Lực lượng vũ trang & Cơ quan (Cụm 12)</option>
+                      <option value="Tất cả 56 Chi đoàn / Đơn vị">📢 Tất cả 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã</option>
+                    </optgroup>
+                    <optgroup label="🏆 Chọn theo Cụm Thi Đua (1 - 12)">
+                      {COMPETITION_CLUSTERS.map(c => (
+                        <option key={c.id} value={c.name}>🏆 {c.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="📍 Chọn đích danh Chi đoàn / Đơn vị">
+                      {ALL_BRANCHES.map(b => (
+                        <option key={b.id} value={b.name}>📍 {b.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* Banner tóm tắt đối tượng nhận văn bản */}
+                <div className="mt-2 p-2 rounded-2 bg-primary-subtle text-primary border border-primary-subtle d-flex align-items-center gap-2" style={{ fontSize: '11.5px' }}>
+                  <Send size={13} className="flex-shrink-0" />
+                  <div>
+                    <span className="fw-bold">Nơi nhận: </span>
+                    {formData.recipient_scope === 'Khối Dân cư (30 Chi đoàn Ấp)' && 'Toàn bộ 30 Chi đoàn Ấp trên địa bàn dân cư (Cụm thi đua số 1 đến số 6).'}
+                    {formData.recipient_scope === 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)' && 'Các trường THPT, TT GDNN-GDTX, THCS, Tiểu học & Mầm non (Cụm 7, 8, 9, 10).'}
+                    {formData.recipient_scope === 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)' && 'Các công ty, doanh nghiệp ngoài nhà nước và cơ sở mầm non tư thục (Cụm 11).'}
+                    {formData.recipient_scope === 'Khối Lực lượng vũ trang & Cơ quan' && 'Chi đoàn Công an, Quân sự, Trạm Y tế và Chi đoàn UBND xã (Cụm 12).'}
+                    {(formData.recipient_scope === 'Tất cả 56 Chi đoàn / Đơn vị' || formData.recipient_scope === 'ALL') && 'Toàn bộ 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã Xuân Thới Sơn.'}
+                    {!['Khối Dân cư (30 Chi đoàn Ấp)', 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)', 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)', 'Khối Lực lượng vũ trang & Cơ quan', 'Tất cả 56 Chi đoàn / Đơn vị', 'ALL'].includes(formData.recipient_scope) && `Đơn vị nhận cụ thể: ${formData.recipient_scope}`}
+                  </div>
+                </div>
               </div>
 
               <div className="mb-3">
@@ -1188,12 +1323,27 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
     
     const scopeText = Array.isArray(targetScope)
-      ? (targetScope.length === 0 || targetScope.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : targetScope.join(', '))
-      : (targetScope === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetScope);
+      ? (targetScope.length === 0 || targetScope.includes('ALL') || targetScope.includes('Tất cả 56 Chi đoàn / Đơn vị')
+          ? 'Tất cả 56 Chi đoàn / Đơn vị'
+          : (targetScope.includes('Tất cả 30 Chi đoàn Ấp') ? 'Khối Dân cư (30 Chi đoàn Ấp)' : targetScope.join(', ')))
+      : (targetScope === 'ALL' || targetScope === 'Tất cả 56 Chi đoàn / Đơn vị' ? 'Tất cả 56 Chi đoàn / Đơn vị' : targetScope);
 
     const finalTime = time.trim() || '08:00 - 11:30';
     const finalDate = dateStr.trim() || new Date().toLocaleDateString('vi-VN');
     const finalLocation = location.trim() || 'Hội trường UBND xã';
+
+    let dynamicNotes = 'Đề nghị các đơn vị triển khai thực hiện đầy đủ và đúng thời gian quy định.';
+    if (scopeText.includes('Dân cư') || scopeText.includes('30') || scopeText.includes('Ấp')) {
+      dynamicNotes = 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+    } else if (scopeText.includes('Trường học') || scopeText.includes('Cấp 3') || scopeText.includes('Cấp 2') || scopeText.includes('Mầm non')) {
+      dynamicNotes = 'Đề nghị các trường Cấp 3, Cấp 2, Tiểu học, Mầm non và Đoàn trường triển khai thực hiện đầy đủ.';
+    } else if (scopeText.includes('Ngoài nhà nước') || scopeText.includes('Công ty') || scopeText.includes('Doanh nghiệp')) {
+      dynamicNotes = 'Đề nghị các Chi đoàn Doanh nghiệp, Công ty ngoài nhà nước triển khai thực hiện.';
+    } else if (scopeText.includes('Lực lượng vũ trang') || scopeText.includes('Cơ quan')) {
+      dynamicNotes = 'Đề nghị Chi đoàn Công an, Quân sự, Trạm Y tế, Chi đoàn UBND xã triển khai thực hiện.';
+    } else if (scopeText.includes('56 Chi đoàn')) {
+      dynamicNotes = 'Đề nghị toàn bộ 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã triển khai thực hiện đầy đủ.';
+    }
 
     onSave && onSave({
       id: editData ? editData.id : `noti-${Date.now()}`,
@@ -1208,7 +1358,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
         time: finalTime,
         date: finalDate,
         location: finalLocation,
-        notes: 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
+        notes: dynamicNotes
       },
       time_ago: editData ? (editData.time_ago || 'Vừa xong') : 'Vừa xong',
       createdAt: editData ? (editData.createdAt || Date.now()) : Date.now()

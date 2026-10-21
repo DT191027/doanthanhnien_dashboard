@@ -342,12 +342,16 @@ export default function App() {
   };
 
   const handleIssueDocument = async (newDoc) => {
-    const targetText = newDoc.recipient_scope || 'ALL';
+    let targetText = newDoc.recipient_scope || 'Khối Dân cư (30 Chi đoàn Ấp)';
+    if (targetText === 'ALL') {
+      targetText = 'Tất cả 56 Chi đoàn / Đơn vị';
+    }
+
     const createdDoc = {
       id: `doc-${Date.now()}`,
       doc_number: newDoc.doc_number,
       title: newDoc.title,
-      summary: `Ban hành ngày ${new Date().toLocaleDateString('vi-VN')}`,
+      summary: `Ban hành ngày ${new Date().toLocaleDateString('vi-VN')} - Gửi đến: ${targetText}`,
       sender: 'Đoàn xã Xuân Thới Sơn',
       recipient_scope: targetText,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -362,19 +366,36 @@ export default function App() {
     const updated = await syncSaveDocument(createdDoc);
     setDocumentsList(updated);
 
-    // Phát thông báo tự động khi ban hành văn bản
+    // Xác định ghi chú chỉ đạo rõ ràng theo đúng khối được chọn
+    let dynamicNotes = `Đề nghị ${targetText} triển khai thực hiện đầy đủ và đúng thời gian quy định.`;
+    if (targetText.includes('Khối Dân cư') || targetText.includes('30 Ấp') || targetText.includes('30 Chi đoàn')) {
+      dynamicNotes = 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+    } else if (targetText.includes('Khối Trường học') || targetText.includes('Trường học') || targetText.includes('Cấp 3') || targetText.includes('Mầm non')) {
+      dynamicNotes = 'Đề nghị các trường Cấp 3, Cấp 2, Tiểu học, Mầm non và Đoàn trường triển khai thực hiện đầy đủ và đúng tiến độ.';
+    } else if (targetText.includes('Khối Ngoài nhà nước') || targetText.includes('Công ty') || targetText.includes('Doanh nghiệp')) {
+      dynamicNotes = 'Đề nghị các Chi đoàn Doanh nghiệp, Công ty và Cơ sở ngoài nhà nước triển khai thực hiện.';
+    } else if (targetText.includes('Khối Lực lượng vũ trang') || targetText.includes('Cơ quan')) {
+      dynamicNotes = 'Đề nghị Chi đoàn Công an, Quân sự, Trạm Y tế và Chi đoàn UBND xã triển khai thực hiện.';
+    } else if (targetText.includes('56 Chi đoàn') || targetText === 'ALL') {
+      dynamicNotes = 'Đề nghị toàn bộ 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã triển khai thực hiện đầy đủ và đúng thời gian quy định.';
+    }
+
+    // Phát thông báo tự động khi ban hành văn bản mang đúng đối tượng gửi đến
     const autoNoti = {
       id: `noti-${Date.now()}`,
       title: `📄 Ban hành Văn bản số ${newDoc.doc_number}`,
       content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa ban hành văn bản số ${newDoc.doc_number}: "${newDoc.title}". Đề nghị các đơn vị kiểm tra và thực hiện.`,
-      target_scope: targetText === 'ALL' ? 'Tất cả 30 Chi đoàn Ấp' : targetText,
+      target_scope: targetText,
+      activity_details: {
+        notes: dynamicNotes
+      },
       priority: 'Trung bình',
       time_ago: 'Vừa xong'
     };
     const updatedNotis = await syncSaveNotification(autoNoti);
     setNotificationsList(updatedNotis);
 
-    triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới đúng các đơn vị được phân công!`);
+    triggerToast(`Đã ban hành văn bản số ${newDoc.doc_number} tới ${targetText}!`);
   };
 
   const handleDeleteDocument = async (docId, docTitle = '') => {

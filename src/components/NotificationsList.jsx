@@ -57,7 +57,7 @@ export default function NotificationsList({ notifications = [], currentRole, set
                   </div>
                   {n.content && <div className="text-secondary mb-1" style={{ fontSize: '11.5px' }}>{n.content}</div>}
                   <div className="d-flex align-items-center justify-content-between text-muted mt-2 pt-1 border-top" style={{ fontSize: '10.5px' }}>
-                    <span>📌 {n.target_scope || '30 Chi đoàn Ấp'}</span>
+                    <span>📌 Gửi đến: {n.target_scope || 'Tất cả 56 Chi đoàn / Đơn vị'}</span>
                     <div className="d-flex align-items-center gap-2">
                       <span>{n.time_ago || 'Vừa xong'}</span>
                       <ReceiptConfirmationBox 

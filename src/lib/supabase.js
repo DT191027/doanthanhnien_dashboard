@@ -243,6 +243,75 @@ export const COMPETITION_CLUSTERS = [
 ];
 
 // All Accounts use the official Youth Union logo for avatars!
+
+// 4 Target Scope Blocks for dispatching documents & notifications
+export const TARGET_BLOCKS = [
+  {
+    id: 'BLOCK_RESIDENTIAL',
+    name: 'Khối Dân cư (30 Chi đoàn Ấp)',
+    shortName: 'Khối Dân cư (30 Ấp)',
+    scopeValue: 'Khối Dân cư (30 Chi đoàn Ấp)',
+    icon: '🏘️',
+    badge: '30 Chi đoàn Ấp',
+    desc: '30 Chi đoàn Ấp trên địa bàn dân cư (Cụm thi đua số 1 đến Cụm thi đua số 6)',
+    clusterIds: ['cum-1', 'cum-2', 'cum-3', 'cum-4', 'cum-5', 'cum-6']
+  },
+  {
+    id: 'BLOCK_SCHOOL',
+    name: 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)',
+    shortName: 'Khối Trường học',
+    scopeValue: 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)',
+    icon: '🏫',
+    badge: 'Trường học & GDNN',
+    desc: 'Các trường THPT, TT GDNN - GDTX, THCS, Tiểu học và Mầm non (Cụm thi đua 7, 8, 9, 10)',
+    clusterIds: ['cum-7', 'cum-8', 'cum-9', 'cum-10']
+  },
+  {
+    id: 'BLOCK_ENTERPRISE',
+    name: 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)',
+    shortName: 'Khối Ngoài nhà nước',
+    scopeValue: 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)',
+    icon: '🏢',
+    badge: 'DN & Ngoài NN',
+    desc: 'Các công ty, doanh nghiệp ngoài nhà nước và cơ sở MN ngoài công lập (Cụm thi đua 11)',
+    clusterIds: ['cum-11']
+  },
+  {
+    id: 'BLOCK_ARMED_FORCES',
+    name: 'Khối Lực lượng vũ trang & Cơ quan',
+    shortName: 'Khối LLVT & Cơ quan',
+    scopeValue: 'Khối Lực lượng vũ trang & Cơ quan',
+    icon: '🛡️',
+    badge: 'LLVT & Cơ quan',
+    desc: 'Chi đoàn Công an, Quân sự, Trạm Y tế, Chi đoàn UBND xã (Cụm thi đua 12)',
+    clusterIds: ['cum-12']
+  },
+  {
+    id: 'BLOCK_ALL',
+    name: 'Tất cả 56 Chi đoàn / Đơn vị',
+    shortName: 'Tất cả 56 Chi đoàn',
+    scopeValue: 'Tất cả 56 Chi đoàn / Đơn vị',
+    icon: '📢',
+    badge: 'Toàn xã (56 đơn vị)',
+    desc: 'Toàn bộ 56 Chi đoàn, Đoàn trường & Đơn vị trực thuộc Đoàn xã Xuân Thới Sơn',
+    clusterIds: ['cum-1', 'cum-2', 'cum-3', 'cum-4', 'cum-5', 'cum-6', 'cum-7', 'cum-8', 'cum-9', 'cum-10', 'cum-11', 'cum-12']
+  }
+];
+
+export function getBranchesForBlock(blockKey) {
+  const block = TARGET_BLOCKS.find(b => b.id === blockKey || b.name === blockKey || b.scopeValue === blockKey || b.shortName === blockKey);
+  if (!block) return [];
+  if (block.id === 'BLOCK_ALL') return ALL_BRANCHES.map(b => b.name);
+  const matchedClusters = COMPETITION_CLUSTERS.filter(c => block.clusterIds.includes(c.id));
+  const result = [];
+  matchedClusters.forEach(c => {
+    (c.branches || []).forEach(b => {
+      if (!result.includes(b)) result.push(b);
+    });
+  });
+  return result;
+}
+
 export const INITIAL_ROLES = [
   {
     id: 'doan-xa',
@@ -736,7 +805,6 @@ export function notifySyncEvent(type, payload) {
 export function isItemTargetedToUser(targetScope, currentUser) {
   if (!currentUser) return true;
   if (currentUser.role === 'doan_xa' || currentUser.role === 'admin') return true;
-
   if (!targetScope) return true;
 
   const userBranch = String(currentUser?.branch_name || currentUser?.full_name || currentUser?.title || '');
@@ -744,77 +812,98 @@ export function isItemTargetedToUser(targetScope, currentUser) {
 
   const cleanUserBranch = userBranch.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
 
-  // Handle Array of target scopes (when multiple units are selected)
-  if (Array.isArray(targetScope)) {
+  // Helper function to test single scope string
+  const matchesSingleScope = (scope) => {
+    if (!scope) return true;
+    const s = String(scope).trim();
     if (
-      targetScope.length === 0 || 
-      targetScope.includes('ALL') || 
-      targetScope.includes('Tất cả 30 Chi đoàn Ấp') || 
-      targetScope.includes('Tất cả 56 Chi đoàn / Đơn vị') || 
-      targetScope.includes('Tất cả')
+      s === 'ALL' || 
+      s === 'Tất cả 30 Chi đoàn Ấp' || 
+      s === 'Tất cả 56 Chi đoàn / Đơn vị' || 
+      s.includes('56 Chi đoàn') || 
+      s === 'Tất cả'
     ) {
       return true;
     }
-    return targetScope.some(scope => {
-      if (typeof scope !== 'string') return false;
-      const cleanScope = scope.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
-      return scope === userBranch ||
-        scope.includes(userBranch) ||
-        userBranch.includes(scope) ||
-        (cleanUserBranch && scope.includes(cleanUserBranch)) ||
-        (cleanUserBranch && cleanScope && (cleanScope.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScope)));
-    });
-  }
 
-  // Ensure targetScope is string
-  const scopeStr = String(targetScope);
-
-  if (
-    scopeStr === 'ALL' || 
-    scopeStr === 'Tất cả 30 Chi đoàn Ấp' || 
-    scopeStr === 'Tất cả 56 Chi đoàn / Đơn vị' || 
-    scopeStr.includes('30 Chi đoàn') || 
-    scopeStr.includes('56 Chi đoàn') || 
-    scopeStr === 'Tất cả'
-  ) {
-    return true;
-  }
-
-  const cleanScopeStr = scopeStr.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
-
-  // 1. Direct match with branch name or code
-  if (
-    scopeStr === userBranch ||
-    scopeStr.includes(userBranch) ||
-    userBranch.includes(scopeStr) ||
-    (cleanUserBranch && scopeStr.includes(cleanUserBranch)) ||
-    (cleanUserBranch && cleanScopeStr && (cleanScopeStr.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScopeStr)))
-  ) {
-    return true;
-  }
-
-  // 2. Check if targetScope is a Competition Cluster (Cụm thi đua số 1 - 6)
-  if (scopeStr.startsWith('Cụm thi đua') || scopeStr.startsWith('cum-')) {
-    const cluster = COMPETITION_CLUSTERS.find(c =>
-      c.name === scopeStr ||
-      c.id === scopeStr ||
-      (c.label && c.label.includes(scopeStr)) ||
-      scopeStr.includes(c.name)
-    );
-    if (cluster) {
-      const isInCluster = cluster.branches.some(b => {
-        const cleanB = b.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
-        return b === userBranch ||
-          b.includes(userBranch) ||
-          userBranch.includes(b) ||
-          (cleanUserBranch && b.includes(cleanUserBranch)) ||
-          (cleanUserBranch && cleanB && cleanB === cleanUserBranch);
-      });
-      if (isInCluster) return true;
+    // 1. Khối Dân cư (30 Chi đoàn Ấp)
+    if (s.includes('Dân cư') || s.includes('30 Ấp') || s.includes('30 Chi đoàn')) {
+      const residentialClusters = ['cum-1', 'cum-2', 'cum-3', 'cum-4', 'cum-5', 'cum-6'];
+      const matched = COMPETITION_CLUSTERS.filter(c => residentialClusters.includes(c.id)).some(c => 
+        (c.branches || []).some(b => b === userBranch || b.includes(userBranch) || userBranch.includes(b) || (cleanUserBranch && b.includes(cleanUserBranch)))
+      );
+      return matched || userBranch.includes('Ấp');
     }
+
+    // 2. Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)
+    if (s.includes('Trường học') || s.includes('Cấp 3') || s.includes('Cấp 2') || s.includes('Mầm non') || s.includes('Tiểu học')) {
+      const schoolClusters = ['cum-7', 'cum-8', 'cum-9', 'cum-10'];
+      const matched = COMPETITION_CLUSTERS.filter(c => schoolClusters.includes(c.id)).some(c => 
+        (c.branches || []).some(b => b === userBranch || b.includes(userBranch) || userBranch.includes(b) || (cleanUserBranch && b.includes(cleanUserBranch)))
+      );
+      return matched || /MN |Mầm non|TH |Tiểu học|THCS|THPT|Tre Việt|GDNN|GDTX|Tạ Uyên|Trường/i.test(userBranch);
+    }
+
+    // 3. Khối Ngoài nhà nước (Doanh nghiệp, Công ty)
+    if (s.includes('Ngoài nhà nước') || s.includes('Công ty') || s.includes('Doanh nghiệp')) {
+      const enterpriseClusters = ['cum-11'];
+      const matched = COMPETITION_CLUSTERS.filter(c => enterpriseClusters.includes(c.id)).some(c => 
+        (c.branches || []).some(b => b === userBranch || b.includes(userBranch) || userBranch.includes(b) || (cleanUserBranch && b.includes(cleanUserBranch)))
+      );
+      return matched || /Sambu|Thép Việt|Bút chì Màu|Hoa Lài|Cty|Công ty|Doanh nghiệp/i.test(userBranch);
+    }
+
+    // 4. Khối Lực lượng vũ trang & Cơ quan
+    if (s.includes('Lực lượng vũ trang') || s.includes('Vũ trang') || s.includes('Cơ quan')) {
+      const armedClusters = ['cum-12'];
+      const matched = COMPETITION_CLUSTERS.filter(c => armedClusters.includes(c.id)).some(c => 
+        (c.branches || []).some(b => b === userBranch || b.includes(userBranch) || userBranch.includes(b) || (cleanUserBranch && b.includes(cleanUserBranch)))
+      );
+      return matched || /Công an|Quân sự|Trạm Y tế|UBND/i.test(userBranch);
+    }
+
+    // 5. Direct match with branch name
+    const cleanScope = s.replace(/^Bí thư\s*/i, '').replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+    if (
+      s === userBranch ||
+      s.includes(userBranch) ||
+      userBranch.includes(s) ||
+      (cleanUserBranch && s.includes(cleanUserBranch)) ||
+      (cleanUserBranch && cleanScope && (cleanScope.includes(cleanUserBranch) || cleanUserBranch.includes(cleanScope)))
+    ) {
+      return true;
+    }
+
+    // 6. Check Cụm thi đua
+    if (s.startsWith('Cụm thi đua') || s.startsWith('cum-')) {
+      const cluster = COMPETITION_CLUSTERS.find(c =>
+        c.name === s ||
+        c.id === s ||
+        (c.label && c.label.includes(s)) ||
+        s.includes(c.name)
+      );
+      if (cluster) {
+        return (cluster.branches || []).some(b => {
+          const cleanB = b.replace(/^Chi đoàn\s*/i, '').replace(/^Ấp\s*/i, '').trim();
+          return b === userBranch ||
+            b.includes(userBranch) ||
+            userBranch.includes(b) ||
+            (cleanUserBranch && b.includes(cleanUserBranch)) ||
+            (cleanUserBranch && cleanB && cleanB === cleanUserBranch);
+        });
+      }
+    }
+
+    return false;
+  };
+
+  // Handle Array of target scopes
+  if (Array.isArray(targetScope)) {
+    if (targetScope.length === 0) return true;
+    return targetScope.some(scope => matchesSingleScope(scope));
   }
 
-  return false;
+  return matchesSingleScope(targetScope);
 }
 
 export function getPersistedData(key, fallback = []) {

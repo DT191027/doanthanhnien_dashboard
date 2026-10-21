@@ -104,12 +104,28 @@ export default function App() {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [selectedActivityDetail, setSelectedActivityDetail] = useState(null);
   const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
+  const [showGpsModal, setShowGpsModal] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState(() => {
+    try {
+      return localStorage.getItem('xts_gps_status') || 'default';
+    } catch (e) {
+      return 'default';
+    }
+  });
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     try {
       sessionStorage.setItem('xts_current_user', JSON.stringify(user));
     } catch (e) {}
+    // Khi vừa đăng nhập bằng tài khoản, mật khẩu: hiển thị popup cài đặt cấp quyền điểm danh GPS
+    setShowGpsModal(true);
+    triggerToast(`Đăng nhập thành công với vai trò ${user.full_name}! Vui lòng kích hoạt điểm danh GPS.`);
+  };
+
+  const handleGpsGranted = (coords) => {
+    setGpsStatus('granted');
+    triggerToast('Đã cấp quyền GPS & kích hoạt thành công phương thức điểm danh xác thực vị trí!');
   };
 
   const handleLogout = () => {
@@ -751,6 +767,8 @@ export default function App() {
           unreadMsgCount={userNotifications.length > 0 ? 1 : 0}
           mobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
+          onOpenGpsModal={() => setShowGpsModal(true)}
+          gpsStatus={gpsStatus}
         />
 
         {/* Workspace Body */}
@@ -1081,6 +1099,13 @@ export default function App() {
         show={showCreateTaskModal}
         onClose={() => setShowCreateTaskModal(false)}
         onSave={handleAddTask}
+      />
+
+      <GpsPermissionModal
+        show={showGpsModal}
+        onClose={() => setShowGpsModal(false)}
+        onPermissionGranted={handleGpsGranted}
+        currentUser={currentUser}
       />
 
       <ActivityAttendanceModal 

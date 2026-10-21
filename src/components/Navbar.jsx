@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, MessageSquare, ChevronDown, LogOut, Menu, X } from 'lucide-react';
+import { Search, Bell, MessageSquare, ChevronDown, LogOut, Menu, X, MapPin, CheckCircle } from 'lucide-react';
 
 export default function Navbar({ 
   currentRole, 
@@ -43,6 +43,28 @@ export default function Navbar({
 
       {/* Right Controls */}
       <div className="d-flex align-items-center gap-3">
+        {/* Nút điểm danh bằng cách xác thực GPS theo yêu cầu người dùng */}
+        <button
+          type="button"
+          className="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-pill border transition-all shadow-xs"
+          style={{
+            backgroundColor: gpsStatus === 'granted' ? '#ECFDF5' : '#FEF3C7',
+            borderColor: gpsStatus === 'granted' ? '#A7F3D0' : '#FDE68A',
+            color: gpsStatus === 'granted' ? '#065F46' : '#92400E',
+            fontSize: '12px',
+            fontWeight: 650,
+            cursor: 'pointer'
+          }}
+          onClick={onOpenGpsModal}
+          title="Phương thức điểm danh bằng xác thực GPS"
+        >
+          <MapPin size={15} className={gpsStatus === 'granted' ? 'text-success' : 'text-warning'} />
+          <span className="d-none d-sm-inline">
+            {gpsStatus === 'granted' ? 'GPS: Đã bật điểm danh' : 'Bật điểm danh GPS'}
+          </span>
+          {gpsStatus === 'granted' && <CheckCircle size={13} className="text-success ms-0.5" />}
+        </button>
+
         {/* Bell Notifications */}
         <div className="icon-button" onClick={onOpenNotifications} title="Thông báo">
           <Bell size={18} />

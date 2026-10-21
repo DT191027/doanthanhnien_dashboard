@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ALL_BRANCHES, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
+import { ALL_BRANCHES, getBranchClusterName, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
@@ -1542,11 +1542,13 @@ export function CreateTaskModal({ show, onClose, onSave }) {
   );
 }
 
-// 7. Activity Attendance & Urgent Task Evaluation Modal
+// 7. Activity Attendance & Urgent Task Evaluation Modal (Supporting all 56 Chi đoàn & 12 Competition Clusters)
 export function ActivityAttendanceModal({ show, onClose, activities = [], attendanceRecords = {}, onSaveAttendance }) {
   const [selectedActivityId, setSelectedActivityId] = useState('');
   const [attendanceData, setAttendanceData] = useState({});
   const [isUrgentTask, setIsUrgentTask] = useState(false);
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalClusterFilter, setModalClusterFilter] = useState('ALL');
 
   useEffect(() => {
     if (activities && activities.length > 0 && !selectedActivityId) {
@@ -1590,6 +1592,16 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
     setAttendanceData(nextMap);
   };
 
+  const handleSelectCluster = (clusterBranches, val) => {
+    setAttendanceData(prev => {
+      const updated = { ...prev };
+      clusterBranches.forEach(bName => {
+        updated[bName] = val;
+      });
+      return updated;
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
@@ -1609,17 +1621,35 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
     onClose();
   };
 
+  const totalBranchesCount = ALL_BRANCHES.length; // 56 Chi đoàn / Đơn vị
   const attendedCount = Object.values(attendanceData).filter(Boolean).length;
+  const participationPercent = totalBranchesCount > 0 ? Math.round((attendedCount / totalBranchesCount) * 100) : 0;
+
+  // Filter clusters and branches for display
+  const filteredClusters = COMPETITION_CLUSTERS.filter(c => {
+    if (modalClusterFilter === 'ALL') return true;
+    if (modalClusterFilter === 'HAMLETS') return ['cum-1', 'cum-2', 'cum-3', 'cum-4', 'cum-5', 'cum-6'].includes(c.id);
+    if (modalClusterFilter === 'UNITS') return ['cum-7', 'cum-8', 'cum-9', 'cum-10', 'cum-11', 'cum-12'].includes(c.id);
+    return c.name === modalClusterFilter || c.id === modalClusterFilter;
+  });
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg">
+      <div className="modal-dialog modal-dialog-centered modal-xl" style={{ maxWidth: '1000px' }}>
         <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
-              <CheckCircle className="text-success" size={22} />
-              Điểm Danh & Kiểm Tra Số Lượng Chi Đoàn Tham Gia
-            </h5>
+            <div>
+              <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '17px' }}>
+                <CheckCircle className="text-success" size={24} />
+                Điểm Danh & Kiểm Tra Số Lượng Chi Đoàn Tham Gia
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 py-1 px-2.5">
+                  56 Chi đoàn / Đơn vị
+                </span>
+              </h5>
+              <div className="text-muted" style={{ fontSize: '12px' }}>
+                Sắp xếp và phân loại theo 12 Cụm thi đua chính thức năm 2026 của Đoàn xã Xuân Thới Sơn
+              </div>
+            </div>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <form onSubmit={handleSubmit}>
@@ -1627,7 +1657,9 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
               {/* Select Activity / Task */}
               <div className="row g-3 mb-3">
                 <div className="col-md-8">
-                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>Chọn Hoạt động / Công việc phát động</label>
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: '13px' }}>
+                    Chọn Hoạt động / Công việc phát động
+                  </label>
                   <select 
                     className="form-select"
                     value={selectedActivityId}
@@ -1639,7 +1671,7 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
                       </option>
                     ))}
                     {activities.length === 0 && (
-                      <option value="default-act">📌 Hoạt động phát động chung 30 Chi đoàn Ấp</option>
+                      <option value="default-act">📌 Hoạt động phát động chung 56 Chi đoàn / Đơn vị</option>
                     )}
                   </select>
                 </div>
@@ -1659,56 +1691,185 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
                 </div>
               </div>
 
-              {/* Attendance Quick Tools & Counter */}
-              <div className="p-3 bg-light rounded-3 border mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+              {/* Attendance Quick Tools & Counter Banner */}
+              <div className="p-3 bg-light rounded-3 border mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div>
-                  <span className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
-                    Kết quả điểm danh: <span className="text-primary fw-extrabold">{attendedCount} / 30</span> Chi đoàn tham gia
-                  </span>
-                  <div className="text-secondary" style={{ fontSize: '11px' }}>
-                    Tỷ lệ tham gia đợt này: <strong className="text-success">{Math.round((attendedCount / 30) * 100)}%</strong>
+                  <div className="fw-bold text-dark" style={{ fontSize: '14.5px' }}>
+                    Kết quả điểm danh: <span className="text-primary fw-extrabold" style={{ fontSize: '18px' }}>{attendedCount} / {totalBranchesCount}</span> Chi đoàn tham gia
+                  </div>
+                  <div className="text-secondary mt-0.5" style={{ fontSize: '12px' }}>
+                    Tỷ lệ tham gia đợt này: <strong className="text-success fw-bold" style={{ fontSize: '13px' }}>{participationPercent}%</strong>
+                    <span className="ms-2 text-muted">({totalBranchesCount - attendedCount} chi đoàn vắng)</span>
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <button 
                     type="button" 
-                    className="btn btn-sm btn-outline-success fw-semibold px-2.5 py-1"
-                    style={{ fontSize: '11.5px' }}
+                    className="btn btn-sm btn-outline-success fw-semibold px-3 py-1.5 shadow-sm"
+                    style={{ fontSize: '12px' }}
                     onClick={() => handleSelectAll(true)}
                   >
-                    ✓ Chọn tất cả (30/30)
+                    ✓ Chọn tất cả ({totalBranchesCount}/{totalBranchesCount})
                   </button>
                   <button 
                     type="button" 
-                    className="btn btn-sm btn-outline-secondary fw-semibold px-2.5 py-1"
-                    style={{ fontSize: '11.5px' }}
+                    className="btn btn-sm btn-outline-secondary fw-semibold px-3 py-1.5"
+                    style={{ fontSize: '12px' }}
                     onClick={() => handleSelectAll(false)}
                   >
-                    ✗ Bỏ chọn tất cả
+                    ✕ Bỏ chọn tất cả
                   </button>
                 </div>
               </div>
 
-              {/* 56 Units Checklist Grid */}
-              <div className="row g-2" style={{ maxHeight: '340px', overflowY: 'auto' }}>
-                {ALL_BRANCHES.map((b) => {
-                  const isChecked = Boolean(attendanceData[b.name]);
+              {/* Filter and Search Bar for Modal */}
+              <div className="row g-2 mb-3">
+                <div className="col-12 col-md-6">
+                  <div className="input-group input-group-sm">
+                    <span className="input-group-text bg-white border-end-0">🔍</span>
+                    <input 
+                      type="text" 
+                      className="form-control border-start-0" 
+                      placeholder="Tìm kiếm nhanh Chi đoàn, Bí thư..." 
+                      value={modalSearch}
+                      onChange={(e) => setModalSearch(e.target.value)}
+                    />
+                    {modalSearch && (
+                      <button className="btn btn-outline-secondary" type="button" onClick={() => setModalSearch('')}>✕</button>
+                    )}
+                  </div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-center gap-1.5 justify-content-md-end">
+                    <button 
+                      type="button"
+                      className={`btn btn-sm ${modalClusterFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      style={{ fontSize: '11px' }}
+                      onClick={() => setModalClusterFilter('ALL')}
+                    >
+                      Tất cả (56)
+                    </button>
+                    <button 
+                      type="button"
+                      className={`btn btn-sm ${modalClusterFilter === 'HAMLETS' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      style={{ fontSize: '11px' }}
+                      onClick={() => setModalClusterFilter('HAMLETS')}
+                    >
+                      30 Chi đoàn Ấp (Cụm 1-6)
+                    </button>
+                    <button 
+                      type="button"
+                      className={`btn btn-sm ${modalClusterFilter === 'UNITS' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      style={{ fontSize: '11px' }}
+                      onClick={() => setModalClusterFilter('UNITS')}
+                    >
+                      26 Trường & Đơn vị (Cụm 7-12)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 56 Units Checklist Grouped By 12 Clusters */}
+              <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                {filteredClusters.map(cluster => {
+                  const clusterBranchesList = (cluster.branches || []).map(bName => {
+                    const found = ALL_BRANCHES.find(b => b.name === bName || b.name.includes(bName) || bName.includes(b.name));
+                    return found || { id: bName, name: bName, secretary_name: 'Bí thư Chi đoàn' };
+                  });
+
+                  // Filter by search keyword
+                  const kw = modalSearch.toLowerCase().trim();
+                  const displayedBranches = clusterBranchesList.filter(b => 
+                    !kw || b.name.toLowerCase().includes(kw) || String(b.secretary_name || '').toLowerCase().includes(kw)
+                  );
+
+                  if (displayedBranches.length === 0) return null;
+
+                  const clusterAttended = displayedBranches.filter(b => attendanceData[b.name]).length;
+
                   return (
-                    <div key={b.id} className="col-12 col-md-6 col-lg-4">
-                      <div 
-                        className={`p-2.5 rounded-3 border cursor-pointer transition d-flex align-items-center justify-content-between ${isChecked ? 'bg-success-subtle border-success' : 'bg-white border-light-subtle opacity-75'}`}
-                        onClick={() => handleToggleBranch(b.name)}
-                      >
-                        <div>
-                          <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>{b.name}</div>
-                          <div className="text-muted" style={{ fontSize: '10.5px' }}>Bí thư: {b.secretary_name}</div>
+                    <div key={cluster.id} className="mb-3.5 p-2.5 bg-white rounded-3 border shadow-xs">
+                      {/* Cluster Header */}
+                      <div className="d-flex flex-wrap align-items-center justify-content-between pb-2 mb-2 border-bottom gap-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-primary text-white fw-bold px-2 py-1" style={{ fontSize: '11.5px' }}>
+                            🏆 {cluster.name}
+                          </span>
+                          <span className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>
+                            ({clusterAttended}/{displayedBranches.length} tham gia)
+                          </span>
+                          {cluster.lead && (
+                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning" style={{ fontSize: '10px' }} title="Cụm trưởng">
+                              ⭐ Trưởng: {cluster.lead.replace('Chi đoàn Ấp ', '').replace('Chi đoàn ', '')}
+                            </span>
+                          )}
+                          {cluster.deputy && (
+                            <span className="badge bg-info-subtle text-info-emphasis border border-info" style={{ fontSize: '10px' }} title="Cụm phó">
+                              🎖️ Phó: {cluster.deputy.replace('Chi đoàn Ấp ', '').replace('Chi đoàn ', '')}
+                            </span>
+                          )}
                         </div>
-                        <input 
-                          type="checkbox" 
-                          className="form-check-input cursor-pointer"
-                          checked={isChecked}
-                          onChange={() => handleToggleBranch(b.name)}
-                        />
+
+                        <div className="d-flex align-items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-outline-success py-0.5 px-2"
+                            style={{ fontSize: '10.5px' }}
+                            onClick={() => handleSelectCluster(displayedBranches.map(b => b.name), true)}
+                          >
+                            ✓ Chọn cụm
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-outline-secondary py-0.5 px-2"
+                            style={{ fontSize: '10.5px' }}
+                            onClick={() => handleSelectCluster(displayedBranches.map(b => b.name), false)}
+                          >
+                            ✕ Bỏ cụm
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Branches in this cluster */}
+                      <div className="row g-2">
+                        {displayedBranches.map(b => {
+                          const isChecked = Boolean(attendanceData[b.name]);
+                          const isLead = cluster.lead && (cluster.lead === b.name || b.name.includes(cluster.lead) || cluster.lead.includes(b.name));
+                          const isDeputy = cluster.deputy && (cluster.deputy === b.name || b.name.includes(cluster.deputy) || cluster.deputy.includes(b.name));
+
+                          return (
+                            <div key={b.id || b.name} className="col-12 col-md-6 col-lg-4">
+                              <div 
+                                className={`p-2 rounded-2 border cursor-pointer transition d-flex align-items-center justify-content-between ${isChecked ? 'bg-success-subtle border-success' : 'bg-light border-light-subtle opacity-75'}`}
+                                onClick={() => handleToggleBranch(b.name)}
+                                style={{ minHeight: '52px' }}
+                              >
+                                <div className="me-2 text-truncate">
+                                  <div className="d-flex align-items-center gap-1">
+                                    <span className="fw-bold text-dark text-truncate" style={{ fontSize: '12px' }} title={b.name}>
+                                      {b.name}
+                                    </span>
+                                    {isLead && (
+                                      <span className="badge bg-warning text-dark px-1 py-0" style={{ fontSize: '9px' }}>Trưởng</span>
+                                    )}
+                                    {isDeputy && (
+                                      <span className="badge bg-info text-white px-1 py-0" style={{ fontSize: '9px' }}>Phó</span>
+                                    )}
+                                  </div>
+                                  <div className="text-muted text-truncate" style={{ fontSize: '10px' }}>
+                                    {b.secretary_name || 'Bí thư Chi đoàn'}
+                                  </div>
+                                </div>
+                                <input 
+                                  type="checkbox" 
+                                  className="form-check-input cursor-pointer flex-shrink-0"
+                                  checked={isChecked}
+                                  onChange={() => handleToggleBranch(b.name)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1719,7 +1880,7 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
               <button type="button" className="btn btn-light border px-4" onClick={onClose}>Hủy</button>
               <button type="submit" className="btn btn-success px-4 fw-semibold d-flex align-items-center gap-2" style={{ backgroundColor: '#16A34A', border: 'none' }}>
                 <CheckCircle size={16} />
-                <span>Lưu Điểm Danh & Đánh Giá</span>
+                <span>Lưu Điểm Danh ({attendedCount}/{totalBranchesCount})</span>
               </button>
             </div>
           </form>

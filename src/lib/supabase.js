@@ -15,38 +15,49 @@ export const supabase = isSupabaseConfigured
 
 export const OFFICIAL_ADDRESS = 'Trụ sở Đảng ủy xã Xuân Thới Sơn: 2/2 Nguyễn Thị Nuôi, Ấp 54, Xã Xuân Thới Sơn, TP Hồ Chí Minh, Việt Nam';
 
-// Official 30 Hamlets (Ấp) from Administrator Image
+// Official 30 Hamlets (Ấp) sorted by Official 2026 Competition Clusters (Cụm 1 - Cụm 6)
 export const OFFICIAL_HAMLETS = [
-  { code: 'BM', name: 'Ấp Bùi Môn', email: 'apbuimon@xuanthoison.gov.vn' },
-  { code: 'DT', name: 'Ấp Dân Thắng', email: 'apdanthang@xuanthoison.gov.vn' },
-  { code: 'MH2', name: 'Ấp Mỹ Hoà 2', email: 'apmyhoa2@xuanthoison.gov.vn' },
-  { code: 'MH3', name: 'Ấp Mỹ Hoà 3', email: 'apmyhoa3@xuanthoison.gov.vn' },
-  { code: 'MH4', name: 'Ấp Mỹ Hoà 4', email: 'apmyhoa4@xuanthoison.gov.vn' },
-  { code: 'MH5', name: 'Ấp Mỹ Hoà 5', email: 'apmyhoa5@xuanthoison.gov.vn' },
-  { code: 'NX', name: 'Ấp Nam Xuân', email: 'apnamxuan@xuanthoison.gov.vn' },
-  { code: 'NX1', name: 'Ấp Nam Xuân 1', email: 'apnamxuan1@xuanthoison.gov.vn' },
-  { code: 'NX2', name: 'Ấp Nam Xuân 2', email: 'apnamxuan2@xuanthoison.gov.vn' },
-  { code: 'NT', name: 'Ấp Nhị Tân', email: 'apnhitan@xuanthoison.gov.vn' },
-  { code: 'NT1', name: 'Ấp Nhị Tân 1', email: 'apnhitan1@xuanthoison.gov.vn' },
-  { code: 'NT2', name: 'Ấp Nhị Tân 2', email: 'apnhitan2@xuanthoison.gov.vn' },
-  { code: 'NT3', name: 'Ấp Nhị Tân 3', email: 'apnhitan3@xuanthoison.gov.vn' },
-  { code: 'NXX', name: 'Ấp Nhị Xuân', email: 'apnhixuan@xuanthoison.gov.vn' },
-  { code: 'NXX1', name: 'Ấp Nhị Xuân 1', email: 'apnhixuan1@xuanthoison.gov.vn' },
-  { code: 'TL', name: 'Ấp Tân Lập', email: 'aptanlap@xuanthoison.gov.vn' },
-  { code: 'TTN', name: 'Ấp Tân Thới Nhì', email: 'aptanthoinhi@xuanthoison.gov.vn' },
-  { code: 'TT', name: 'Ấp Tân Tiến', email: 'aptantien@xuanthoison.gov.vn' },
-  { code: 'TN1', name: 'Ấp Thống Nhất 1', email: 'apthongnhat1@xuanthoison.gov.vn' },
-  { code: 'TN2', name: 'Ấp Thống Nhất 2', email: 'apthongnhat2@xuanthoison.gov.vn' },
-  { code: 'TS', name: 'Ấp Thới Sơn', email: 'apthoison@xuanthoison.gov.vn' },
-  { code: 'XT', name: 'Ấp Xuân Thới', email: 'apxuanthoi@xuanthoison.gov.vn' },
-  { code: 'XT1', name: 'Ấp Xuân Thới 1', email: 'apxuanthoi1@xuanthoison.gov.vn' },
-  { code: 'XT2', name: 'Ấp Xuân Thới 2', email: 'apxuanthoi2@xuanthoison.gov.vn' },
-  { code: 'XTD', name: 'Ấp Xuân Thới Đông', email: 'apxuanthoidong@xuanthoison.gov.vn' },
-  { code: 'XTD1', name: 'Ấp Xuân Thới Đông 1', email: 'apxuanthoidong1@xuanthoison.gov.vn' },
-  { code: 'XTD2', name: 'Ấp Xuân Thới Đông 2', email: 'apxuanthoidong2@xuanthoison.gov.vn' },
-  { code: 'XTD3', name: 'Ấp Xuân Thới Đông 3', email: 'apxuanthoidong3@xuanthoison.gov.vn' },
-  { code: 'XTD4', name: 'Ấp Xuân Thới Đông 4', email: 'apxuanthoidong4@xuanthoison.gov.vn' },
-  { code: 'XTD5', name: 'Ấp Xuân Thới Đông 5', email: 'apxuanthoidong5@xuanthoison.gov.vn' }
+  // Cụm thi đua số 1
+  { code: 'MH4', name: 'Ấp Mỹ Hoà 4', email: 'apmyhoa4@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 1', role: 'Cụm trưởng' },
+  { code: 'MH2', name: 'Ấp Mỹ Hoà 2', email: 'apmyhoa2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 1', role: 'Cụm phó' },
+  { code: 'MH3', name: 'Ấp Mỹ Hoà 3', email: 'apmyhoa3@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 1', role: 'Thành viên' },
+  { code: 'MH5', name: 'Ấp Mỹ Hoà 5', email: 'apmyhoa5@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 1', role: 'Thành viên' },
+  { code: 'TT', name: 'Ấp Tân Tiến', email: 'aptantien@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 1', role: 'Thành viên' },
+
+  // Cụm thi đua số 2
+  { code: 'XTD2', name: 'Ấp Xuân Thới Đông 2', email: 'apxuanthoidong2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 2', role: 'Cụm trưởng' },
+  { code: 'XTD', name: 'Ấp Xuân Thới Đông', email: 'apxuanthoidong@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 2', role: 'Cụm phó' },
+  { code: 'XTD1', name: 'Ấp Xuân Thới Đông 1', email: 'apxuanthoidong1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 2', role: 'Thành viên' },
+  { code: 'XTD3', name: 'Ấp Xuân Thới Đông 3', email: 'apxuanthoidong3@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 2', role: 'Thành viên' },
+  { code: 'BM', name: 'Ấp Bùi Môn', email: 'apbuimon@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 2', role: 'Thành viên' },
+
+  // Cụm thi đua số 3
+  { code: 'NX1', name: 'Ấp Nam Xuân 1', email: 'apnamxuan1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 3', role: 'Cụm trưởng' },
+  { code: 'XTD5', name: 'Ấp Xuân Thới Đông 5', email: 'apxuanthoidong5@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 3', role: 'Cụm phó' },
+  { code: 'NX', name: 'Ấp Nam Xuân', email: 'apnamxuan@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 3', role: 'Thành viên' },
+  { code: 'NX2', name: 'Ấp Nam Xuân 2', email: 'apnamxuan2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 3', role: 'Thành viên' },
+  { code: 'XTD4', name: 'Ấp Xuân Thới Đông 4', email: 'apxuanthoidong4@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 3', role: 'Thành viên' },
+
+  // Cụm thi đua số 4
+  { code: 'XT1', name: 'Ấp Xuân Thới 1', email: 'apxuanthoi1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 4', role: 'Cụm trưởng' },
+  { code: 'TS', name: 'Ấp Thới Sơn', email: 'apthoison@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 4', role: 'Cụm phó' },
+  { code: 'XT', name: 'Ấp Xuân Thới', email: 'apxuanthoi@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 4', role: 'Thành viên' },
+  { code: 'XT2', name: 'Ấp Xuân Thới 2', email: 'apxuanthoi2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 4', role: 'Thành viên' },
+  { code: 'NT3', name: 'Ấp Nhị Tân 3', email: 'apnhitan3@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 4', role: 'Thành viên' },
+
+  // Cụm thi đua số 5
+  { code: 'NT1', name: 'Ấp Nhị Tân 1', email: 'apnhitan1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 5', role: 'Cụm trưởng' },
+  { code: 'DT', name: 'Ấp Dân Thắng', email: 'apdanthang@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 5', role: 'Cụm phó' },
+  { code: 'TTN', name: 'Ấp Tân Thới Nhì', email: 'aptanthoinhi@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 5', role: 'Thành viên' },
+  { code: 'TN1', name: 'Ấp Thống Nhất 1', email: 'apthongnhat1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 5', role: 'Thành viên' },
+  { code: 'TN2', name: 'Ấp Thống Nhất 2', email: 'apthongnhat2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 5', role: 'Thành viên' },
+
+  // Cụm thi đua số 6
+  { code: 'TL', name: 'Ấp Tân Lập', email: 'aptanlap@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 6', role: 'Cụm trưởng' },
+  { code: 'NXX', name: 'Ấp Nhị Xuân', email: 'apnhixuan@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 6', role: 'Cụm phó' },
+  { code: 'NT2', name: 'Ấp Nhị Tân 2', email: 'apnhitan2@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 6', role: 'Thành viên' },
+  { code: 'NXX1', name: 'Ấp Nhị Xuân 1', email: 'apnhixuan1@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 6', role: 'Thành viên' },
+  { code: 'NT', name: 'Ấp Nhị Tân', email: 'apnhitan@xuanthoison.gov.vn', cluster: 'Cụm thi đua số 6', role: 'Thành viên' }
 ];
 
 export const INITIAL_BRANCHES = OFFICIAL_HAMLETS.map((h, i) => ({
@@ -55,117 +66,179 @@ export const INITIAL_BRANCHES = OFFICIAL_HAMLETS.map((h, i) => ({
   name: `Chi đoàn ${h.name}`,
   secretary_name: `Bí thư Chi đoàn ${h.name}`,
   email: h.email,
-  member_count: 0
+  member_count: 0,
+  cluster_name: h.cluster,
+  cluster_role: h.role
 }));
 
-// Additional School & Unit Branches (Cụm 7 - Cụm 11)
+// Additional School & Unit Branches (Cụm 7 - Cụm 12) - 26 đơn vị
 export const SCHOOL_BRANCHES = [
-  // Cụm 7: Mầm non
-  { id: 'truong-1', name: 'Chi đoàn MN Hướng Dương', email: 'mnhuongduong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Hướng Dương', member_count: 0 },
-  { id: 'truong-2', name: 'Chi đoàn MN Cúc Họa Mi', email: 'mncuchoami@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Cúc Họa Mi', member_count: 0 },
-  { id: 'truong-3', name: 'Chi đoàn MN Xuân Thới Đông', email: 'mnxuanthoidong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Xuân Thới Đông', member_count: 0 },
-  { id: 'truong-4', name: 'Chi đoàn MN Nhị Xuân', email: 'mnnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Nhị Xuân', member_count: 0 },
-  { id: 'truong-5', name: 'Chi đoàn MN 19/8', email: 'mn198@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN 19/8', member_count: 0 },
+  // Cụm 7: Mầm non (5 đơn vị)
+  { id: 'truong-1', name: 'Chi đoàn MN Cúc Họa Mi', email: 'mncuchoami@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Cúc Họa Mi', member_count: 0, cluster_name: 'Cụm thi đua số 7', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-2', name: 'Chi đoàn MN Xuân Thới Đông', email: 'mnxuanthoidong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Xuân Thới Đông', member_count: 0, cluster_name: 'Cụm thi đua số 7', cluster_role: 'Cụm phó' },
+  { id: 'truong-3', name: 'Chi đoàn MN Hướng Dương', email: 'mnhuongduong@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Hướng Dương', member_count: 0, cluster_name: 'Cụm thi đua số 7', cluster_role: 'Thành viên' },
+  { id: 'truong-4', name: 'Chi đoàn MN Nhị Xuân', email: 'mnnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Nhị Xuân', member_count: 0, cluster_name: 'Cụm thi đua số 7', cluster_role: 'Thành viên' },
+  { id: 'truong-5', name: 'Chi đoàn MN 19/8', email: 'mn198@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN 19/8', member_count: 0, cluster_name: 'Cụm thi đua số 7', cluster_role: 'Thành viên' },
 
-  // Cụm 8: Tiểu học
-  { id: 'truong-6', name: 'Chi đoàn TH Lý Chính Thắng 2', email: 'thlychinhthang2@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lý Chính Thắng 2', member_count: 0 },
-  { id: 'truong-7', name: 'Chi đoàn TH Lê Văn Phiên', email: 'thlevanphien@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lê Văn Phiên', member_count: 0 },
-  { id: 'truong-8', name: 'Chi đoàn TH Nhị Tân', email: 'thnhitan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Tân', member_count: 0 },
-  { id: 'truong-9', name: 'Chi đoàn TH Nhị Xuân', email: 'thnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Xuân', member_count: 0 },
-  { id: 'truong-10', name: 'Chi đoàn TH Dương Công Khi', email: 'thduongcongkhi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Dương Công Khi', member_count: 0 },
-  { id: 'truong-11', name: 'Chi đoàn TH Trần Văn Mười', email: 'thtranvanmuoi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Trần Văn Mười', member_count: 0 },
-  { id: 'truong-12', name: 'Chi đoàn TH Tân Xuân', email: 'thtanxuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Tân Xuân', member_count: 0 },
+  // Cụm 8: Tiểu học & Giáo viên (8 đơn vị)
+  { id: 'truong-6', name: 'Chi đoàn TH Nhị Tân', email: 'thnhitan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Tân', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-7', name: 'Chi đoàn GV THPT Phạm Văn Sáng', email: 'cdgvthptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV THPT Phạm Văn Sáng', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Cụm phó' },
+  { id: 'truong-8', name: 'Chi đoàn TH Nhị Xuân', email: 'thnhixuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Nhị Xuân', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
+  { id: 'truong-9', name: 'Chi đoàn TH Trần Văn Mười', email: 'thtranvanmuoi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Trần Văn Mười', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
+  { id: 'truong-10', name: 'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn', email: 'cdgvgdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV TT GDNN - GDTX Hóc Môn', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
+  { id: 'truong-11', name: 'Chi đoàn TH Lý Chính Thắng 2', email: 'thlychinhthang2@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lý Chính Thắng 2', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
+  { id: 'truong-12', name: 'Chi đoàn TH Lê Văn Phiên', email: 'thlevanphien@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Lê Văn Phiên', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
+  { id: 'truong-13', name: 'Chi đoàn TH Dương Công Khi', email: 'thduongcongkhi@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TH Dương Công Khi', member_count: 0, cluster_name: 'Cụm thi đua số 8', cluster_role: 'Thành viên' },
 
-  // Cụm 9: THCS & Chi đoàn Giáo viên
-  { id: 'truong-13', name: 'Chi đoàn THCS Võ Văn Tần', email: 'thcsvovantan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Võ Văn Tần', member_count: 0 },
-  { id: 'truong-14', name: 'Chi đoàn THCS Tân Xuân', email: 'thcstanxuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Tân Xuân', member_count: 0 },
-  { id: 'truong-15', name: 'Chi đoàn THCS Nguyễn Hồng Đào', email: 'thcsnguyenhongdao@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Nguyễn Hồng Đào', member_count: 0 },
-  { id: 'truong-16', name: 'Chi đoàn TiH - THCS Tạ Uyên', email: 'tihthcstauyen@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TiH - THCS Tạ Uyên', member_count: 0 },
-  { id: 'truong-17', name: 'Chi đoàn GV THPT Phạm Văn Sáng', email: 'cdgvthptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV THPT Phạm Văn Sáng', member_count: 0 },
-  { id: 'truong-18', name: 'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn', email: 'cdgvgdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn', member_count: 0 },
+  // Cụm 9: THCS (4 đơn vị)
+  { id: 'truong-14', name: 'Chi đoàn THCS Nguyễn Hồng Đào', email: 'thcsnguyenhongdao@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Nguyễn Hồng Đào', member_count: 0, cluster_name: 'Cụm thi đua số 9', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-15', name: 'Chi đoàn THCS Võ Văn Tần', email: 'thcsvovantan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Võ Văn Tần', member_count: 0, cluster_name: 'Cụm thi đua số 9', cluster_role: 'Thành viên' },
+  { id: 'truong-16', name: 'Chi đoàn THCS Tân Xuân', email: 'thcstanxuan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn THCS Tân Xuân', member_count: 0, cluster_name: 'Cụm thi đua số 9', cluster_role: 'Thành viên' },
+  { id: 'truong-17', name: 'Chi đoàn TiH - THCS Tạ Uyên', email: 'tihthcstauyen@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn TiH - THCS Tạ Uyên', member_count: 0, cluster_name: 'Cụm thi đua số 9', cluster_role: 'Thành viên' },
 
-  // Cụm 10: Đoàn trường
-  { id: 'truong-19', name: 'Đoàn trường THPT Phạm Văn Sáng', email: 'thptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường THPT Phạm Văn Sáng', member_count: 0 },
-  { id: 'truong-20', name: 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', email: 'gdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', member_count: 0 },
-  { id: 'truong-21', name: 'Đoàn trường Tre Việt', email: 'treviet@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường Tre Việt', member_count: 0 },
+  // Cụm 10: Đoàn trường (3 đơn vị)
+  { id: 'truong-18', name: 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', email: 'gdnngdtxhocmon@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường TT GDNN - GDTX', member_count: 0, cluster_name: 'Cụm thi đua số 10', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-19', name: 'Đoàn trường THPT Phạm Văn Sáng', email: 'thptphamvansang@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường THPT Phạm Văn Sáng', member_count: 0, cluster_name: 'Cụm thi đua số 10', cluster_role: 'Thành viên' },
+  { id: 'truong-20', name: 'Đoàn trường Tre Việt', email: 'treviet@xuanthoison.gov.vn', secretary_name: 'Bí thư Đoàn trường Tre Việt', member_count: 0, cluster_name: 'Cụm thi đua số 10', cluster_role: 'Thành viên' },
 
-  // Cụm 11: Doanh nghiệp, Khối cơ quan, Tư thục
-  { id: 'truong-22', name: 'Chi đoàn Mẫu giáo Bút chì Màu', email: 'mgbutchimau@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Mẫu giáo Bút chì Màu', member_count: 0 },
-  { id: 'truong-23', name: 'Chi đoàn lớp MN Độc lập Hoa Lài', email: 'mnhoalai@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Độc lập Hoa Lài', member_count: 0 },
-  { id: 'truong-24', name: 'Chi đoàn Cty Sambu Vina Sports', email: 'sambuvinasports@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Cty Sambu Vina Sports', member_count: 0 },
-  { id: 'truong-25', name: 'Chi đoàn UBND xã', email: 'ubndxa@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn UBND xã', member_count: 0 },
-  { id: 'truong-26', name: 'Chi đoàn Trạm Y tế xã', email: 'tramytexa@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Trạm Y tế xã', member_count: 0 }
+  // Cụm 11: Doanh nghiệp, Ngoài công lập (4 đơn vị)
+  { id: 'truong-21', name: 'Chi đoàn Thép Việt', email: 'thepviet@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Thép Việt', member_count: 0, cluster_name: 'Cụm thi đua số 11', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-22', name: 'Chi đoàn Mẫu giáo Bút chì Màu', email: 'mgbutchimau@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MG Bút chì Màu', member_count: 0, cluster_name: 'Cụm thi đua số 11', cluster_role: 'Thành viên' },
+  { id: 'truong-23', name: 'Chi đoàn lớp MN Độc lập Hoa Lài', email: 'mnhoalai@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn MN Độc lập Hoa Lài', member_count: 0, cluster_name: 'Cụm thi đua số 11', cluster_role: 'Thành viên' },
+  { id: 'truong-24', name: 'Chi đoàn Cty Sambu Vina Sports', email: 'sambuvinasports@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Sambu Vina Sports', member_count: 0, cluster_name: 'Cụm thi đua số 11', cluster_role: 'Thành viên' },
+
+  // Cụm 12: Lực lượng vũ trang & Cơ quan (2 đơn vị - tổng đúng 56 chi đoàn)
+  { id: 'truong-25', name: 'Chi đoàn Công an', email: 'congan@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Công an', member_count: 0, cluster_name: 'Cụm thi đua số 12', cluster_role: 'Cụm trưởng' },
+  { id: 'truong-26', name: 'Chi đoàn Trạm Y tế xã', email: 'tramytexa@xuanthoison.gov.vn', secretary_name: 'Bí thư Chi đoàn Trạm Y tế xã', member_count: 0, cluster_name: 'Cụm thi đua số 12', cluster_role: 'Thành viên' }
 ];
 
 export const ALL_BRANCHES = [...INITIAL_BRANCHES, ...SCHOOL_BRANCHES];
 
-// Official 11 Competition Clusters (Cụm thi đua số 1 - số 11)
+// Official 12 Competition Clusters (Cụm thi đua số 1 - số 12) theo Quyết định phân công năm 2026
 export const COMPETITION_CLUSTERS = [
   {
     id: 'cum-1',
     name: 'Cụm thi đua số 1',
-    label: 'Cụm thi đua số 1 (Mỹ Hoà 2, Mỹ Hoà 4, Mỹ Hoà 3, Mỹ Hoà 5, Tân Tiến)',
-    branches: ['Chi đoàn Ấp Mỹ Hoà 2', 'Chi đoàn Ấp Mỹ Hoà 4', 'Chi đoàn Ấp Mỹ Hoà 3', 'Chi đoàn Ấp Mỹ Hoà 5', 'Chi đoàn Ấp Tân Tiến']
+    label: 'Cụm thi đua số 1 (Mỹ Hoà 4, Mỹ Hoà 2, Mỹ Hoà 3, Mỹ Hoà 5, Tân Tiến)',
+    lead: 'Chi đoàn Ấp Mỹ Hoà 4',
+    deputy: 'Chi đoàn Ấp Mỹ Hoà 2',
+    branches: ['Chi đoàn Ấp Mỹ Hoà 4', 'Chi đoàn Ấp Mỹ Hoà 2', 'Chi đoàn Ấp Mỹ Hoà 3', 'Chi đoàn Ấp Mỹ Hoà 5', 'Chi đoàn Ấp Tân Tiến']
   },
   {
     id: 'cum-2',
     name: 'Cụm thi đua số 2',
-    label: 'Cụm thi đua số 2 (Xuân Thới Đông, Xuân Thới Đông 1, Xuân Thới Đông 2, Xuân Thới Đông 3, Bùi Môn)',
-    branches: ['Chi đoàn Ấp Xuân Thới Đông', 'Chi đoàn Ấp Xuân Thới Đông 1', 'Chi đoàn Ấp Xuân Thới Đông 2', 'Chi đoàn Ấp Xuân Thới Đông 3', 'Chi đoàn Ấp Bùi Môn']
+    label: 'Cụm thi đua số 2 (Xuân Thới Đông 2, Xuân Thới Đông, Xuân Thới Đông 1, Xuân Thới Đông 3, Bàu Môn)',
+    lead: 'Chi đoàn Ấp Xuân Thới Đông 2',
+    deputy: 'Chi đoàn Ấp Xuân Thới Đông',
+    branches: ['Chi đoàn Ấp Xuân Thới Đông 2', 'Chi đoàn Ấp Xuân Thới Đông', 'Chi đoàn Ấp Xuân Thới Đông 1', 'Chi đoàn Ấp Xuân Thới Đông 3', 'Chi đoàn Ấp Bùi Môn']
   },
   {
     id: 'cum-3',
     name: 'Cụm thi đua số 3',
-    label: 'Cụm thi đua số 3 (Nam Xuân, Nam Xuân 1, Nam Xuân 2, Xuân Thới Đông 4, Xuân Thới Đông 5)',
-    branches: ['Chi đoàn Ấp Nam Xuân', 'Chi đoàn Ấp Nam Xuân 1', 'Chi đoàn Ấp Nam Xuân 2', 'Chi đoàn Ấp Xuân Thới Đông 4', 'Chi đoàn Ấp Xuân Thới Đông 5']
+    label: 'Cụm thi đua số 3 (Nam Xuân 1, Xuân Thới Đông 5, Nam Xuân, Nam Xuân 2, Xuân Thới Đông 4)',
+    lead: 'Chi đoàn Ấp Nam Xuân 1',
+    deputy: 'Chi đoàn Ấp Xuân Thới Đông 5',
+    branches: ['Chi đoàn Ấp Nam Xuân 1', 'Chi đoàn Ấp Xuân Thới Đông 5', 'Chi đoàn Ấp Nam Xuân', 'Chi đoàn Ấp Nam Xuân 2', 'Chi đoàn Ấp Xuân Thới Đông 4']
   },
   {
     id: 'cum-4',
     name: 'Cụm thi đua số 4',
-    label: 'Cụm thi đua số 4 (Xuân Thới, Thới Sơn, Xuân Thới 2, Xuân Thới 1, Nhị Tân 3)',
-    branches: ['Chi đoàn Ấp Xuân Thới', 'Chi đoàn Ấp Thới Sơn', 'Chi đoàn Ấp Xuân Thới 2', 'Chi đoàn Ấp Xuân Thới 1', 'Chi đoàn Ấp Nhị Tân 3']
+    label: 'Cụm thi đua số 4 (Xuân Thới 1, Thới Sơn, Xuân Thới, Xuân Thới 2, Nhị Tân 3)',
+    lead: 'Chi đoàn Ấp Xuân Thới 1',
+    deputy: 'Chi đoàn Ấp Thới Sơn',
+    branches: ['Chi đoàn Ấp Xuân Thới 1', 'Chi đoàn Ấp Thới Sơn', 'Chi đoàn Ấp Xuân Thới', 'Chi đoàn Ấp Xuân Thới 2', 'Chi đoàn Ấp Nhị Tân 3']
   },
   {
     id: 'cum-5',
     name: 'Cụm thi đua số 5',
-    label: 'Cụm thi đua số 5 (Dân Thắng, Tân Thới Nhì, Thống Nhất 1, Thống Nhất 2, Nhị Tân 1)',
-    branches: ['Chi đoàn Ấp Dân Thắng', 'Chi đoàn Ấp Tân Thới Nhì', 'Chi đoàn Ấp Thống Nhất 1', 'Chi đoàn Ấp Thống Nhất 2', 'Chi đoàn Ấp Nhị Tân 1']
+    label: 'Cụm thi đua số 5 (Nhị Tân 1, Dân Thắng, Tân Thới Nhì, Thống Nhất 1, Thống Nhất 2)',
+    lead: 'Chi đoàn Ấp Nhị Tân 1',
+    deputy: 'Chi đoàn Ấp Dân Thắng',
+    branches: ['Chi đoàn Ấp Nhị Tân 1', 'Chi đoàn Ấp Dân Thắng', 'Chi đoàn Ấp Tân Thới Nhì', 'Chi đoàn Ấp Thống Nhất 1', 'Chi đoàn Ấp Thống Nhất 2']
   },
   {
     id: 'cum-6',
     name: 'Cụm thi đua số 6',
-    label: 'Cụm thi đua số 6 (Nhị Tân 2, Tân Lập, Nhị Xuân 1, Nhị Xuân, Nhị Tân)',
-    branches: ['Chi đoàn Ấp Nhị Tân 2', 'Chi đoàn Ấp Tân Lập', 'Chi đoàn Ấp Nhị Xuân 1', 'Chi đoàn Ấp Nhị Xuân', 'Chi đoàn Ấp Nhị Tân']
+    label: 'Cụm thi đua số 6 (Tân Lập, Nhị Xuân, Nhị Tân 2, Nhị Xuân 1, Nhị Tân)',
+    lead: 'Chi đoàn Ấp Tân Lập',
+    deputy: 'Chi đoàn Ấp Nhị Xuân',
+    branches: ['Chi đoàn Ấp Tân Lập', 'Chi đoàn Ấp Nhị Xuân', 'Chi đoàn Ấp Nhị Tân 2', 'Chi đoàn Ấp Nhị Xuân 1', 'Chi đoàn Ấp Nhị Tân']
   },
   {
     id: 'cum-7',
     name: 'Cụm thi đua số 7',
-    label: 'Cụm thi đua số 7 (MN Hướng Dương, MN Cúc Họa Mi, MN Xuân Thới Đông, MN Nhị Xuân, MN 19/8)',
-    branches: ['Chi đoàn MN Hướng Dương', 'Chi đoàn MN Cúc Họa Mi', 'Chi đoàn MN Xuân Thới Đông', 'Chi đoàn MN Nhị Xuân', 'Chi đoàn MN 19/8']
+    label: 'Cụm thi đua số 7 (MN Cúc Họa Mi, MN Xuân Thới Đông, MN Hướng Dương, MN Nhị Xuân, MN 19/8)',
+    lead: 'Chi đoàn MN Cúc Họa Mi',
+    deputy: 'Chi đoàn MN Xuân Thới Đông',
+    branches: ['Chi đoàn MN Cúc Họa Mi', 'Chi đoàn MN Xuân Thới Đông', 'Chi đoàn MN Hướng Dương', 'Chi đoàn MN Nhị Xuân', 'Chi đoàn MN 19/8']
   },
   {
     id: 'cum-8',
     name: 'Cụm thi đua số 8',
-    label: 'Cụm thi đua số 8 (TH Lý Chính Thắng 2, TH Lê Văn Phiên, TH Nhị Tân, TH Nhị Xuân, TH Dương Công Khi, TH Trần Văn Mười, TH Tân Xuân)',
-    branches: ['Chi đoàn TH Lý Chính Thắng 2', 'Chi đoàn TH Lê Văn Phiên', 'Chi đoàn TH Nhị Tân', 'Chi đoàn TH Nhị Xuân', 'Chi đoàn TH Dương Công Khi', 'Chi đoàn TH Trần Văn Mười', 'Chi đoàn TH Tân Xuân']
+    label: 'Cụm thi đua số 8 (TH Nhị Tân, GV THPT Phạm Văn Sáng, TH Nhị Xuân, TH Trần Văn Mười, GV GDNN-GDTX...)',
+    lead: 'Chi đoàn TH Nhị Tân',
+    deputy: 'Chi đoàn GV THPT Phạm Văn Sáng',
+    branches: [
+      'Chi đoàn TH Nhị Tân',
+      'Chi đoàn GV THPT Phạm Văn Sáng',
+      'Chi đoàn TH Nhị Xuân',
+      'Chi đoàn TH Trần Văn Mười',
+      'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn',
+      'Chi đoàn TH Lý Chính Thắng 2',
+      'Chi đoàn TH Lê Văn Phiên',
+      'Chi đoàn TH Dương Công Khi'
+    ]
   },
   {
     id: 'cum-9',
     name: 'Cụm thi đua số 9',
-    label: 'Cụm thi đua số 9 (THCS Võ Văn Tần, THCS Tân Xuân, THCS Nguyễn Hồng Đào, TiH - THCS Tạ Uyên, THPT Phạm Văn Sáng, GDNN - GDTX Hóc Môn)',
-    branches: ['Chi đoàn THCS Võ Văn Tần', 'Chi đoàn THCS Tân Xuân', 'Chi đoàn THCS Nguyễn Hồng Đào', 'Chi đoàn TiH - THCS Tạ Uyên', 'Chi đoàn GV THPT Phạm Văn Sáng', 'Chi đoàn GV Trung tâm GDNN - GDTX Hóc Môn']
+    label: 'Cụm thi đua số 9 (THCS Nguyễn Hồng Đào, THCS Võ Văn Tần, THCS Tân Xuân, TiH - THCS Tạ Uyên)',
+    lead: 'Chi đoàn THCS Nguyễn Hồng Đào',
+    deputy: '',
+    branches: [
+      'Chi đoàn THCS Nguyễn Hồng Đào',
+      'Chi đoàn THCS Võ Văn Tần',
+      'Chi đoàn THCS Tân Xuân',
+      'Chi đoàn TiH - THCS Tạ Uyên'
+    ]
   },
   {
     id: 'cum-10',
     name: 'Cụm thi đua số 10',
-    label: 'Cụm thi đua số 10 (THPT Phạm Văn Sáng, Trung tâm GDNN - GDTX Hóc Môn, Tre Việt)',
-    branches: ['Đoàn trường THPT Phạm Văn Sáng', 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn', 'Đoàn trường Tre Việt']
+    label: 'Cụm thi đua số 10 (Đoàn trường TT GDNN - GDTX Hóc Môn, THPT Phạm Văn Sáng, Tre Việt)',
+    lead: 'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn',
+    deputy: '',
+    branches: [
+      'Đoàn trường Trung tâm GDNN - GDTX Hóc Môn',
+      'Đoàn trường THPT Phạm Văn Sáng',
+      'Đoàn trường Tre Việt'
+    ]
   },
   {
     id: 'cum-11',
     name: 'Cụm thi đua số 11',
-    label: 'Cụm thi đua số 11 (MG Bút chì Màu, MN Độc lập Hoa Lài, Cty Sambu Vina Sports, UBND xã, Trạm Y tế xã)',
-    branches: ['Chi đoàn Mẫu giáo Bút chì Màu', 'Chi đoàn lớp MN Độc lập Hoa Lài', 'Chi đoàn Cty Sambu Vina Sports', 'Chi đoàn UBND xã', 'Chi đoàn Trạm Y tế xã']
+    label: 'Cụm thi đua số 11 (Chi đoàn Thép Việt, MG Bút chì Màu, MN Hoa Lài, Sambu Vina Sports)',
+    lead: 'Chi đoàn Thép Việt',
+    deputy: '',
+    branches: [
+      'Chi đoàn Thép Việt',
+      'Chi đoàn Mẫu giáo Bút chì Màu',
+      'Chi đoàn lớp MN Độc lập Hoa Lài',
+      'Chi đoàn Cty Sambu Vina Sports'
+    ]
+  },
+  {
+    id: 'cum-12',
+    name: 'Cụm thi đua số 12',
+    label: 'Cụm thi đua số 12 (Chi đoàn Công an, Trạm Y tế xã, Quân sự xã Xuân Thới Sơn)',
+    lead: 'Chi đoàn Công an',
+    deputy: '',
+    branches: [
+      'Chi đoàn Công an',
+      'Chi đoàn Trạm Y tế xã',
+      'Chi đoàn cơ sở Quân sự xã Xuân Thới Sơn',
+      'Chi đoàn UBND xã'
+    ]
   }
 ];
 

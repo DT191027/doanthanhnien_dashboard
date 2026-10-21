@@ -3024,7 +3024,7 @@ export function ReportsView({
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
             <BarChart2 className="text-primary" size={24} />
-            Báo cáo Thống kê & Đánh giá Thi đua 30 Chi đoàn Ấp
+            Báo cáo Thống kê & Đánh giá Thi đua 56 Chi đoàn / Đơn vị
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
             Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành.
@@ -3151,7 +3151,7 @@ export function ReportsView({
           <Search size={15} className="text-secondary me-2" />
           <input 
             type="text" 
-            placeholder="Tìm tên Chi đoàn Ấp..." 
+            placeholder="Tìm tên Chi đoàn / Đơn vị..." 
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
           />
@@ -3164,7 +3164,7 @@ export function ReportsView({
           <thead>
             <tr>
               <th style={{ width: '40px' }}>STT</th>
-              <th>Chi đoàn Ấp</th>
+              <th>Chi đoàn / Đơn vị</th>
               <th>Cụm thi đua</th>
               <th>Bí thư Chi đoàn</th>
               <th>Hoạt động tham gia</th>

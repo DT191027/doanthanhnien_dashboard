@@ -5,6 +5,7 @@ import { INITIAL_BRANCHES, ALL_BRANCHES, getBranchClusterName, SCHOOL_BRANCHES, 
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
+import QrAttendanceManager from './QrAttendanceManager';
 
 // Component chọn nhiều đơn vị nhận / phân công - Phân cấp Khối (Dân cư, Trường học, Ngoài nhà nước, LLVT) & Cụm (1-12) & 56 Chi đoàn
 export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công đơn vị' }) {
@@ -2369,13 +2370,21 @@ export function ActivityDetailModal({
   onRespondAttendance,
   onConfirmReceipt
 }) {
+  const [activeDetailTab, setActiveDetailTab] = useState('attendance'); // 'info' | 'attendance' | 'members' | 'tasks'
   const [isAbsenceMode, setIsAbsenceMode] = useState(false);
   const [absenceReason, setAbsenceReason] = useState('');
+
+  useEffect(() => {
+    if (show) {
+      setActiveDetailTab('attendance');
+      setIsAbsenceMode(false);
+    }
+  }, [show, activity?.id]);
 
   if (!show || !activity) return null;
 
   const isDoanXa = currentRole?.role === 'admin' || currentRole?.role === 'doan_xa' || currentRole?.full_name?.includes('Đoàn xã');
-  const userBranchName = currentRole?.full_name || 'Chi đoàn Ấp Bùi Môn';
+  const userBranchName = currentRole?.full_name || 'Chi đoàn';
   const activityAttendance = attendanceRecords[activity.id] || {};
   const currentBranchRecord = activityAttendance[userBranchName];
   
@@ -2452,305 +2461,378 @@ export function ActivityDetailModal({
 
   return (
     <div className="modal d-block bg-dark bg-opacity-50" style={{ zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
-          <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '16px' }}>
-              <Calendar className="text-primary" size={22} />
-              Thông Tin Chi Tiết Hoạt Động & Xác Nhận Tham Gia
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body p-4">
-            {/* Header info card */}
-            <div className="p-3 bg-light rounded-3 border mb-3">
-              <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
-                  📌 Phân công: {activity.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}
+      <div className="modal-dialog modal-dialog-centered modal-xl" style={{ maxWidth: '1000px' }}>
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '20px', overflow: 'hidden' }}>
+          
+          {/* Modal Header with 4 Navigation Tabs exactly matching user screenshot */}
+          <div className="modal-header border-bottom pb-0 d-flex flex-column align-items-stretch bg-white">
+            <div className="d-flex align-items-center justify-content-between w-100 pb-2">
+              <div className="d-flex align-items-center gap-2">
+                <Calendar className="text-primary" size={22} />
+                <h5 className="modal-title fw-bold text-dark mb-0" style={{ fontSize: '17px' }}>
+                  {activity.title}
+                </h5>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '11px' }}>
+                  {timeStatus.statusText}
                 </span>
-                <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                  <span className={`badge ${priorityBadge.bg} border px-2.5 py-1 fw-bold`} style={{ fontSize: '11.5px' }}>
-                    {priorityBadge.label}
-                  </span>
-                  <span className={`badge ${timeStatus.badgeClass} border px-2.5 py-1 fw-bold`} style={{ fontSize: '11.5px' }}>
-                    {timeStatus.statusText}
-                  </span>
-                  <ReceiptConfirmationBox 
-                    type="activity" 
-                    item={activity} 
-                    currentRole={currentRole} 
-                    isDoanXa={isDoanXa} 
-                    onConfirmReceipt={onConfirmReceipt} 
-                    inModal={true}
-                  />
-                </div>
               </div>
-              <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '18px' }}>
-                {activity.title}
-              </h4>
-              <div className="row g-2 text-secondary" style={{ fontSize: '12.5px' }}>
-                <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
-                  <Clock size={15} className="text-primary" />
-                  <span>Thời gian: <strong>{activity.time} ({formatDateDDMMYYYY(activity.day, activity.month, activity.year)})</strong></span>
-                </div>
-                <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
-                  <MapPin size={15} className="text-danger" />
-                  <span>Địa điểm: <strong>{activity.location || OFFICIAL_ADDRESS}</strong></span>
-                </div>
-              </div>
+              <button type="button" className="btn-close" onClick={onClose}></button>
             </div>
 
-            {/* Force Sub-division Details Section if activity.hasSubTasks */}
-            {activity.hasSubTasks && activity.subTasks && activity.subTasks.length > 0 && (
-              <div className="mb-3 p-3 bg-primary-subtle bg-opacity-25 border border-primary-subtle rounded-3">
-                <div className="fw-bold text-primary d-flex align-items-center gap-2 mb-2" style={{ fontSize: '13.5px' }}>
-                  <Users size={18} />
-                  <span>Phân công lực lượng chi tiết theo khu vực ({activity.subTasks.length} vị trí / đơn vị)</span>
+            {/* 4 Navigation Tabs: Thông Tin | Điểm Danh | Thành Viên | Phân Công (User Screenshot) */}
+            <div className="d-flex align-items-center gap-1 mt-1 border-top pt-1 overflow-x-auto w-100">
+              {[
+                { id: 'info', label: 'Thông Tin', icon: 'ℹ️' },
+                { id: 'attendance', label: 'Điểm Danh', icon: '📷', badge: isDoanXa ? 'Tạo QR & GPS' : 'Quét Mã GPS' },
+                { id: 'members', label: 'Thành Viên', icon: '👥', badge: `${participatingBranches.length}/56` },
+                { id: 'tasks', label: 'Phân Công', icon: '📋', badge: activity.hasSubTasks ? `${activity.subTasks.length} vị trí` : null }
+              ].map(tab => {
+                const isActive = activeDetailTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`btn btn-link text-decoration-none px-3.5 py-2.5 border-0 position-relative d-inline-flex align-items-center gap-1.5 fw-bold transition-all ${
+                      isActive ? 'text-success' : 'text-secondary hover-text-dark'
+                    }`}
+                    style={{
+                      fontSize: '13px',
+                      borderBottom: isActive ? '3px solid #0c3b2e' : '3px solid transparent',
+                      borderRadius: 0,
+                      color: isActive ? '#0c3b2e' : '#64748b'
+                    }}
+                    onClick={() => setActiveDetailTab(tab.id)}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span 
+                        className={`badge ms-1 ${isActive ? 'text-white' : 'bg-light text-secondary border'}`} 
+                        style={{ 
+                          fontSize: '10px',
+                          backgroundColor: isActive ? '#0c3b2e' : undefined 
+                        }}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Modal Body */}
+          <div className="modal-body p-4" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+            {/* ========================================================= */}
+            {/* TAB 1: ĐIỂM DANH (XÁC THỰC GPS & MÃ QR - MATCH SCREENSHOT) */}
+            {/* ========================================================= */}
+            {activeDetailTab === 'attendance' && (
+              <QrAttendanceManager 
+                activity={activity}
+                currentRole={currentRole}
+                isDoanXa={isDoanXa}
+                onAttendanceSuccess={(actId, branch, log) => {
+                  onRespondAttendance && onRespondAttendance(actId, branch, true, '', activity.title);
+                  onConfirmReceipt && onConfirmReceipt('activity', activity);
+                }}
+              />
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 2: THÔNG TIN CHI TIẾT HOẠT ĐỘNG                       */}
+            {/* ========================================================= */}
+            {activeDetailTab === 'info' && (
+              <div>
+                {/* Header info card */}
+                <div className="p-3 bg-light rounded-3 border mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 fw-bold" style={{ fontSize: '11.5px' }}>
+                      📌 Phân công: {activity.assigned_to || 'Tất cả 56 Chi đoàn / Đơn vị'}
+                    </span>
+                    <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                      <span className={`badge ${priorityBadge.bg} border px-2.5 py-1 fw-bold`} style={{ fontSize: '11.5px' }}>
+                        {priorityBadge.label}
+                      </span>
+                      <ReceiptConfirmationBox 
+                        type="activity" 
+                        item={activity} 
+                        currentRole={currentRole} 
+                        isDoanXa={isDoanXa} 
+                        onConfirmReceipt={onConfirmReceipt} 
+                        inModal={true}
+                      />
+                    </div>
+                  </div>
+                  <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '18px' }}>
+                    {activity.title}
+                  </h4>
+                  <div className="row g-2 text-secondary" style={{ fontSize: '12.5px' }}>
+                    <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
+                      <Clock size={15} className="text-primary" />
+                      <span>Thời gian: <strong>{activity.time} ({formatDateDDMMYYYY(activity.day, activity.month, activity.year)})</strong></span>
+                    </div>
+                    <div className="col-12 col-md-6 d-flex align-items-center gap-1.5">
+                      <MapPin size={15} className="text-danger" />
+                      <span>Địa điểm: <strong>{activity.location || OFFICIAL_ADDRESS}</strong></span>
+                    </div>
+                  </div>
                 </div>
 
-                {!isDoanXa ? (
-                  (() => {
-                    const mySub = activity.subTasks.find(st => st.branch === userBranchName || userBranchName.includes(st.branch));
-                    if (mySub) {
-                      return (
-                        <div className="p-3 bg-white border border-primary rounded-3 text-dark shadow-xs">
-                          <div className="fw-bold text-success mb-1.5" style={{ fontSize: '13px' }}>
-                            📍 Phân công riêng cho đơn vị [{userBranchName}]:
-                          </div>
-                          <div className="row g-2" style={{ fontSize: '12.5px' }}>
-                            <div className="col-12 col-md-6">⏰ Thời gian: <strong>{mySub.time || activity.time}</strong></div>
-                            <div className="col-12 col-md-6">📍 Tuyến đường / Địa điểm: <strong>{mySub.location}</strong></div>
-                            {mySub.description && (
-                              <div className="col-12 text-secondary mt-1">📋 Nhiệm vụ cụ thể: <strong>{mySub.description}</strong></div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="p-2.5 bg-white border rounded-3 text-secondary" style={{ fontSize: '12px' }}>
-                        Đơn vị thực hiện theo vị trí tập trung chung do Ban Thường vụ phân công.
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="row g-2">
-                    {activity.subTasks.map((st, i) => (
-                      <div key={i} className="col-12 col-md-6">
-                        <div className="p-2.5 bg-white border rounded-3 text-dark shadow-xs" style={{ fontSize: '12px' }}>
-                          <div className="fw-bold text-primary mb-1">📍 {st.branch}</div>
-                          <div>⏰ Thời gian: <strong>{st.time || activity.time}</strong></div>
-                          <div>📍 Địa điểm: <strong>{st.location}</strong></div>
-                          {st.description && <div className="text-muted mt-1">📋 Nhiệm vụ: {st.description}</div>}
-                        </div>
-                      </div>
-                    ))}
+                {/* Description */}
+                {activity.description && (
+                  <div className="mb-3">
+                    <label className="fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>📋 Nội dung chi tiết chương trình:</label>
+                    <div className="p-3 bg-white border rounded-3 text-secondary" style={{ fontSize: '13px', whiteSpace: 'pre-line' }}>
+                      {activity.description}
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Description */}
-            {activity.description && (
-              <div className="mb-3">
-                <label className="fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>📋 Nội dung chi tiết chương trình:</label>
-                <div className="p-3 bg-white border rounded-3 text-secondary" style={{ fontSize: '13px', whiteSpace: 'pre-line' }}>
-                  {activity.description}
-                </div>
-              </div>
-            )}
-
-            {/* Notes / Important Warnings */}
-            <div className="mb-3 p-3 bg-warning-subtle border border-warning-subtle rounded-3">
-              <div className="fw-bold text-warning-emphasis d-flex align-items-center gap-2 mb-1" style={{ fontSize: '13px' }}>
-                <Bell size={16} />
-                <span>Lưu ý & Ghi chú quan trọng từ Ban Thường vụ Đoàn xã:</span>
-              </div>
-              <div className="text-warning-emphasis" style={{ fontSize: '12.5px' }}>
-                {activity.notes || 'Trang phục: Áo màu xanh Thanh niên Việt Nam. Yêu cầu các Chi đoàn đăng ký danh sách tham gia đúng hạn để Ban Thường vụ tổng hợp thi đua.'}
-              </div>
-            </div>
-
-            {/* Attached Document File Section */}
-            <div className="mb-4">
-              <label className="fw-bold text-dark mb-2 d-flex align-items-center gap-2" style={{ fontSize: '13px' }}>
-                <FileText className="text-primary" size={18} />
-                <span>Văn bản triển khai đính kèm:</span>
-              </label>
-              {activity.file_name || activity.file_url ? (
-                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <FileText size={22} className="text-primary" />
-                    <div>
-                      <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-                        {activity.file_name || 'Ke_hoach_trien_khai_hoat_dong.pdf'}
-                      </div>
-                      <div className="text-muted" style={{ fontSize: '11px' }}>Văn bản chỉ đạo chính thức từ Đoàn xã</div>
-                    </div>
+                {/* Notes / Important Warnings */}
+                <div className="mb-3 p-3 bg-warning-subtle border border-warning-subtle rounded-3">
+                  <div className="fw-bold text-warning-emphasis d-flex align-items-center gap-2 mb-1" style={{ fontSize: '13px' }}>
+                    <Bell size={16} />
+                    <span>Lưu ý & Ghi chú quan trọng từ Ban Thường vụ Đoàn xã:</span>
                   </div>
-                  <a 
-                    href={activity.file_url || '#'} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="btn btn-sm btn-primary fw-semibold d-flex align-items-center gap-1.5 px-3 py-1.5"
-                    style={{ fontSize: '12px' }}
-                  >
-                    <FileText size={14} />
-                    <span>Xem / Tải về</span>
-                  </a>
-                </div>
-              ) : (
-                <div className="p-3 bg-light border rounded-3 text-muted d-flex align-items-center gap-2" style={{ fontSize: '12.5px' }}>
-                  <FileText size={16} />
-                  <span>Văn bản kế hoạch triển khai đã được ban hành qua mục "Văn bản đến".</span>
-                </div>
-              )}
-            </div>
-
-            {/* Attendance & Participation Summary Box for Admin vs Chi Đoàn */}
-            {isDoanXa ? (
-              <div className="p-3.5 bg-light rounded-3 border">
-                <div className="fw-bold text-dark mb-2.5 d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ fontSize: '14px' }}>
-                  <span>📊 Thống kê Phản hồi của 30 Chi đoàn Ấp:</span>
-                  <div className="d-flex align-items-center gap-2" style={{ fontSize: '12px' }}>
-                    <span className="badge bg-success text-white px-2.5 py-1">
-                      ✅ Tham gia: {participatingBranches.length}/30
-                    </span>
-                    <span className="badge bg-danger text-white px-2.5 py-1">
-                      ❌ Báo vắng: {absentBranches.length}/30
-                    </span>
+                  <div className="text-warning-emphasis" style={{ fontSize: '12.5px' }}>
+                    {activity.notes || 'Trang phục: Áo màu xanh Thanh niên Việt Nam. Yêu cầu các Chi đoàn đăng ký danh sách tham gia đúng hạn để Ban Thường vụ tổng hợp thi đua.'}
                   </div>
                 </div>
 
-                <div className="row g-2">
-                  <div className="col-12 col-md-6">
-                    <div className="p-2.5 bg-white border rounded-3 h-100">
-                      <div className="fw-bold text-success mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
-                        ✅ Chi đoàn xác nhận tham gia ({participatingBranches.length})
-                      </div>
-                      {participatingBranches.length === 0 ? (
-                        <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Chưa có đơn vị xác nhận</div>
-                      ) : (
-                        <div className="d-flex flex-column gap-1" style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                          {participatingBranches.map((b, idx) => (
-                            <div key={idx} className="d-flex align-items-center justify-content-between p-1.5 bg-success-subtle bg-opacity-25 rounded border border-success-subtle" style={{ fontSize: '11.5px' }}>
-                              <span className="fw-semibold text-dark">✓ {b.name}</span>
-                              <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
-                            </div>
-                          ))}
+                {/* Attached Document File Section */}
+                <div className="mb-3">
+                  <label className="fw-bold text-dark mb-2 d-flex align-items-center gap-2" style={{ fontSize: '13px' }}>
+                    <FileText className="text-primary" size={18} />
+                    <span>Văn bản triển khai đính kèm:</span>
+                  </label>
+                  {activity.file_name || activity.file_url ? (
+                    <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 d-flex align-items-center justify-content-between">
+                      <div className="d-flex align-items-center gap-2">
+                        <FileText size={22} className="text-primary" />
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                            {activity.file_name || 'Ke_hoach_trien_khai_hoat_dong.pdf'}
+                          </div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Văn bản chỉ đạo chính thức từ Đoàn xã</div>
                         </div>
-                      )}
+                      </div>
+                      <a 
+                        href={activity.file_url || '#'} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-sm btn-primary fw-semibold d-flex align-items-center gap-1.5 px-3 py-1.5"
+                        style={{ fontSize: '12px' }}
+                      >
+                        <FileText size={14} />
+                        <span>Xem / Tải về</span>
+                      </a>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 bg-light border rounded-3 text-muted d-flex align-items-center gap-2" style={{ fontSize: '12.5px' }}>
+                      <FileText size={16} />
+                      <span>Văn bản kế hoạch triển khai đã được ban hành qua mục "Văn bản đến".</span>
+                    </div>
+                  )}
+                </div>
 
-                  <div className="col-12 col-md-6">
-                    <div className="p-2.5 bg-white border rounded-3 h-100">
-                      <div className="fw-bold text-danger mb-2 border-bottom pb-1 d-flex align-items-center justify-content-between" style={{ fontSize: '12.5px' }}>
-                        <span>❌ Chi đoàn báo vắng mặt ({absentBranches.length})</span>
-                        {absentBranches.length > 0 && (
-                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5" style={{ fontSize: '10.5px' }}>
-                            Cần nắm lý do
-                          </span>
+                {/* Branch User Confirmation Card */}
+                {!isDoanXa && (
+                  <div className="p-3.5 bg-light rounded-3 border">
+                    <div className="fw-bold text-dark mb-2" style={{ fontSize: '13.5px' }}>
+                      Phản hồi tham gia của đơn vị [{userBranchName}]:
+                    </div>
+
+                    {hasAttended === true ? (
+                      <div className="alert alert-success d-flex align-items-center gap-2 p-2.5 rounded-3 mb-0" style={{ fontSize: '12.5px' }}>
+                        <CheckCircle size={18} className="text-success" />
+                        <div>
+                          <strong>Đơn vị đã xác nhận tham gia hoạt động!</strong>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Cảm ơn đồng chí đã phản hồi đúng thời hạn quy định.</div>
+                        </div>
+                      </div>
+                    ) : hasAttended === false ? (
+                      <div className="alert alert-danger d-flex align-items-center gap-2 p-2.5 rounded-3 mb-0" style={{ fontSize: '12.5px' }}>
+                        <AlertCircle size={18} className="text-danger" />
+                        <div>
+                          <strong>Đơn vị đã gửi báo vắng:</strong> {savedReason}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {!isAbsenceMode ? (
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              className="btn btn-success fw-semibold px-4 py-2 rounded-3 d-inline-flex align-items-center gap-2 shadow-xs"
+                              style={{ fontSize: '13px' }}
+                              onClick={handleConfirmAttend}
+                            >
+                              <CheckCircle size={16} />
+                              <span>Xác Nhận Tham Gia Ngay</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger fw-semibold px-3 py-2 rounded-3"
+                              style={{ fontSize: '13px' }}
+                              onClick={() => setIsAbsenceMode(true)}
+                            >
+                              Báo Vắng Có Lý Do
+                            </button>
+                          </div>
+                        ) : (
+                          <form onSubmit={handleSubmitAbsence} className="mt-2">
+                            <label className="form-label fw-semibold text-danger" style={{ fontSize: '12.5px' }}>
+                              Nhập lý do không thể tham gia:
+                            </label>
+                            <textarea
+                              className="form-control mb-2"
+                              rows="2"
+                              placeholder="Nêu rõ lý do vắng mặt chính đáng..."
+                              required
+                              value={absenceReason}
+                              onChange={(e) => setAbsenceReason(e.target.value)}
+                            ></textarea>
+                            <div className="d-flex justify-content-end gap-2">
+                              <button type="button" className="btn btn-sm btn-light border" onClick={() => setIsAbsenceMode(false)}>Hủy</button>
+                              <button type="submit" className="btn btn-sm btn-danger px-3 fw-semibold">
+                                Gửi Báo Vắng
+                              </button>
+                            </div>
+                          </form>
                         )}
                       </div>
-                      {absentBranches.length === 0 ? (
-                        <div className="text-muted py-3 text-center" style={{ fontSize: '11.5px' }}>Không có đơn vị báo vắng</div>
-                      ) : (
-                        <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                          {absentBranches.map((b, idx) => (
-                            <div key={idx} className="p-2.5 bg-danger-subtle bg-opacity-25 border border-danger-subtle rounded-3" style={{ fontSize: '11.5px' }}>
-                              <div className="d-flex align-items-center justify-content-between mb-1.5 flex-wrap gap-1">
-                                <span className="fw-bold text-danger d-flex align-items-center gap-1">
-                                  <XCircle size={14} className="text-danger flex-shrink-0" />
-                                  <span>{b.name}</span>
-                                </span>
-                                <span className="badge bg-white text-muted border fw-normal" style={{ fontSize: '10.5px' }}>
-                                  ⏰ {b.time}
-                                </span>
-                              </div>
-                              <div className="p-2 bg-white rounded border border-danger-subtle text-dark" style={{ fontSize: '11.5px' }}>
-                                <span className="text-danger fw-bold me-1">💬 Lý do vắng mặt:</span>
-                                <span className="text-secondary">{b.reason}</span>
-                              </div>
-                            </div>
-                          ))}
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 3: THÀNH VIÊN & PHẢN HỒI 56 CHI ĐOÀN                 */}
+            {/* ========================================================= */}
+            {activeDetailTab === 'members' && (
+              <div>
+                <div className="p-3.5 bg-light rounded-3 border">
+                  <div className="fw-bold text-dark mb-2.5 d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ fontSize: '14px' }}>
+                    <span>📊 Thống kê Phản hồi của 56 Chi đoàn / Đơn vị:</span>
+                    <div className="d-flex align-items-center gap-2" style={{ fontSize: '12px' }}>
+                      <span className="badge bg-success text-white px-2.5 py-1">
+                        ✅ Tham gia: {participatingBranches.length}/56
+                      </span>
+                      <span className="badge bg-danger text-white px-2.5 py-1">
+                        ❌ Báo vắng: {absentBranches.length}/56
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="row g-2">
+                    <div className="col-12 col-md-6">
+                      <div className="p-2.5 bg-white border rounded-3 h-100">
+                        <div className="fw-bold text-success mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
+                          ✅ Chi đoàn xác nhận tham gia ({participatingBranches.length})
                         </div>
-                      )}
+                        {participatingBranches.length === 0 ? (
+                          <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Chưa có đơn vị xác nhận</div>
+                        ) : (
+                          <div className="d-flex flex-column gap-1" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                            {participatingBranches.map((b, idx) => (
+                              <div key={idx} className="d-flex align-items-center justify-content-between p-1.5 bg-success-subtle bg-opacity-25 rounded border border-success-subtle" style={{ fontSize: '11.5px' }}>
+                                <span className="fw-semibold text-dark">✓ {b.name}</span>
+                                <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <div className="p-2.5 bg-white border rounded-3 h-100">
+                        <div className="fw-bold text-danger mb-2 border-bottom pb-1" style={{ fontSize: '12.5px' }}>
+                          ❌ Chi đoàn báo vắng ({absentBranches.length})
+                        </div>
+                        {absentBranches.length === 0 ? (
+                          <div className="text-muted py-2 text-center" style={{ fontSize: '11.5px' }}>Không có chi đoàn báo vắng</div>
+                        ) : (
+                          <div className="d-flex flex-column gap-1" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                            {absentBranches.map((b, idx) => (
+                              <div key={idx} className="p-1.5 bg-danger-subtle bg-opacity-25 rounded border border-danger-subtle text-dark" style={{ fontSize: '11.5px' }}>
+                                <div className="d-flex align-items-center justify-content-between">
+                                  <span className="fw-semibold text-danger">✕ {b.name}</span>
+                                  <span className="text-muted" style={{ fontSize: '10.5px' }}>{b.time}</span>
+                                </div>
+                                <div className="text-secondary mt-0.5" style={{ fontSize: '11px' }}>
+                                  Lý do: <em>{b.reason}</em>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="p-3.5 bg-light rounded-3 border">
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>
-                    🏛️ Trạng thái tham gia của đơn vị: <span className="text-primary">{userBranchName}</span>
-                  </div>
-                  {hasAttended === true && (
-                    <span className="badge bg-success text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
-                      ✅ Đã xác nhận THAM GIA
-                    </span>
-                  )}
-                  {hasAttended === false && (
-                    <span className="badge bg-danger text-white px-2.5 py-1" style={{ fontSize: '11.5px' }}>
-                      ❌ Đã báo VẮNG MẶT
-                    </span>
-                  )}
-                </div>
+            )}
 
-                {!isAbsenceMode ? (
-                  <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
-                    <button 
-                      type="button" 
-                      className="btn btn-success fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
-                      style={{ backgroundColor: '#16A34A', border: 'none' }}
-                      onClick={handleConfirmAttend}
-                    >
-                      <CheckCircle size={18} />
-                      <span>Xác Nhận THAM GIA</span>
-                    </button>
+            {/* ========================================================= */}
+            {/* TAB 4: PHÂN CÔNG LỰC LƯỢNG CHI TIẾT                       */}
+            {/* ========================================================= */}
+            {activeDetailTab === 'tasks' && (
+              <div>
+                {activity.hasSubTasks && activity.subTasks && activity.subTasks.length > 0 ? (
+                  <div>
+                    <div className="fw-bold text-primary d-flex align-items-center gap-2 mb-3" style={{ fontSize: '14px' }}>
+                      <Users size={18} />
+                      <span>Phân công lực lượng chi tiết theo khu vực ({activity.subTasks.length} vị trí / đơn vị)</span>
+                    </div>
 
-                    <button 
-                      type="button" 
-                      className="btn btn-outline-danger fw-semibold px-4 py-2 d-flex align-items-center gap-2 flex-grow-1 justify-content-center"
-                      onClick={() => setIsAbsenceMode(true)}
-                    >
-                      <Trash2 size={16} />
-                      <span>Báo VẮNG (Không tham gia)</span>
-                    </button>
+                    <div className="row g-2.5">
+                      {activity.subTasks.map((st, i) => (
+                        <div key={i} className="col-12 col-md-6">
+                          <div className="p-3 bg-white border rounded-3 text-dark shadow-xs" style={{ fontSize: '12.5px' }}>
+                            <div className="fw-bold text-primary mb-1 d-flex align-items-center gap-1.5">
+                              <MapPin size={15} />
+                              <span>{st.branch}</span>
+                            </div>
+                            <div>⏰ Thời gian: <strong>{st.time || activity.time}</strong></div>
+                            <div>📍 Địa điểm: <strong>{st.location}</strong></div>
+                            {st.description && <div className="text-muted mt-1">📋 Nhiệm vụ: {st.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmitAbsence} className="mt-3 p-3 bg-white rounded-3 border border-danger-subtle">
-                    <label className="form-label fw-bold text-danger mb-1" style={{ fontSize: '13px' }}>
-                      Nhập lý do chính đáng không thể tham gia: <span className="text-danger">*</span>
-                    </label>
-                    <textarea 
-                      className="form-control mb-2"
-                      rows="3"
-                      placeholder="Ví dụ: Bí thư và đoàn viên chi đoàn bận trùng lịch công tác đột xuất cấp ủy chỉ đạo..."
-                      required
-                      value={absenceReason}
-                      onChange={(e) => setAbsenceReason(e.target.value)}
-                    ></textarea>
-                    <div className="d-flex justify-content-end gap-2">
-                      <button type="button" className="btn btn-sm btn-light border" onClick={() => setIsAbsenceMode(false)}>Hủy</button>
-                      <button type="submit" className="btn btn-sm btn-danger px-3 fw-semibold">
-                        Gửi Báo Vắng
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {savedReason && (
-                  <div className="mt-2.5 p-2 bg-white rounded-2 border text-danger" style={{ fontSize: '11.5px' }}>
-                    <strong>Lý do vắng mặt đã ghi nhận:</strong> {savedReason}
+                  <div className="text-center py-5 text-muted bg-light rounded-3 border">
+                    <Users size={32} className="opacity-30 mb-2" />
+                    <div className="fw-semibold" style={{ fontSize: '13px' }}>Chưa có bảng phân công lực lượng riêng lẻ</div>
+                    <div style={{ fontSize: '12px' }}>Tất cả các đơn vị tập trung và thực hiện theo kế hoạch chung do Đoàn xã phân công.</div>
                   </div>
                 )}
               </div>
             )}
           </div>
-          <div className="modal-footer border-top pt-2">
-            <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={onClose}>Đóng Cửa Sổ</button>
+
+          {/* Modal Footer */}
+          <div className="modal-footer border-top pt-2 d-flex align-items-center justify-content-between bg-light bg-opacity-50">
+            <div className="d-flex align-items-center gap-2">
+              {activeDetailTab !== 'attendance' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3"
+                  style={{ fontSize: '12.5px' }}
+                  onClick={() => setActiveDetailTab('attendance')}
+                >
+                  <QrCode size={15} />
+                  <span>{isDoanXa ? 'Tạo QR & Quản Lý GPS' : 'Mở Điểm Danh GPS'}</span>
+                </button>
+              )}
+            </div>
+            <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={onClose}>
+              Đóng Cửa Sổ
+            </button>
           </div>
         </div>
       </div>

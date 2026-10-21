@@ -2191,3 +2191,81 @@ export async function syncDeleteMember(memberId, memberName = '') {
   }
   return updated;
 }
+
+
+// ============================================================================
+// GPS & QR CODE ATTENDANCE SYSTEM
+// Only Admin (doanxa) can create QR & Code; branches scan and return Real-time GPS
+// ============================================================================
+
+export function getOrCreateActivityQrCode(activityId) {
+  const allCodes = getPersistedData('activity_qr_codes', {});
+  if (allCodes[activityId]) {
+    return allCodes[activityId];
+  }
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const newCode = `XTS-${randomNum}`;
+  const qrData = {
+    code: newCode,
+    activityId: activityId,
+    createdAt: new Date().toISOString(),
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`XTS_ATTENDANCE_${activityId}_${newCode}`)}`
+  };
+  const updated = { ...allCodes, [activityId]: qrData };
+  setPersistedData('activity_qr_codes', updated);
+  return qrData;
+}
+
+export function refreshActivityQrCode(activityId) {
+  const allCodes = getPersistedData('activity_qr_codes', {});
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const newCode = `XTS-${randomNum}`;
+  const qrData = {
+    code: newCode,
+    activityId: activityId,
+    createdAt: new Date().toISOString(),
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`XTS_ATTENDANCE_${activityId}_${newCode}`)}`
+  };
+  const updated = { ...allCodes, [activityId]: qrData };
+  setPersistedData('activity_qr_codes', updated);
+  return qrData;
+}
+
+export function getActivityGpsAuditLogs(activityId) {
+  const allLogs = getPersistedData('activity_gps_audit_logs', {});
+  return allLogs[activityId] || [];
+}
+
+export function saveActivityGpsAttendanceLog(activityId, logEntry) {
+  const allLogs = getPersistedData('activity_gps_audit_logs', {});
+  const currentActivityLogs = allLogs[activityId] || [];
+  const filtered = currentActivityLogs.filter(l => l.branch_name !== logEntry.branch_name);
+  const updatedList = [logEntry, ...filtered];
+  const updatedAll = {
+    ...allLogs,
+    [activityId]: updatedList
+  };
+  setPersistedData('activity_gps_audit_logs', updatedAll);
+
+  // Sync with main attendance_records
+  const attendanceRecords = getPersistedData('attendance_records', {});
+  const currentRecord = attendanceRecords[activityId] || {};
+  const updatedRecord = {
+    ...currentRecord,
+    [logEntry.branch_name]: {
+      attended: true,
+      time: logEntry.time_str,
+      gps: {
+        lat: logEntry.latitude,
+        lng: logEntry.longitude,
+        accuracy: logEntry.accuracy
+      }
+    }
+  };
+  setPersistedData('attendance_records', {
+    ...attendanceRecords,
+    [activityId]: updatedRecord
+  });
+
+  return updatedList;
+}

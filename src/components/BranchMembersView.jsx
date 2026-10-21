@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   RotateCcw
 } from 'lucide-react';
-import { ALL_BRANCHES, OFFICIAL_HAMLETS } from '../lib/supabase';
+import { ALL_BRANCHES, OFFICIAL_HAMLETS, COMPETITION_CLUSTERS, getBranchClusterName } from '../lib/supabase';
 
 export default function BranchMembersView({ 
   members = [], 
@@ -59,7 +59,7 @@ export default function BranchMembersView({
   const [formData, setFormData] = useState({
     id: '',
     full_name: '',
-    branch_name: userBranchName || 'Chi đoàn Ấp Mỹ Hoà 2',
+    branch_name: userBranchName || 'Chi đoàn Ấp Mỹ Hoà 4',
     position: 'Đoàn viên',
     gender: 'Nam',
     birth_date: '2000-01-01',
@@ -79,7 +79,15 @@ export default function BranchMembersView({
 
     // Branch filter
     let matchesBranch = true;
-    if (selectedBranch !== 'ALL') {
+    if (selectedBranch === 'ALL') {
+      matchesBranch = true;
+    } else if (selectedBranch === 'HAMLETS') {
+      const cluster = getBranchClusterName(m.branch_name);
+      matchesBranch = ['Cụm thi đua số 1', 'Cụm thi đua số 2', 'Cụm thi đua số 3', 'Cụm thi đua số 4', 'Cụm thi đua số 5', 'Cụm thi đua số 6'].includes(cluster);
+    } else if (selectedBranch === 'UNITS') {
+      const cluster = getBranchClusterName(m.branch_name);
+      matchesBranch = ['Cụm thi đua số 7', 'Cụm thi đua số 8', 'Cụm thi đua số 9', 'Cụm thi đua số 10', 'Cụm thi đua số 11', 'Cụm thi đua số 12'].includes(cluster);
+    } else {
       const cleanSel = selectedBranch.replace(/^Chi đoàn\s*/i, '').trim().toLowerCase();
       const cleanM = String(m.branch_name || '').replace(/^Chi đoàn\s*/i, '').trim().toLowerCase();
       matchesBranch = cleanM.includes(cleanSel) || cleanSel.includes(cleanM);
@@ -218,10 +226,10 @@ export default function BranchMembersView({
         <div>
           <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
             <Users className="text-primary" size={24} />
-            Quản lý Danh sách Đoàn viên 30 Chi đoàn Ấp
+            Quản lý Danh sách Đoàn viên theo Chi đoàn
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Hệ thống quản lý hồ sơ lý lịch, chức vụ, trình độ và trạng thái sinh hoạt đoàn viên thuộc Đoàn xã Xuân Thới Sơn
+            Hệ thống quản lý hồ sơ lý lịch, chức vụ, trình độ và trạng thái sinh hoạt đoàn viên thuộc 56 Chi đoàn / Đơn vị Đoàn xã Xuân Thới Sơn
           </div>
         </div>
 
@@ -281,13 +289,13 @@ export default function BranchMembersView({
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="p-3 bg-warning-subtle border border-warning-subtle rounded-3 h-100">
             <div className="d-flex align-items-center justify-content-between text-warning-emphasis mb-1">
-              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🏛️ Chi đoàn Ấp trực thuộc</span>
+              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🏛️ Chi đoàn trực thuộc</span>
               <Building size={18} />
             </div>
             <div className="fw-extrabold text-warning-emphasis" style={{ fontSize: '26px', lineHeight: 1.1 }}>
-              30 <span className="fs-6 fw-normal text-muted">Chi đoàn Ấp</span>
+              56 <span className="fs-6 fw-normal text-muted">Chi đoàn / Đơn vị</span>
             </div>
-            <div className="text-warning-emphasis mt-1 fw-semibold" style={{ fontSize: '11px' }}>100% Ấp có tổ chức Đoàn</div>
+            <div className="text-warning-emphasis mt-1 fw-semibold" style={{ fontSize: '11px' }}>12 Cụm thi đua năm 2026</div>
           </div>
         </div>
       </div>
@@ -318,8 +326,16 @@ export default function BranchMembersView({
                 disabled={!isDoanXa}
               >
                 <option value="ALL">🏛️ Tất cả 56 Chi đoàn / Đơn vị</option>
-                {ALL_BRANCHES.map(b => (
-                  <option key={b.id} value={b.name}>{b.name}</option>
+                <option value="HAMLETS">📍 Khối 30 Chi đoàn Ấp (Cụm 1 - 6)</option>
+                <option value="UNITS">🏫 Khối 26 Trường học & Đơn vị (Cụm 7 - 12)</option>
+                {COMPETITION_CLUSTERS.map(c => (
+                  <optgroup key={c.id} label={`🏆 ${c.name} (${c.branches?.length || 0} Chi đoàn)`}>
+                    {(c.branches || []).map(bName => (
+                      <option key={bName} value={bName}>
+                        {c.lead === bName ? `⭐ ${bName} (Trưởng)` : c.deputy === bName ? `🎖️ ${bName} (Phó)` : bName}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -360,7 +376,7 @@ export default function BranchMembersView({
             <tr>
               <th style={{ width: '40px' }}>STT</th>
               <th>Họ và Tên</th>
-              <th>Chi đoàn Ấp</th>
+              <th>Chi đoàn sinh hoạt</th>
               <th>Chức vụ</th>
               <th>Giới tính</th>
               <th>Ngày vào Đoàn</th>
@@ -479,7 +495,7 @@ export default function BranchMembersView({
               <div className="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
                 <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style={{ fontSize: '16.5px' }}>
                   <UserPlus className="text-primary" size={22} />
-                  {editingMember ? 'Chỉnh sửa Thông tin Đoàn viên' : 'Thêm mới Đoàn viên vào Danh sách 30 Ấp'}
+                  {editingMember ? 'Chỉnh sửa Thông tin Đoàn viên' : 'Thêm mới Đoàn viên theo Chi đoàn'}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowMemberModal(false)}></button>
               </div>
@@ -513,15 +529,24 @@ export default function BranchMembersView({
                   </div>
 
                   <div className="col-12 col-md-6">
-                    <label className="form-label text-dark fw-semibold" style={{ fontSize: '13px' }}>Chi đoàn Ấp sinh hoạt</label>
+                    <label className="form-label text-dark fw-semibold" style={{ fontSize: '13px' }}>
+                      Chi đoàn sinh hoạt <span className="text-danger">*</span>
+                    </label>
                     <select 
                       className="form-select"
                       value={formData.branch_name}
                       onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
                       disabled={!isDoanXa}
+                      required
                     >
-                      {ALL_BRANCHES.map(b => (
-                        <option key={b.id} value={b.name}>{b.name}</option>
+                      {COMPETITION_CLUSTERS.map(c => (
+                        <optgroup key={c.id} label={`🏆 ${c.name} (${c.branches?.length || 0} Chi đoàn)`}>
+                          {(c.branches || []).map(bName => (
+                            <option key={bName} value={bName}>
+                              {c.lead === bName ? `⭐ ${bName} (Cụm trưởng)` : c.deputy === bName ? `🎖️ ${bName} (Cụm phó)` : bName}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>

@@ -1,21 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle } from 'lucide-react';
+import { Upload, Send, Calendar, FileText, PhoneCall, MessageSquare, Megaphone, HardDrive, CheckCircle, CheckSquare, Eye, Clock, MapPin, Bell, Trash2, Users, UserCheck, Building, Plus, XCircle, ChevronDown, ChevronRight, Layers, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { INITIAL_BRANCHES, ALL_BRANCHES, getBranchClusterName, SCHOOL_BRANCHES, OFFICIAL_ADDRESS, COMPETITION_CLUSTERS, TARGET_BLOCKS, formatDateDDMMYYYY, getPriorityBadgeStyle, getActivityTimeStatus } from '../lib/supabase';
 import { uploadPdfWithFailover, DOAN_XA_GMAIL } from '../lib/storageStrategy';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
-// Component chọn nhiều đơn vị nhận / phân công
+// Component chọn nhiều đơn vị nhận / phân công - Phân cấp Khối (Dân cư, Trường học, Ngoài nhà nước, LLVT) & Cụm (1-12) & 56 Chi đoàn
 export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công đơn vị' }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedClusters, setExpandedClusters] = useState({});
   const dropdownRef = React.useRef(null);
 
-  const selectedList = Array.isArray(selected)
-    ? selected
-    : (selected && selected !== 'ALL' && selected !== 'Tất cả 30 Chi đoàn Ấp' && selected !== 'Tất cả 56 Chi đoàn / Đơn vị' ? [selected] : ['Tất cả 56 Chi đoàn / Đơn vị']);
+  // Normalize selected into array of strings
+  const getNormalizedList = () => {
+    if (!selected) return ['Tất cả 56 Chi đoàn / Đơn vị'];
+    if (Array.isArray(selected)) {
+      if (selected.length === 0) return ['Tất cả 56 Chi đoàn / Đơn vị'];
+      return selected;
+    }
+    const s = String(selected).trim();
+    if (s === 'ALL' || s === 'Tất cả 56 Chi đoàn / Đơn vị' || s === 'Tất cả 56 Chi đoàn') {
+      return ['Tất cả 56 Chi đoàn / Đơn vị'];
+    }
+    if (s === 'Tất cả 30 Chi đoàn Ấp' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
+      const resBlock = TARGET_BLOCKS ? TARGET_BLOCKS.find(b => b.id === 'BLOCK_RESIDENTIAL') : null;
+      return resBlock ? getBranchesForBlock(resBlock.id) : ['Khối Địa bàn Dân cư (30 Chi đoàn Ấp)'];
+    }
+    if (s.includes('Khối Trường học') || s.includes('Trường học')) {
+      const schoolBlock = TARGET_BLOCKS ? TARGET_BLOCKS.find(b => b.id === 'BLOCK_SCHOOL') : null;
+      return schoolBlock ? getBranchesForBlock(schoolBlock.id) : ['Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)'];
+    }
+    if (s.includes('Khối Ngoài nhà nước') || s.includes('Ngoài nhà nước')) {
+      const entBlock = TARGET_BLOCKS ? TARGET_BLOCKS.find(b => b.id === 'BLOCK_ENTERPRISE') : null;
+      return entBlock ? getBranchesForBlock(entBlock.id) : ['Khối Ngoài nhà nước (Doanh nghiệp, Công ty)'];
+    }
+    if (s.includes('Lực lượng vũ trang') || s.includes('LLVT')) {
+      const armBlock = TARGET_BLOCKS ? TARGET_BLOCKS.find(b => b.id === 'BLOCK_ARMED_FORCES') : null;
+      return armBlock ? getBranchesForBlock(armBlock.id) : ['Khối Lực lượng vũ trang & Cơ quan'];
+    }
+    return [s];
+  };
 
-  const isAllSelected = selectedList.includes('Tất cả 30 Chi đoàn Ấp') || selectedList.includes('Tất cả 56 Chi đoàn / Đơn vị') || selectedList.includes('ALL') || selectedList.length === ALL_BRANCHES.length;
+  const selectedList = getNormalizedList();
+  const isAllSelected = selectedList.includes('Tất cả 56 Chi đoàn / Đơn vị') || 
+    selectedList.includes('ALL') || 
+    selectedList.length === ALL_BRANCHES.length;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -27,6 +57,23 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Helper check if an entire block is selected
+  const isBlockSelected = (block) => {
+    if (isAllSelected) return true;
+    const branches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id) : [];
+    if (branches.length === 0) return false;
+    return branches.every(b => selectedList.includes(b));
+  };
+
+  // Helper check if a cluster is selected
+  const isClusterSelected = (cluster) => {
+    if (isAllSelected) return true;
+    const clusterBranchNames = cluster.branches || [];
+    if (clusterBranchNames.length === 0) return false;
+    return clusterBranchNames.every(b => selectedList.includes(b));
+  };
+
+  // Toggle All 56 units
   const handleToggleAll = () => {
     if (isAllSelected) {
       onChange([]);
@@ -35,81 +82,195 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     }
   };
 
+  // Toggle entire Block (Dân cư 30 ấp, Trường học, Ngoài nhà nước, LLVT)
   const handleToggleBlock = (block) => {
-    const blockBranchNames = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id) : [];
-    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
-    const hasAll = blockBranchNames.length > 0 && blockBranchNames.every(b => current.includes(b));
+    const blockBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id) : [];
+    let current = isAllSelected 
+      ? ALL_BRANCHES.map(b => b.name) 
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
 
+    const hasAll = blockBranches.length > 0 && blockBranches.every(b => current.includes(b));
     let updated;
     if (hasAll) {
-      updated = current.filter(b => !blockBranchNames.includes(b));
+      updated = current.filter(b => !blockBranches.includes(b));
     } else {
-      updated = Array.from(new Set([...current, ...blockBranchNames]));
+      updated = Array.from(new Set([...current, ...blockBranches]));
     }
+
     if (updated.length === ALL_BRANCHES.length || updated.length === 0) {
       updated = ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
     onChange(updated);
   };
 
+  // Quick select dedicated block
+  const handleQuickSelectBlock = (blockId) => {
+    if (blockId === 'BLOCK_ALL') {
+      onChange(['Tất cả 56 Chi đoàn / Đơn vị']);
+      return;
+    }
+    const blockBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(blockId) : [];
+    onChange(blockBranches);
+  };
+
+  // Toggle Cluster
   const handleToggleCluster = (cluster) => {
     const clusterBranchNames = cluster.branches || [];
-    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
-    const hasAllCluster = clusterBranchNames.every(b => current.includes(b));
+    let current = isAllSelected 
+      ? ALL_BRANCHES.map(b => b.name) 
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
 
+    const hasAllCluster = clusterBranchNames.length > 0 && clusterBranchNames.every(b => current.includes(b));
     let updated;
     if (hasAllCluster) {
       updated = current.filter(b => !clusterBranchNames.includes(b));
     } else {
       updated = Array.from(new Set([...current, ...clusterBranchNames]));
     }
+
     if (updated.length === ALL_BRANCHES.length || updated.length === 0) {
       updated = ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
     onChange(updated);
   };
 
+  // Toggle single branch
   const handleToggleBranch = (branchName) => {
-    let current = isAllSelected ? ALL_BRANCHES.map(b => b.name) : selectedList.filter(s => s !== 'Tất cả 30 Chi đoàn Ấp' && s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL');
+    let current = isAllSelected 
+      ? ALL_BRANCHES.map(b => b.name) 
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
+
     if (current.includes(branchName)) {
       current = current.filter(b => b !== branchName);
     } else {
       current = [...current, branchName];
     }
+
     if (current.length === ALL_BRANCHES.length || current.length === 0) {
       current = ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
     onChange(current);
   };
 
+  const toggleExpandCluster = (clusterId, e) => {
+    e.stopPropagation();
+    setExpandedClusters(prev => ({
+      ...prev,
+      [clusterId]: !prev[clusterId]
+    }));
+  };
+
+  // Smart Display Text
   const renderDisplayText = () => {
     if (isAllSelected || selectedList.length === 0) {
       return '📢 Tất cả 56 Chi đoàn / Đơn vị trực thuộc';
     }
+
+    // Check if matches dedicated Block
+    const resBranches = getBranchesForBlock('BLOCK_RESIDENTIAL');
+    if (resBranches.length > 0 && resBranches.length === selectedList.length && resBranches.every(b => selectedList.includes(b))) {
+      return '🏘️ Khối Địa bàn Dân cư (30 Chi đoàn Ấp)';
+    }
+
+    const schoolBranches = getBranchesForBlock('BLOCK_SCHOOL');
+    if (schoolBranches.length > 0 && schoolBranches.length === selectedList.length && schoolBranches.every(b => selectedList.includes(b))) {
+      return '🏫 Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)';
+    }
+
+    const entBranches = getBranchesForBlock('BLOCK_ENTERPRISE');
+    if (entBranches.length > 0 && entBranches.length === selectedList.length && entBranches.every(b => selectedList.includes(b))) {
+      return '🏢 Khối Ngoài nhà nước (Doanh nghiệp, Công ty)';
+    }
+
+    const armedBranches = getBranchesForBlock('BLOCK_ARMED_FORCES');
+    if (armedBranches.length > 0 && armedBranches.length === selectedList.length && armedBranches.every(b => selectedList.includes(b))) {
+      return '🛡️ Khối Lực lượng vũ trang & Cơ quan';
+    }
+
+    // Check if matches exact single Cluster
+    const matchedCluster = COMPETITION_CLUSTERS.find(c => {
+      const bList = c.branches || [];
+      return bList.length > 0 && bList.length === selectedList.length && bList.every(b => selectedList.includes(b));
+    });
+    if (matchedCluster) {
+      return `🏆 ${matchedCluster.name} (${matchedCluster.branches.length} đơn vị)`;
+    }
+
     if (selectedList.length === 1) {
       return `📍 ${selectedList[0]}`;
     }
-    return `📌 Đã chọn (${selectedList.length} đơn vị): ${selectedList.slice(0, 2).join(', ')}${selectedList.length > 2 ? '...' : ''}`;
+
+    return `📌 Đã chọn (${selectedList.length}/56 đơn vị): ${selectedList.slice(0, 2).join(', ')}${selectedList.length > 2 ? '...' : ''}`;
   };
+
+  // Determine active quick chip
+  const getActiveChip = () => {
+    if (isAllSelected) return 'BLOCK_ALL';
+    const resBranches = getBranchesForBlock('BLOCK_RESIDENTIAL');
+    if (resBranches.length > 0 && resBranches.length === selectedList.length && resBranches.every(b => selectedList.includes(b))) return 'BLOCK_RESIDENTIAL';
+    const schoolBranches = getBranchesForBlock('BLOCK_SCHOOL');
+    if (schoolBranches.length > 0 && schoolBranches.length === selectedList.length && schoolBranches.every(b => selectedList.includes(b))) return 'BLOCK_SCHOOL';
+    const entBranches = getBranchesForBlock('BLOCK_ENTERPRISE');
+    if (entBranches.length > 0 && entBranches.length === selectedList.length && entBranches.every(b => selectedList.includes(b))) return 'BLOCK_ENTERPRISE';
+    const armedBranches = getBranchesForBlock('BLOCK_ARMED_FORCES');
+    if (armedBranches.length > 0 && armedBranches.length === selectedList.length && armedBranches.every(b => selectedList.includes(b))) return 'BLOCK_ARMED_FORCES';
+    return null;
+  };
+
+  const activeChip = getActiveChip();
 
   return (
     <div className="position-relative" ref={dropdownRef}>
+      {/* Quick Block Selection Chips */}
+      <div className="d-flex align-items-center gap-1.5 mb-1.5 flex-wrap">
+        {[
+          { id: 'BLOCK_ALL', label: 'Tất cả (56)', icon: '📢' },
+          { id: 'BLOCK_RESIDENTIAL', label: 'Khối Địa bàn Dân cư (30 ấp)', icon: '🏘️' },
+          { id: 'BLOCK_SCHOOL', label: 'Khối Trường học (20)', icon: '🏫' },
+          { id: 'BLOCK_ENTERPRISE', label: 'Khối Ngoài NN (4)', icon: '🏢' },
+          { id: 'BLOCK_ARMED_FORCES', label: 'Khối LLVT (4)', icon: '🛡️' }
+        ].map(chip => {
+          const isActive = activeChip === chip.id;
+          return (
+            <button
+              key={chip.id}
+              type="button"
+              className={`btn btn-xs py-1 px-2 rounded-pill d-inline-flex align-items-center gap-1 transition-all ${
+                isActive 
+                  ? 'btn-primary text-white shadow-xs fw-bold' 
+                  : 'btn-outline-secondary bg-white text-secondary'
+              }`}
+              style={{ fontSize: '11px', borderWidth: '1px' }}
+              onClick={() => handleQuickSelectBlock(chip.id)}
+            >
+              <span>{chip.icon}</span>
+              <span>{chip.label}</span>
+              {isActive && <Check size={12} className="ms-0.5" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Main Dropdown Button */}
       <button
         type="button"
         className="form-select text-start d-flex align-items-center justify-content-between bg-white border"
-        style={{ fontSize: '13px', minHeight: '38px' }}
+        style={{ fontSize: '13px', minHeight: '38px', cursor: 'pointer' }}
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="text-truncate fw-medium">{renderDisplayText()}</span>
+        <ChevronDown size={16} className={`text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      {/* Hierarchical Dropdown Panel: Khối -> Cụm -> Chi đoàn */}
       {isOpen && (
         <div 
           className="position-absolute start-0 end-0 mt-1 bg-white border rounded-3 shadow-lg p-2 text-dark" 
-          style={{ zIndex: 1085, maxHeight: '300px', overflowY: 'auto' }}
+          style={{ zIndex: 1085, maxHeight: '360px', overflowY: 'auto' }}
         >
+          {/* Header 1: Select All 56 Units */}
           <div 
-            className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2 fw-bold text-primary border-bottom mb-1"
+            className="p-2.5 rounded-2 hover-bg-light cursor-pointer d-flex align-items-center gap-2 fw-bold text-primary border-bottom mb-2 bg-primary-subtle bg-opacity-25"
             onClick={handleToggleAll}
             style={{ fontSize: '12.5px' }}
           >
@@ -119,78 +280,113 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
               checked={isAllSelected}
               onChange={() => {}}
             />
-            <span>📢 Gửi tất cả 56 Chi đoàn / Đơn vị trực thuộc</span>
+            <span className="d-flex align-items-center gap-1.5">
+              <span>📢</span>
+              <span>Gửi tất cả 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã</span>
+            </span>
           </div>
 
-          <div className="fw-bold text-secondary px-2 pt-1 pb-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
-            🏆 Cụm Thi Đua
-          </div>
-          {COMPETITION_CLUSTERS.map(cluster => {
-            const clusterBranchNames = cluster.branches || [];
-            const isClusterChecked = isAllSelected || clusterBranchNames.every(b => selectedList.includes(b));
+          {/* Render 4 Main Target Scope Blocks */}
+          {TARGET_BLOCKS && TARGET_BLOCKS.filter(b => b.id !== 'BLOCK_ALL').map((block) => {
+            const blockChecked = isBlockSelected(block);
+            const blockClusters = COMPETITION_CLUSTERS.filter(c => block.clusterIds.includes(c.id));
+            const blockTotalBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id).length : 0;
+
             return (
-              <div 
-                key={cluster.id}
-                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
-                onClick={() => handleToggleCluster(cluster)}
-                style={{ fontSize: '12px' }}
-              >
-                <input 
-                  type="checkbox" 
-                  className="form-check-input mt-0 cursor-pointer" 
-                  checked={isClusterChecked}
-                  onChange={() => {}}
-                />
-                <div>
-                  <span className="fw-semibold">🏆 {cluster.label}</span>
-                  <div className="text-muted" style={{ fontSize: '10.5px' }}>({cluster.branches?.join(', ')})</div>
+              <div key={block.id} className="mb-2.5 border rounded-3 overflow-hidden bg-white shadow-2xs">
+                {/* Block Header (Mục Tổng) */}
+                <div 
+                  className="p-2 px-2.5 bg-light border-bottom d-flex align-items-center justify-content-between cursor-pointer hover-bg-light"
+                  onClick={() => handleToggleBlock(block)}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      className="form-check-input mt-0 cursor-pointer" 
+                      checked={blockChecked}
+                      onChange={() => {}}
+                    />
+                    <div className="d-flex align-items-center gap-1.5 fw-bold text-dark" style={{ fontSize: '12.5px' }}>
+                      <span>{block.icon}</span>
+                      <span>{block.name}</span>
+                    </div>
+                  </div>
+                  <span className="badge bg-secondary-subtle text-secondary rounded-pill" style={{ fontSize: '10px' }}>
+                    {block.badge}
+                  </span>
                 </div>
-              </div>
-            );
-          })}
 
-          <div className="fw-bold text-secondary px-2 pt-2 pb-1 border-top mt-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
-            📍 Các Chi đoàn / Đơn vị trực thuộc
-          </div>
-          {ALL_BRANCHES.map(branch => {
-            const isBranchChecked = isAllSelected || selectedList.includes(branch.name);
-            return (
-              <div 
-                key={branch.id}
-                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
-                onClick={() => handleToggleBranch(branch.name)}
-                style={{ fontSize: '12.5px' }}
-              >
-                <input 
-                  type="checkbox" 
-                  className="form-check-input mt-0 cursor-pointer" 
-                  checked={isBranchChecked}
-                  onChange={() => {}}
-                />
-                <span>📍 {branch.name}</span>
-              </div>
-            );
-          })}
+                {/* Clusters inside this Block */}
+                <div className="p-1">
+                  {blockClusters.map((cluster) => {
+                    const clusterChecked = isClusterSelected(cluster);
+                    const isExpanded = !!expandedClusters[cluster.id];
+                    const branches = cluster.branches || [];
 
-          <div className="fw-bold text-secondary px-2 pt-2 pb-1 border-top mt-1" style={{ fontSize: '11.5px', textTransform: 'uppercase' }}>
-            🏫 các Chi đoàn Trường học & Đơn vị
-          </div>
-          {SCHOOL_BRANCHES.map(branch => {
-            const isBranchChecked = isAllSelected || selectedList.includes(branch.name);
-            return (
-              <div 
-                key={branch.id}
-                className="p-2 rounded hover-bg-light cursor-pointer d-flex align-items-center gap-2"
-                onClick={() => handleToggleBranch(branch.name)}
-                style={{ fontSize: '12.5px' }}
-              >
-                <input 
-                  type="checkbox" 
-                  className="form-check-input mt-0 cursor-pointer" 
-                  checked={isBranchChecked}
-                  onChange={() => {}}
-                />
-                <span>🏫 {branch.name}</span>
+                    return (
+                      <div key={cluster.id} className="rounded hover-bg-light">
+                        <div 
+                          className="p-1.5 px-2 d-flex align-items-center justify-content-between cursor-pointer"
+                          onClick={() => handleToggleCluster(cluster)}
+                          style={{ fontSize: '12px' }}
+                        >
+                          <div className="d-flex align-items-center gap-2 text-truncate">
+                            <input 
+                              type="checkbox" 
+                              className="form-check-input mt-0 cursor-pointer flex-shrink-0" 
+                              checked={clusterChecked}
+                              onChange={() => {}}
+                            />
+                            <div className="text-truncate">
+                              <span className="fw-semibold text-dark">🏆 {cluster.name}</span>
+                              <span className="text-muted ms-1.5" style={{ fontSize: '10.5px' }}>({branches.length} đơn vị)</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-link text-muted p-0 ms-2 text-decoration-none"
+                            onClick={(e) => toggleExpandCluster(cluster.id, e)}
+                            title="Xem chi tiết các chi đoàn con"
+                          >
+                            <span style={{ fontSize: '10.5px' }} className="me-1">{isExpanded ? 'Thu gọn' : 'Chi tiết'}</span>
+                            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                          </button>
+                        </div>
+
+                        {/* Expanded branch children */}
+                        {isExpanded && (
+                          <div className="ps-4 pe-2 py-1 bg-light bg-opacity-50 border-top border-bottom my-1 rounded-1">
+                            {branches.map((bName) => {
+                              const isChecked = isAllSelected || selectedList.includes(bName);
+                              return (
+                                <div 
+                                  key={bName}
+                                  className="py-1 d-flex align-items-center gap-2 cursor-pointer hover-text-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleBranch(bName);
+                                  }}
+                                  style={{ fontSize: '11.5px' }}
+                                >
+                                  <input 
+                                    type="checkbox" 
+                                    className="form-check-input mt-0 cursor-pointer" 
+                                    checked={isChecked}
+                                    onChange={() => {}}
+                                  />
+                                  <span className={isChecked ? 'fw-medium text-primary' : 'text-secondary'}>
+                                    📍 {bName}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -797,7 +993,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
     title: '',
     date: new Date().toISOString().split('T')[0],
     category: 'decision_docs',
-    recipient_scope: 'Khối Dân cư (30 Chi đoàn Ấp)',
+    recipient_scope: 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)',
     file_name: '',
     file_url: ''
   });
@@ -969,7 +1165,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                 </div>
               </div>
 
-              {/* Chọn nơi gửi đến theo Khối đối tượng theo yêu cầu: Khối Dân cư 30 ấp, Khối Trường học, Khối Ngoài nhà nước, Khối LLVT, Tất cả */}
+              {/* Chọn nơi gửi đến theo Khối đối tượng theo yêu cầu: Khối Địa bàn Dân cư 30 ấp, Khối Trường học, Khối Ngoài nhà nước, Khối LLVT, Tất cả */}
               <div className="mb-3 p-3 rounded-3 bg-light border">
                 <label className="form-label fw-semibold text-primary d-flex align-items-center justify-content-between mb-2" style={{ fontSize: '13px' }}>
                   <span className="d-flex align-items-center gap-1.5">
@@ -988,8 +1184,8 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                   {[
                     {
                       id: 'res',
-                      scope: 'Khối Dân cư (30 Chi đoàn Ấp)',
-                      title: 'Khối Dân cư',
+                      scope: 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)',
+                      title: 'Khối Địa bàn Dân cư',
                       sub: '30 Chi đoàn Ấp',
                       icon: '🏘️',
                       badge: '30 Ấp',
@@ -1074,7 +1270,7 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                     style={{ fontSize: '12.5px' }}
                   >
                     <optgroup label="🌐 Chọn theo Khối đối tượng">
-                      <option value="Khối Dân cư (30 Chi đoàn Ấp)">🏘️ Khối Dân cư (30 Chi đoàn Ấp - Cụm 1 đến Cụm 6)</option>
+                      <option value="Khối Địa bàn Dân cư (30 Chi đoàn Ấp)">🏘️ Khối Địa bàn Dân cư (30 Chi đoàn Ấp - Cụm 1 đến Cụm 6)</option>
                       <option value="Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)">🏫 Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non - Cụm 7, 8, 9, 10)</option>
                       <option value="Khối Ngoài nhà nước (Doanh nghiệp, Công ty)">🏢 Khối Ngoài nhà nước (Doanh nghiệp, Công ty - Cụm 11)</option>
                       <option value="Khối Lực lượng vũ trang & Cơ quan">🛡️ Khối Lực lượng vũ trang & Cơ quan (Cụm 12)</option>
@@ -1098,12 +1294,12 @@ export function IssueDocumentModal({ show, onClose, onSave }) {
                   <Send size={13} className="flex-shrink-0" />
                   <div>
                     <span className="fw-bold">Nơi nhận: </span>
-                    {formData.recipient_scope === 'Khối Dân cư (30 Chi đoàn Ấp)' && 'Toàn bộ 30 Chi đoàn Ấp trên địa bàn dân cư (Cụm thi đua số 1 đến số 6).'}
+                    {formData.recipient_scope === 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)' && 'Toàn bộ 30 Chi đoàn Ấp trên địa bàn dân cư (Cụm thi đua số 1 đến số 6).'}
                     {formData.recipient_scope === 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)' && 'Các trường THPT, TT GDNN-GDTX, THCS, Tiểu học & Mầm non (Cụm 7, 8, 9, 10).'}
                     {formData.recipient_scope === 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)' && 'Các công ty, doanh nghiệp ngoài nhà nước và cơ sở mầm non tư thục (Cụm 11).'}
                     {formData.recipient_scope === 'Khối Lực lượng vũ trang & Cơ quan' && 'Chi đoàn Công an, Quân sự, Trạm Y tế và Chi đoàn UBND xã (Cụm 12).'}
                     {(formData.recipient_scope === 'Tất cả 56 Chi đoàn / Đơn vị' || formData.recipient_scope === 'ALL') && 'Toàn bộ 56 Chi đoàn / Đơn vị trực thuộc Đoàn xã Xuân Thới Sơn.'}
-                    {!['Khối Dân cư (30 Chi đoàn Ấp)', 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)', 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)', 'Khối Lực lượng vũ trang & Cơ quan', 'Tất cả 56 Chi đoàn / Đơn vị', 'ALL'].includes(formData.recipient_scope) && `Đơn vị nhận cụ thể: ${formData.recipient_scope}`}
+                    {!['Khối Địa bàn Dân cư (30 Chi đoàn Ấp)', 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)', 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)', 'Khối Lực lượng vũ trang & Cơ quan', 'Tất cả 56 Chi đoàn / Đơn vị', 'ALL'].includes(formData.recipient_scope) && `Đơn vị nhận cụ thể: ${formData.recipient_scope}`}
                   </div>
                 </div>
               </div>
@@ -1298,7 +1494,14 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     if (editData) {
       setTitle(editData.title || '');
       setContent(editData.content || '');
-      setTargetScope(editData.target_scope === 'Tất cả 30 Chi đoàn Ấp' ? 'ALL' : editData.target_scope || 'ALL');
+      const initScope = editData.target_scope;
+      if (initScope === 'Tất cả 30 Chi đoàn Ấp' || (typeof initScope === 'string' && (initScope.includes('30 Ấp') || initScope.includes('Khối Địa bàn Dân cư')))) {
+        setTargetScope('Khối Địa bàn Dân cư (30 Chi đoàn Ấp)');
+      } else if (initScope === 'ALL' || !initScope) {
+        setTargetScope('Tất cả 56 Chi đoàn / Đơn vị');
+      } else {
+        setTargetScope(initScope);
+      }
       setPriority(editData.priority || 'Bình thường');
       setTime(editData.activity_details?.time || editData.time || '');
       setDateStr(formatDateDDMMYYYY(editData.activity_details || editData.date));
@@ -1322,11 +1525,47 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
     e.preventDefault();
     confetti({ particleCount: 85, spread: 85, origin: { y: 0.6 } });
     
-    const scopeText = Array.isArray(targetScope)
-      ? (targetScope.length === 0 || targetScope.includes('ALL') || targetScope.includes('Tất cả 56 Chi đoàn / Đơn vị')
-          ? 'Tất cả 56 Chi đoàn / Đơn vị'
-          : (targetScope.includes('Tất cả 30 Chi đoàn Ấp') ? 'Khối Dân cư (30 Chi đoàn Ấp)' : targetScope.join(', ')))
-      : (targetScope === 'ALL' || targetScope === 'Tất cả 56 Chi đoàn / Đơn vị' ? 'Tất cả 56 Chi đoàn / Đơn vị' : targetScope);
+    let scopeText = 'Tất cả 56 Chi đoàn / Đơn vị';
+    if (Array.isArray(targetScope)) {
+      if (targetScope.length === 0 || targetScope.length === ALL_BRANCHES.length || targetScope.includes('Tất cả 56 Chi đoàn / Đơn vị') || targetScope.includes('ALL')) {
+        scopeText = 'Tất cả 56 Chi đoàn / Đơn vị';
+      } else {
+        const resBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock('BLOCK_RESIDENTIAL') : [];
+        const schoolBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock('BLOCK_SCHOOL') : [];
+        const entBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock('BLOCK_ENTERPRISE') : [];
+        const armedBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock('BLOCK_ARMED_FORCES') : [];
+
+        if (resBranches.length > 0 && resBranches.length === targetScope.length && resBranches.every(b => targetScope.includes(b))) {
+          scopeText = 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)';
+        } else if (schoolBranches.length > 0 && schoolBranches.length === targetScope.length && schoolBranches.every(b => targetScope.includes(b))) {
+          scopeText = 'Khối Trường học (Cấp 3, Cấp 2, Tiểu học, Mầm non)';
+        } else if (entBranches.length > 0 && entBranches.length === targetScope.length && entBranches.every(b => targetScope.includes(b))) {
+          scopeText = 'Khối Ngoài nhà nước (Doanh nghiệp, Công ty)';
+        } else if (armedBranches.length > 0 && armedBranches.length === targetScope.length && armedBranches.every(b => targetScope.includes(b))) {
+          scopeText = 'Khối Lực lượng vũ trang & Cơ quan';
+        } else {
+          // Check if single cluster
+          const matchedCluster = COMPETITION_CLUSTERS.find(c => {
+            const bList = c.branches || [];
+            return bList.length > 0 && bList.length === targetScope.length && bList.every(b => targetScope.includes(b));
+          });
+          if (matchedCluster) {
+            scopeText = matchedCluster.name;
+          } else {
+            scopeText = targetScope.join(', ');
+          }
+        }
+      }
+    } else {
+      const s = String(targetScope || '').trim();
+      if (s === 'ALL' || s === 'Tất cả 56 Chi đoàn / Đơn vị' || !s) {
+        scopeText = 'Tất cả 56 Chi đoàn / Đơn vị';
+      } else if (s === 'Tất cả 30 Chi đoàn Ấp' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
+        scopeText = 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)';
+      } else {
+        scopeText = s;
+      }
+    }
 
     const finalTime = time.trim() || '08:00 - 11:30';
     const finalDate = dateStr.trim() || new Date().toLocaleDateString('vi-VN');

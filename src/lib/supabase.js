@@ -248,9 +248,9 @@ export const COMPETITION_CLUSTERS = [
 export const TARGET_BLOCKS = [
   {
     id: 'BLOCK_RESIDENTIAL',
-    name: 'Khối Dân cư (30 Chi đoàn Ấp)',
-    shortName: 'Khối Dân cư (30 Ấp)',
-    scopeValue: 'Khối Dân cư (30 Chi đoàn Ấp)',
+    name: 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)',
+    shortName: 'Khối Địa bàn Dân cư',
+    scopeValue: 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)',
     icon: '🏘️',
     badge: '30 Chi đoàn Ấp',
     desc: '30 Chi đoàn Ấp trên địa bàn dân cư (Cụm thi đua số 1 đến Cụm thi đua số 6)',

@@ -11,7 +11,9 @@ export default function Navbar({
   unreadNotiCount = 0,
   unreadMsgCount = 0,
   onToggleMobileMenu,
-  mobileMenuOpen = false
+  mobileMenuOpen = false,
+  onOpenGpsModal,
+  gpsStatus = 'default'
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 

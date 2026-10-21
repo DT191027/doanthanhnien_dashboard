@@ -14,6 +14,7 @@ import NotificationsList from './components/NotificationsList';
 import { formatDeadlineDisplay } from './components/TaskCountdown';
 import ChiDoanDocsList from './components/ChiDoanDocsList';
 import Login from './components/Login';
+import GpsPermissionModal from './components/GpsPermissionModal';
 import { 
   CreateActivityModal, 
   IssueDocumentModal, 
@@ -63,7 +64,7 @@ import {
   syncFetchMembers,
   syncSaveMember,
   syncDeleteMember,
-  COMPETITION_CLUSTERS,
+  COMPETITION_CLUSTERS, OFFICIAL_ADDRESS, notifySyncEvent,
   isItemTargetedToUser,
   deduplicateActivities
 } from './lib/supabase';

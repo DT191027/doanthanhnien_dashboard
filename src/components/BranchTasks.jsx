@@ -4,7 +4,7 @@ import { COMPETITION_CLUSTERS } from '../lib/supabase';
 import { ReceiptConfirmationBox } from './SecondaryViews';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
-export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onDeleteTask, onConfirmReceipt }) {
+export default function BranchTasks({tasks = [], currentRole, setActiveTab, onDeleteTask, onConfirmReceipt, onCompleteTask }) {
   const branchName = currentRole?.full_name || currentRole?.branch_name || currentRole?.title || '';
   const isDoanXa = currentRole?.role === 'doan_xa' || currentRole?.role === 'admin';
 
@@ -88,6 +88,7 @@ export default function BranchTasks({ tasks = [], currentRole, setActiveTab, onD
                   currentRole={currentRole} 
                   isDoanXa={isDoanXa} 
                   onConfirmReceipt={onConfirmReceipt} 
+                  onCompleteTask={onCompleteTask}
                 />
               </div>
             </div>

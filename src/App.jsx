@@ -643,6 +643,48 @@ export default function App() {
     }
   };
 
+  
+  const handleCompleteTask = async (taskItem) => {
+    const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn';
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
+
+    const existingCompleted = Array.isArray(taskItem.completedBy) ? taskItem.completedBy : [];
+    if (existingCompleted.some(c => c.branch === branchName)) {
+      triggerToast('Chi đoàn đã báo làm xong công việc này trước đó!');
+      return;
+    }
+
+    const updatedCompletedBy = [...existingCompleted, { branch: branchName, time: timeStr }];
+
+    // Also ensure confirmedBy includes this branch
+    const existingConfirmed = Array.isArray(taskItem.confirmedBy) ? taskItem.confirmedBy : [];
+    const updatedConfirmedBy = existingConfirmed.some(c => c.branch === branchName)
+      ? existingConfirmed
+      : [...existingConfirmed, { branch: branchName, time: timeStr }];
+
+    const updatedTask = {
+      ...taskItem,
+      status: 'completed',
+      completed_time: timeStr,
+      completedBy: updatedCompletedBy,
+      confirmedBy: updatedConfirmedBy
+    };
+
+    const updatedTasks = await syncSaveTask(updatedTask);
+    setTasksList(updatedTasks);
+
+    if (typeof confetti === 'function') {
+      confetti({ particleCount: 85, spread: 75, origin: { y: 0.6 } });
+    }
+    triggerToast(`Chi đoàn đã hoàn thành công việc "${taskItem.title}" lúc ${timeStr}! Dữ liệu đã gửi về Admin.`);
+  };
+
   const handleToggleTask = async (taskId, newStatus) => {
     const updated = await syncToggleTaskStatus(taskId, newStatus);
     setTasksList(updated);
@@ -902,6 +944,7 @@ export default function App() {
                       setActiveTab={setActiveTab} 
                       onDeleteTask={handleDeleteTask}
                       onConfirmReceipt={handleConfirmReceipt}
+                      onCompleteTask={handleCompleteTask}
                     />
                   )}
 
@@ -988,6 +1031,7 @@ export default function App() {
               isDoanXa={isDoanXa} 
               currentUser={currentUser}
               onConfirmReceipt={handleConfirmReceipt}
+              onCompleteTask={handleCompleteTask}
             />
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */

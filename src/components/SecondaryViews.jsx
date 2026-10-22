@@ -42,17 +42,28 @@ import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '..
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
 // Component xác nhận tiếp nhận thông báo / hoạt động cho Chi đoàn & Quản trị viên
-export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onConfirmReceipt, inModal = false, attendanceRecords = {} }) {
+export function ReceiptConfirmationBox({ 
+  type, 
+  item, 
+  currentRole, 
+  isDoanXa, 
+  onConfirmReceipt, 
+  onCompleteTask,
+  inModal = false, 
+  attendanceRecords = {} 
+}) {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [activeTab, setActiveTab] = useState('confirmed'); // 'confirmed' | 'absent'
+  const [activeTab, setActiveTab] = useState('confirmed'); // 'confirmed' | 'completed' | 'absent'
 
   const activityAttendance = (attendanceRecords && item?.id && attendanceRecords[item.id]) ? attendanceRecords[item.id] : {};
   const confirmedBy = Array.isArray(item?.confirmedBy) ? item.confirmedBy : [];
   const absentBy = Array.isArray(item?.absentBy) ? item.absentBy : [];
+  const completedBy = Array.isArray(item?.completedBy) ? item.completedBy : [];
   const branchName = currentRole?.full_name || currentRole?.branch_name || 'Chi đoàn Ấp';
 
   const participatingBranches = [];
   const absentBranches = [];
+  const completedBranches = [];
 
   // 1. Process attendanceRecords map
   if (typeof activityAttendance === 'object' && activityAttendance !== null) {
@@ -82,7 +93,20 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     }
   });
 
-  // 3. Add from absentBy list if not present
+  // 3. Add from completedBy list for tasks
+  completedBy.forEach(c => {
+    if (!c) return;
+    const bName = typeof c === 'string' ? c : (c.branch || c.name || '');
+    const bTime = typeof c === 'object' ? (c.time || item?.completed_time || 'Đã làm xong') : (item?.completed_time || 'Đã làm xong');
+    if (bName && !completedBranches.some(p => p.branch === bName)) {
+      completedBranches.push({ branch: bName, time: bTime });
+    }
+  });
+  if (completedBranches.length === 0 && item?.status === 'completed' && item?.completed_time) {
+    completedBranches.push({ branch: item.assigned_to || 'Chi đoàn', time: item.completed_time });
+  }
+
+  // 4. Add from absentBy list if not present
   absentBy.forEach(a => {
     if (!a) return;
     const bName = typeof a === 'string' ? a : (a.branch || a.name || '');
@@ -104,6 +128,13 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     return c.branch === branchName || (cleanUserBranch && cleanC && cleanC === cleanUserBranch);
   });
 
+  const myCompletion = completedBranches.find(c => {
+    const cleanC = String(c.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return c.branch === branchName || (cleanUserBranch && cleanC && cleanC === cleanUserBranch);
+  });
+  const hasCompleted = Boolean(myCompletion) || (item?.status === 'completed' && Boolean(item?.completed_time));
+  const completionTime = myCompletion?.time || item?.completed_time || '';
+
   const hasAbsent = absentBranches.some(a => {
     const cleanA = String(a.branch || '').replace(/^Chi đoàn\s*/i, '').trim();
     return a.branch === branchName || (cleanUserBranch && cleanA && cleanA === cleanUserBranch);
@@ -113,7 +144,71 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     return a.branch === branchName || (cleanUserBranch && cleanA && cleanA === cleanUserBranch);
   });
 
+  // --------------------------------------------------------------------------
+  // A. CHI ĐOÀN VIEW
+  // --------------------------------------------------------------------------
   if (!isDoanXa) {
+    if (type === 'task') {
+      return (
+        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+          {/* NÚT 1: TIẾP NHẬN - CHỈ HIỂN THỊ KHI CHƯA TIẾP NHẬN, XÁC NHẬN XONG LƯU 1 LẦN */}
+          {hasConfirmed ? (
+            <div 
+              className="d-inline-flex align-items-center gap-1 px-2.5 py-1 bg-success-subtle text-success border border-success-subtle rounded-3 shadow-xs" 
+              style={{ fontSize: '11px', fontWeight: 600 }}
+              title="Chi đoàn đã tiếp nhận công việc này"
+            >
+              <CheckCircle2 size={13} />
+              <span>✓ Đã tiếp nhận ({myConfirmation?.time || 'Vừa xong'})</span>
+            </div>
+          ) : (
+            <button 
+              type="button"
+              className="btn btn-sm btn-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale"
+              style={{ fontSize: '11.5px', transition: 'all 0.2s ease', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfirmReceipt && onConfirmReceipt('task', item);
+              }}
+              title="Bấm để xác nhận tiếp nhận công việc do Admin ban hành (chỉ xác nhận 1 lần)"
+            >
+              <CheckCircle2 size={14} />
+              <span>Xác nhận tiếp nhận</span>
+            </button>
+          )}
+
+          {/* NÚT 2: ĐÃ LÀM XONG - CHỈ HIỂN THỊ KHI ĐÃ TIẾP NHẬN. BẤM XONG LƯU THỜI GIAN GỬI VỀ ADMIN */}
+          {hasConfirmed && (
+            hasCompleted ? (
+              <div 
+                className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-3 shadow-xs text-white" 
+                style={{ fontSize: '11px', fontWeight: 650, backgroundColor: '#16A34A', border: '1px solid #15803d' }}
+                title="Chi đoàn đã hoàn thành công việc và gửi dữ liệu về Ban Thường vụ Đoàn xã"
+              >
+                <CheckCircle2 size={13} />
+                <span>🎉 Đã làm xong ({completionTime || 'Đã hoàn thành'})</span>
+              </div>
+            ) : (
+              <button 
+                type="button"
+                className="btn btn-sm fw-bold d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-3 shadow-xs text-white transition-all hover-scale"
+                style={{ fontSize: '11.5px', backgroundColor: '#16A34A', borderColor: '#16A34A', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCompleteTask && onCompleteTask(item);
+                }}
+                title="Bấm để xác nhận chi đoàn đã làm xong công việc và gửi ngày giờ về Ban Thường vụ Đoàn xã"
+              >
+                <CheckCircle2 size={14} />
+                <span>Đã làm xong</span>
+              </button>
+            )
+          )}
+        </div>
+      );
+    }
+
+    // Default for notifications / activities
     if (hasConfirmed) {
       return (
         <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-success-subtle text-success border border-success-subtle rounded-3 shadow-xs" style={{ fontSize: '11.5px', fontWeight: 600 }}>
@@ -146,30 +241,51 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     );
   }
 
+  // --------------------------------------------------------------------------
+  // B. ADMIN VIEW (DOAN XA) - DỮ LIỆU ĐƯỢC GỬI VỀ ADMIN NẮM ĐƯỢC
+  // --------------------------------------------------------------------------
   return (
     <div className="position-relative d-inline-flex align-items-center gap-1.5 flex-wrap">
       {/* Button 1: Confirmed count */}
       <button 
         type="button"
-        className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
-        style={{ fontSize: '11.5px' }}
+        className="btn btn-sm btn-outline-primary fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
+        style={{ fontSize: '11px' }}
         onClick={(e) => {
           e.stopPropagation();
           setActiveTab('confirmed');
           setShowDropdown(!showDropdown);
         }}
-        title="Xem danh sách Chi đoàn đã tiếp nhận / tham gia"
+        title="Xem danh sách Chi đoàn đã tiếp nhận"
       >
-        <CheckCircle2 size={13} />
+        <CheckCircle2 size={12} />
         <span>{participatingBranches.length} tiếp nhận</span>
       </button>
 
-      {/* Button 2: Absent count */}
+      {/* Button 2 (Tasks): Completed count */}
+      {type === 'task' && (
+        <button 
+          type="button"
+          className="btn btn-sm btn-success fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 text-white"
+          style={{ fontSize: '11px', backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveTab('completed');
+            setShowDropdown(!showDropdown);
+          }}
+          title="Xem danh sách Chi đoàn đã làm xong công việc kèm ngày giờ"
+        >
+          <CheckCircle2 size={12} />
+          <span>{completedBranches.length} đã làm xong</span>
+        </button>
+      )}
+
+      {/* Button 3: Absent count */}
       {absentBranches.length > 0 && (
         <button 
           type="button"
           className="btn btn-sm btn-outline-danger fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
-          style={{ fontSize: '11.5px' }}
+          style={{ fontSize: '11px' }}
           onClick={(e) => {
             e.stopPropagation();
             setActiveTab('absent');
@@ -177,54 +293,96 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
           }}
           title="Xem danh sách Chi đoàn báo vắng kèm lý do"
         >
-          <XCircle size={13} />
+          <XCircle size={12} />
           <span>{absentBranches.length} báo vắng</span>
         </button>
       )}
 
-      {/* Dropdown panel showing lists */}
+      {/* Dropdown panel showing details for Admin */}
       {showDropdown && (
         <div 
           className="position-absolute end-0 top-100 mt-2 bg-white rounded-3 shadow-lg border p-3 z-3 text-start"
-          style={{ width: '320px', zIndex: 1050 }}
+          style={{ width: '330px', zIndex: 1050 }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
-            <div className="d-flex gap-2">
+            <div className="d-flex gap-1.5 flex-wrap">
               <button 
                 type="button"
-                className={`btn btn-xs fw-bold ${activeTab === 'confirmed' ? 'btn-success text-white' : 'btn-light border text-secondary'}`}
+                className={`btn btn-xs fw-bold ${activeTab === 'confirmed' ? 'btn-primary text-white' : 'btn-light border text-secondary'}`}
                 style={{ fontSize: '11px', padding: '2px 8px' }}
                 onClick={() => setActiveTab('confirmed')}
               >
                 ✓ Tiếp nhận ({participatingBranches.length})
               </button>
-              <button 
-                type="button"
-                className={`btn btn-xs fw-bold ${activeTab === 'absent' ? 'btn-danger text-white' : 'btn-light border text-secondary'}`}
-                style={{ fontSize: '11px', padding: '2px 8px' }}
-                onClick={() => setActiveTab('absent')}
-              >
-                ✕ Báo vắng ({absentBranches.length})
-              </button>
+
+              {type === 'task' && (
+                <button 
+                  type="button"
+                  className={`btn btn-xs fw-bold ${activeTab === 'completed' ? 'btn-success text-white' : 'btn-light border text-secondary'}`}
+                  style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: activeTab === 'completed' ? '#16A34A' : '' }}
+                  onClick={() => setActiveTab('completed')}
+                >
+                  🎉 Đã làm xong ({completedBranches.length})
+                </button>
+              )}
+
+              {absentBranches.length > 0 && (
+                <button 
+                  type="button"
+                  className={`btn btn-xs fw-bold ${activeTab === 'absent' ? 'btn-danger text-white' : 'btn-light border text-secondary'}`}
+                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                  onClick={() => setActiveTab('absent')}
+                >
+                  ✕ Báo vắng ({absentBranches.length})
+                </button>
+              )}
             </div>
             <button type="button" className="btn-close btn-close-xs" onClick={() => setShowDropdown(false)}></button>
           </div>
 
-          {activeTab === 'confirmed' ? (
+          {/* TAB 1: TIẾP NHẬN */}
+          {activeTab === 'confirmed' && (
             participatingBranches.length === 0 ? (
-              <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào xác nhận</div>
+              <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào tiếp nhận</div>
             ) : (
-              <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '220px', overflowY: 'auto' }}>
                 {participatingBranches.map((c, i) => (
-                  <div key={i} className="d-flex align-items-center justify-content-between p-1.5 bg-light rounded border-start border-success border-3">
+                  <div key={i} className="d-flex align-items-center justify-content-between p-1.5 bg-light rounded border-start border-primary border-3">
                     <span className="fw-semibold text-dark" style={{ fontSize: '12px' }}>✓ {c.branch}</span>
                     <span className="text-muted" style={{ fontSize: '10.5px' }}>{c.time}</span>
                   </div>
                 ))}
               </div>
             )
-          ) : (
+          )}
+
+          {/* TAB 2: ĐÃ LÀM XONG */}
+          {activeTab === 'completed' && (
+            completedBranches.length === 0 ? (
+              <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào báo làm xong</div>
+            ) : (
+              <div className="d-flex flex-column gap-2" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                {completedBranches.map((c, i) => (
+                  <div key={i} className="p-2 bg-success-subtle rounded border border-success-subtle">
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="fw-bold text-success d-flex align-items-center gap-1" style={{ fontSize: '12px' }}>
+                        <CheckCircle2 size={14} className="text-success flex-shrink-0" />
+                        <span>{c.branch}</span>
+                      </span>
+                    </div>
+                    <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '11px' }}>
+                      <Clock size={12} className="text-success flex-shrink-0" />
+                      <span>Đã làm xong: <strong>{c.time}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* TAB 3: BÁO VẮNG */}
+          {activeTab === 'absent' && (
             absentBranches.length === 0 ? (
               <div className="text-muted text-center py-2" style={{ fontSize: '12px' }}>Chưa có Chi đoàn nào báo vắng</div>
             ) : (
@@ -253,6 +411,7 @@ export function ReceiptConfirmationBox({ type, item, currentRole, isDoanXa, onCo
     </div>
   );
 }
+
 
 // 1. Full Activities Management View
 export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser, attendanceRecords = {} }) {
@@ -2701,31 +2860,43 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
 }
 
 // 5. Full Tasks & Todo Management View (Fully Synced with Supabase Realtime)
-export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDeleteTask, isDoanXa, currentUser, onConfirmReceipt }) {
+export function TasksView({ 
+  tasks = [], 
+  onOpenCreateTask, 
+  onToggleTask, 
+  onDeleteTask, 
+  isDoanXa, 
+  currentUser, 
+  onConfirmReceipt,
+  onCompleteTask 
+}) {
   return (
     <div className="content-card">
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
         <div>
-          <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
+          <h3 className="card-title-header d-flex align-items-center gap-2 mb-1">
             <CheckSquare className="text-primary" size={24} />
-            Quản lý Công việc & Nhiệm vụ (Todo List)
+            <span>Quản lý Công việc & Nhiệm vụ (Todo List)</span>
           </h3>
-          <div className="text-secondary" style={{ fontSize: '13px' }}>
+          <p className="text-secondary mb-0" style={{ fontSize: '13px' }}>
             Phân công, giao nhiệm vụ và kiểm soát tiến độ thực hiện công tác Đoàn
-          </div>
+          </p>
         </div>
 
-        <button 
-          className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
-          style={{ backgroundColor: '#0066FF', border: 'none' }}
-          onClick={onOpenCreateTask}
-        >
-          <Plus size={18} />
-          <span>Giao nhiệm vụ / Thêm công việc</span>
-        </button>
+        {isDoanXa && (
+          <button 
+            type="button"
+            className="btn btn-primary d-inline-flex align-items-center gap-2 px-3.5 py-2 rounded-3 fw-semibold shadow-sm hover-scale"
+            style={{ backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+            onClick={onOpenCreateTask}
+          >
+            <Plus size={18} />
+            <span>Giao nhiệm vụ / Thêm công việc</span>
+          </button>
+        )}
       </div>
 
-      {/* Task List Table */}
+      {/* Task List Columns */}
       <div className="row g-3">
         {/* Column 1: Chờ thực hiện */}
         <div className="col-12 col-md-4">
@@ -2772,6 +2943,7 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       currentRole={currentUser} 
                       isDoanXa={isDoanXa} 
                       onConfirmReceipt={onConfirmReceipt} 
+                      onCompleteTask={onCompleteTask}
                     />
                   </div>
                 </div>
@@ -2826,6 +2998,7 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       currentRole={currentUser} 
                       isDoanXa={isDoanXa} 
                       onConfirmReceipt={onConfirmReceipt} 
+                      onCompleteTask={onCompleteTask}
                     />
                   </div>
                 </div>
@@ -2871,6 +3044,23 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       </button>
                     )}
                   </div>
+
+                  {/* Hiển thị chi đoàn nào đã hoàn thành kèm ngày giờ cho Admin & mọi người nắm được */}
+                  {t.completedBy && t.completedBy.length > 0 && (
+                    <div className="mt-2 pt-1 border-top d-flex flex-wrap gap-1">
+                      {t.completedBy.map((c, idx) => (
+                        <span 
+                          key={idx} 
+                          className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill d-inline-flex align-items-center gap-1" 
+                          style={{ fontSize: '10.5px', fontWeight: 650 }}
+                        >
+                          <span>🎉</span>
+                          <span>{typeof c === 'object' ? `${c.branch}: ${c.time}` : c}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="mt-2 pt-1 border-top d-flex justify-content-end">
                     <ReceiptConfirmationBox 
                       type="task" 
@@ -2878,6 +3068,7 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
                       currentRole={currentUser} 
                       isDoanXa={isDoanXa} 
                       onConfirmReceipt={onConfirmReceipt} 
+                      onCompleteTask={onCompleteTask}
                     />
                   </div>
                 </div>
@@ -2889,6 +3080,7 @@ export function TasksView({ tasks = [], onOpenCreateTask, onToggleTask, onDelete
     </div>
   );
 }
+
 
 // 6. Full Reports & Analytics View (Featuring Attendance & Rating Evaluation System)
 export function ReportsView({ 

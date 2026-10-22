@@ -746,7 +746,7 @@ export default function QrAttendanceManager({
               <span>Điểm Danh Xác Thực Vị Trí</span>
             </h5>
             <div className="text-secondary" style={{ fontSize: '12.5px' }}>
-              Quét mã QR do Ban Thường vụ Đoàn xã cung cấp để xác nhận có mặt tại sự kiện
+              Quét mã QR do Ban Chủ Nhiệm cung cấp để xác nhận có mặt tại sự kiện
             </div>
           </div>
 
@@ -840,7 +840,7 @@ export default function QrAttendanceManager({
                   Quét Mã Trực Tiếp Bằng Camera Điện Thoại
                 </div>
                 <div className="text-secondary mb-3.5" style={{ fontSize: '12px' }}>
-                  Camera sẽ tự động quét mã QR từ Ban Thường vụ Đoàn xã và lưu vị trí GPS xác minh.
+                  Camera sẽ tự động quét mã QR từ Ban Chủ Nhiệm và lưu vị trí GPS xác minh.
                 </div>
 
                 {/* Big Forest Green Camera CTA Button matching screenshot */}
@@ -975,7 +975,7 @@ export default function QrAttendanceManager({
                     <input 
                       type="text" 
                       className="form-control font-monospace fw-bold text-uppercase"
-                      placeholder="VÍ DỤ: XTS-XXXXXX"
+                      placeholder="Ví dụ: XTS-XXXXXX"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
                       style={{ 

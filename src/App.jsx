@@ -33,7 +33,8 @@ import {
   TasksView, 
   ReportsView, 
   StorageArchiveView, 
-  SettingsView 
+  SettingsView,
+  BranchAttendanceWorkspaceView
 } from './components/SecondaryViews';
 import BranchMembersView from './components/BranchMembersView';
 import { 
@@ -952,6 +953,16 @@ export default function App() {
               submissions={submissionsList}
               onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
               onDeleteSubmission={handleDeleteSubmission}
+            />
+          ) : activeTab === 'attendance' ? (
+            /* DEDICATED ATTENDANCE VIEW (CHI ĐOÀN & ADMIN) */
+            <BranchAttendanceWorkspaceView 
+              activities={activitiesList}
+              currentRole={currentUser}
+              attendanceRecords={attendanceRecords}
+              onRespondAttendance={handleRespondAttendance}
+              onConfirmReceipt={handleConfirmReceipt}
+              isDoanXa={isDoanXa}
             />
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */

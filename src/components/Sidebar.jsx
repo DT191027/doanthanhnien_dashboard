@@ -13,7 +13,8 @@ import {
   FileSpreadsheet,
   PhoneCall,
   Headphones,
-  X
+  X,
+  QrCode
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -33,6 +34,7 @@ export default function Sidebar({
     { id: 'outgoing_docs', label: 'Văn bản đi', icon: FileCheck },
     { id: 'todo', label: 'Công việc (Todo)', icon: CheckSquare },
     { id: 'branches', label: 'Quản lý Đoàn viên & Chi đoàn', icon: Users },
+    { id: 'attendance', label: 'Điểm danh hoạt động', icon: QrCode },
     { id: 'notifications', label: 'Thông báo', icon: Bell },
     { id: 'reports', label: 'Báo cáo thống kê', icon: BarChart2 },
     { id: 'storage', label: 'Lưu trữ văn bản', icon: Folder },
@@ -45,6 +47,7 @@ export default function Sidebar({
     { id: 'doan_xa_docs', label: 'Văn bản từ Đoàn xã', icon: FileText },
     { id: 'required_docs', label: 'Văn bản cần nộp', icon: FileCheck },
     { id: 'branch_tasks', label: 'Công việc của chi đoàn', icon: CheckSquare },
+    { id: 'attendance', label: 'Điểm danh', icon: QrCode },
     { id: 'notifications', label: 'Thông báo', icon: Bell },
     { id: 'submission_history', label: 'Lịch sử nộp văn bản', icon: FileSpreadsheet },
     { id: 'branches', label: 'Quản lý Đoàn viên', icon: Users },

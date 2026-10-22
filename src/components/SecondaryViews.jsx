@@ -1,6 +1,8 @@
+import QrAttendanceManager from './QrAttendanceManager';
 import React, { useState, useEffect } from 'react';
 import { 
   QrCode,
+  Users,
   Calendar, 
   Clock, 
   MapPin, 
@@ -3909,6 +3911,182 @@ export function SettingsView({ currentRole }) {
               <div className="text-secondary mt-1">{OFFICIAL_ADDRESS}</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// GIAO DIỆN ĐIỂM DANH XÁC THỰC VỊ TRÍ CHO CHI ĐOÀN (CHUẨN SCREENSHOT USER)
+// ============================================================================
+export function BranchAttendanceWorkspaceView({
+  activities = [],
+  currentRole,
+  attendanceRecords = {},
+  onRespondAttendance,
+  onConfirmReceipt,
+  isDoanXa
+}) {
+  const [selectedActId, setSelectedActId] = useState('');
+  const [activeTab, setActiveTab] = useState('attendance'); // 'info' | 'attendance' | 'members' | 'tasks'
+
+  const safeActivities = Array.isArray(activities) ? activities : [];
+
+  useEffect(() => {
+    if (safeActivities.length > 0 && !selectedActId) {
+      const activeOne = safeActivities.find(a => a.status !== 'Đã hoàn thành') || safeActivities[0];
+      if (activeOne) {
+        setSelectedActId(activeOne.id);
+      }
+    }
+  }, [safeActivities, selectedActId]);
+
+  const currentActivity = safeActivities.find(a => a.id === selectedActId) || safeActivities[0] || {
+    id: 'default-act',
+    title: 'Hoạt động phát động Đoàn xã Xuân Thới Sơn'
+  };
+
+  const timeStatus = typeof getActivityTimeStatus === 'function' 
+    ? getActivityTimeStatus(currentActivity) 
+    : { statusText: 'Đang diễn ra', code: 'ONGOING' };
+
+  return (
+    <div className="container-fluid px-0">
+      {/* Top Bar: Selector chọn hoạt động */}
+      <div className="card border-0 shadow-sm rounded-4 mb-3 p-3 bg-white">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: '260px' }}>
+            <label className="fw-bold text-dark mb-0 flex-shrink-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13.5px' }}>
+              <Calendar size={18} className="text-primary" />
+              <span>Chọn Hoạt Động Cần Điểm Danh:</span>
+            </label>
+            <select
+              className="form-select form-select-sm fw-semibold"
+              value={selectedActId}
+              onChange={(e) => setSelectedActId(e.target.value)}
+              style={{ fontSize: '13px', maxWidth: '480px' }}
+            >
+              {safeActivities.map(act => (
+                <option key={act.id} value={act.id}>
+                  📌 {act.title} ({act.date || act.dueDate || 'Hoạt động'})
+                </option>
+              ))}
+              {safeActivities.length === 0 && (
+                <option value="default-act">📌 Hoạt động phát động tập trung Đoàn xã</option>
+              )}
+            </select>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <span className={`badge px-2.5 py-1 rounded-pill ${
+              timeStatus.code === 'FINISHED' ? 'bg-secondary-subtle text-secondary' : 'bg-success-subtle text-success border border-success-subtle'
+            }`} style={{ fontSize: '12px' }}>
+              {timeStatus.statusText}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Container Card with 4 Tabs exactly matching Screenshot 3 */}
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        {/* Navigation Tabs Header: Thông Tin | Điểm Danh | Thành Viên | Phân Công */}
+        <div className="border-bottom bg-white px-3 pt-2">
+          <div className="d-flex align-items-center gap-1 overflow-x-auto">
+            {[
+              { id: 'info', label: 'Thông Tin', icon: 'ℹ️' },
+              { id: 'attendance', label: 'Điểm Danh', icon: '📷', isMain: true },
+              { id: 'members', label: 'Thành Viên', icon: '👥' },
+              { id: 'tasks', label: 'Phân Công', icon: '📋' }
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`btn btn-link text-decoration-none px-4 py-2.5 border-0 position-relative d-inline-flex align-items-center gap-1.5 fw-bold transition-all ${
+                    isActive ? 'text-success' : 'text-secondary hover-text-dark'
+                  }`}
+                  style={{
+                    fontSize: '13.5px',
+                    borderBottom: isActive ? '3px solid #0c3b2e' : '3px solid transparent',
+                    borderRadius: 0,
+                    color: isActive ? '#0c3b2e' : '#64748b'
+                  }}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Body */}
+        <div className="p-4">
+          {/* TAB 1: ĐIỂM DANH (XÁC THỰC GPS & MÃ QR - EXACT USER SCREENSHOT) */}
+          {activeTab === 'attendance' && (
+            <QrAttendanceManager 
+              activity={currentActivity}
+              currentRole={currentRole}
+              isDoanXa={isDoanXa}
+              onAttendanceSuccess={(actId, branch, log) => {
+                onRespondAttendance && onRespondAttendance(actId, branch, true, '', currentActivity.title);
+                onConfirmReceipt && onConfirmReceipt('activity', currentActivity);
+              }}
+            />
+          )}
+
+          {/* TAB 2: THÔNG TIN HOẠT ĐỘNG */}
+          {activeTab === 'info' && (
+            <div>
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <h5 className="fw-bold text-dark mb-2">{currentActivity.title}</h5>
+                <div className="text-secondary" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                  {currentActivity.description || 'Chưa có mô tả chi tiết cho hoạt động này.'}
+                </div>
+              </div>
+
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <div className="p-3 bg-white rounded-3 border">
+                    <div className="text-muted mb-1" style={{ fontSize: '11.5px' }}>Thời gian:</div>
+                    <div className="fw-semibold text-dark">{currentActivity.time || '8:00 - 11:30'} ngày {currentActivity.date || 'Hôm nay'}</div>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="p-3 bg-white rounded-3 border">
+                    <div className="text-muted mb-1" style={{ fontSize: '11.5px' }}>Địa điểm tổ chức:</div>
+                    <div className="fw-semibold text-dark">{currentActivity.location || 'Hội trường UBND xã Xuân Thới Sơn'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: THÀNH VIÊN THAM GIA */}
+          {activeTab === 'members' && (
+            <div className="p-3 bg-light rounded-3 border text-center py-4">
+              <Users size={32} className="text-muted mb-2 opacity-50" />
+              <div className="fw-semibold text-dark mb-1">Danh sách tham gia 56 Chi đoàn / Đơn vị</div>
+              <div className="text-muted" style={{ fontSize: '12px' }}>
+                Hệ thống tự động ghi nhận danh sách có mặt khi các Chi đoàn quét mã QR điểm danh.
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: PHÂN CÔNG NHIỆM VỤ */}
+          {activeTab === 'tasks' && (
+            <div className="p-3 bg-light rounded-3 border text-center py-4">
+              <CheckSquare size={32} className="text-muted mb-2 opacity-50" />
+              <div className="fw-semibold text-dark mb-1">Phân công nhiệm vụ chi đoàn</div>
+              <div className="text-muted" style={{ fontSize: '12px' }}>
+                Các nội dung phân công chi tiết từ Ban Thường vụ Đoàn xã sẽ hiển thị tại đây.
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

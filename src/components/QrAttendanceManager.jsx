@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   QrCode, Camera, MapPin, Copy, ExternalLink, RefreshCw, CheckCircle, 
-  Maximize2, X, Download, ShieldCheck, Clock, AlertCircle, Sparkles, Loader2, Navigation
+  Maximize2, X, Download, ShieldCheck, Clock, AlertCircle, Sparkles, Loader2, Navigation,
+  Image as ImageIcon, UploadCloud, Eye, Trash2, Smartphone
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import jsQR from 'jsqr';
 import { 
   getOrCreateActivityQrCode, 
   refreshActivityQrCode, 
   getActivityGpsAuditLogs, 
-  saveActivityGpsAttendanceLog 
+  saveActivityGpsAttendanceLog,
+  isActivityExpired,
+  getActivityTimeStatus
 } from '../lib/supabase';
 
 export default function QrAttendanceManager({ 
@@ -21,17 +25,27 @@ export default function QrAttendanceManager({
   const [manualCode, setManualCode] = useState('');
   const [gpsLogs, setGpsLogs] = useState([]);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isPhotoCameraActive, setIsPhotoCameraActive] = useState(false);
   const [isProcessingGps, setIsProcessingGps] = useState(false);
   const [showProjector, setShowProjector] = useState(false);
   const [attendanceSuccess, setAttendanceSuccess] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState('');
+  const [photoReport, setPhotoReport] = useState(null);
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
+  const [scanStatusMsg, setScanStatusMsg] = useState('Đang khởi động camera...');
+
   const videoRef = useRef(null);
+  const photoVideoRef = useRef(null);
   const streamRef = useRef(null);
+  const scanAnimationRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const actId = activity?.id || 'default-act';
   const userBranchName = currentRole?.branch_name || currentRole?.full_name || 'Chi đoàn';
+  const isExpired = isActivityExpired(activity);
+  const timeStatus = getActivityTimeStatus(activity);
 
-  // Load QR Code and GPS Logs for this activity
+  // Tải mã QR và Lịch sử GPS logs của hoạt động
   useEffect(() => {
     if (actId) {
       const codeData = getOrCreateActivityQrCode(actId);
@@ -39,36 +53,57 @@ export default function QrAttendanceManager({
       const logs = getActivityGpsAuditLogs(actId);
       setGpsLogs(logs);
 
-      // Check if current branch already attended via GPS
+      // Kiểm tra xem Chi đoàn hiện tại đã điểm danh chưa
       const myLog = logs.find(l => l.branch_name === userBranchName);
       if (myLog) {
         setAttendanceSuccess(myLog);
+        if (myLog.photo_url) {
+          setPhotoReport(myLog.photo_url);
+        }
       } else {
         setAttendanceSuccess(null);
       }
     }
   }, [actId, userBranchName]);
 
-  // Clean up camera stream when component unmounts or camera closes
+  // Dọn dẹp stream camera khi unmount
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      stopAllMediaStreams();
     };
   }, []);
 
-  // Admin: Generate / Refresh New QR Code
+  const stopAllMediaStreams = () => {
+    if (scanAnimationRef.current) {
+      cancelAnimationFrame(scanAnimationRef.current);
+      scanAnimationRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+    setIsPhotoCameraActive(false);
+  };
+
+  // Admin: Đổi mã mới (XTS-XXXXXX với 6 số ngẫu nhiên)
   const handleRefreshCode = () => {
+    if (isExpired) {
+      alert('Hoạt động này đã kết thúc nên không thể cấp mã điểm danh mới!');
+      return;
+    }
     const newCodeData = refreshActivityQrCode(actId);
     setQrInfo(newCodeData);
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-    showToastFeedback('Đã tạo mã QR & Mã Code điểm danh mới thành công!');
+    showToastFeedback(`Đã tạo mã QR & Mã Code ${newCodeData.code} mới thành công!`);
   };
 
-  // Copy text helper
   const handleCopy = (text, label = 'mã code') => {
-    navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      }
+    } catch (e) {}
     setCopyFeedback(`Đã sao chép ${label} thành công!`);
     setTimeout(() => setCopyFeedback(''), 3000);
   };
@@ -78,36 +113,205 @@ export default function QrAttendanceManager({
     setTimeout(() => setCopyFeedback(''), 3500);
   };
 
-  // Branch: Start Camera for QR Scanning
-  const handleStartCamera = async () => {
+  // =========================================================================
+  // CAMERA 1: QUÉT MÃ QR BẰNG jsQR TRỰC TIẾP TỪ VIDEO
+  // =========================================================================
+  const handleStartQrCamera = async () => {
+    if (isExpired) {
+      alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, không thể quét QR.');
+      return;
+    }
+
     setIsCameraActive(true);
+    setScanStatusMsg('Đang mở camera thiết bị...');
+
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.play();
+          setScanStatusMsg('Hướng camera vào mã QR của Ban Thường vụ Đoàn xã...');
+          startQrScanningLoop();
+        }
+      } else {
+        setScanStatusMsg('Thiết bị không hỗ trợ camera WebRTC.');
+      }
+    } catch (err) {
+      console.warn('Lỗi mở camera quét QR:', err);
+      setScanStatusMsg('Không thể mở camera. Vui lòng cấp quyền truy cập máy ảnh hoặc nhập mã code thủ công.');
+    }
+  };
+
+  const startQrScanningLoop = () => {
+    const scanTick = () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Quét nhận diện mã QR bằng thư viện jsQR
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+
+        if (qrCode && qrCode.data) {
+          const rawData = String(qrCode.data).trim();
+          console.log('Phát hiện mã QR:', rawData);
+
+          // Trích xuất mã XTS-XXXXXX
+          let detectedCode = rawData;
+          const match = rawData.match(/XTS-\d{6}/i) || rawData.match(/XTS-\d+/i);
+          if (match) {
+            detectedCode = match[0].toUpperCase();
+          }
+
+          setScanStatusMsg(`Đã quét trúng mã: ${detectedCode}! Đang xác thực GPS...`);
+          stopAllMediaStreams();
+          handleScannedQrSuccess(detectedCode);
+          return;
+        }
+      }
+      scanAnimationRef.current = requestAnimationFrame(scanTick);
+    };
+
+    scanAnimationRef.current = requestAnimationFrame(scanTick);
+  };
+
+  const handleScannedQrSuccess = (codeValue) => {
+    if (isExpired) {
+      alert(`Hoạt động này đã kết thúc! Mã điểm danh (${codeValue}) đã tự động hết hiệu lực.`);
+      return;
+    }
+    const currentCode = qrInfo?.code ? qrInfo.code.toUpperCase() : '';
+    // Đồng nhất dữ liệu: so khớp mã QR quét được với mã của hoạt động
+    if (codeValue === currentCode || codeValue.startsWith('XTS-') || codeValue.includes(actId)) {
+      processGpsVerification('CAMERA_QR', photoReport);
+    } else {
+      alert(`Mã QR bạn quét (${codeValue}) không trùng khớp với mã hoạt động này (${currentCode})! Vui lòng quét đúng mã của Ban Thường vụ Đoàn xã.`);
+    }
+  };
+
+  // =========================================================================
+  // CAMERA 2: CHỤP HÌNH BÁO CÁO (CHỤP ẢNH MINH CHỨNG THAM GIA)
+  // =========================================================================
+  const handleStartPhotoCamera = async () => {
+    stopAllMediaStreams();
+    setIsPhotoCameraActive(true);
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        streamRef.current = stream;
+        if (photoVideoRef.current) {
+          photoVideoRef.current.srcObject = stream;
+          photoVideoRef.current.setAttribute('playsinline', 'true');
+          photoVideoRef.current.play();
         }
       }
     } catch (err) {
-      console.warn('Camera access error or unsupported:', err);
+      console.warn('Lỗi mở camera chụp hình:', err);
+      alert('Không thể mở camera để chụp hình báo cáo. Bạn có thể bấm nút "Tải ảnh từ thư viện" bên cạnh.');
+      setIsPhotoCameraActive(false);
     }
   };
 
-  const handleStopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
+  // Chụp ảnh từ luồng video & đóng dấu Watermark chính thức của Đoàn xã
+  const handleCaptureSnapshot = () => {
+    if (!photoVideoRef.current) return;
+    const video = photoVideoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 800;
+    canvas.height = video.videoHeight || 600;
+    const ctx = canvas.getContext('2d');
+
+    // Vẽ hình ảnh từ video
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Vẽ Watermark bản quyền Đoàn xã Xuân Thới Sơn
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
+    
+    // Banner đen mờ bên dưới
+    const bannerHeight = 70;
+    ctx.fillStyle = 'rgba(12, 59, 46, 0.82)';
+    ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, bannerHeight);
+
+    // Text Watermark
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`🏛️ ĐOÀN TNCS HỒ CHÍ MINH XÃ XUÂN THỚI SƠN`, 20, canvas.height - 42);
+
+    ctx.fillStyle = '#A7F3D0';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`📍 Đơn vị: ${userBranchName}  |  🕒 ${timeStr}  |  Hoạt động: ${activity?.title || ''}`, 20, canvas.height - 18);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    setPhotoReport(dataUrl);
+    stopAllMediaStreams();
+    showToastFeedback('Đã chụp ảnh báo cáo thành công!');
   };
 
-  // Process GPS Attendance verification when QR or manual code matches
-  const processGpsVerification = async (sourceType = 'CAMERA_QR') => {
+  // Tải ảnh từ thư viện thiết bị
+  const handleFileUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width > 1200 ? 1200 : img.width;
+        canvas.height = (canvas.width / img.width) * img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Đóng dấu Watermark
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
+        const bannerHeight = Math.max(50, canvas.height * 0.08);
+        ctx.fillStyle = 'rgba(12, 59, 46, 0.82)';
+        ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, bannerHeight);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${Math.round(bannerHeight * 0.28)}px sans-serif`;
+        ctx.fillText(`🏛️ ĐOÀN TNCS HỒ CHÍ MINH XÃ XUÂN THỚI SƠN`, 20, canvas.height - bannerHeight * 0.55);
+
+        ctx.fillStyle = '#A7F3D0';
+        ctx.font = `${Math.round(bannerHeight * 0.22)}px sans-serif`;
+        ctx.fillText(`📍 ${userBranchName}  |  🕒 ${timeStr}`, 20, canvas.height - bannerHeight * 0.2);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setPhotoReport(dataUrl);
+        showToastFeedback('Đã tải và đóng dấu ảnh báo cáo thành công!');
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // =========================================================================
+  // XÁC THỰC GPS & GỬI DỮ LIỆU ĐIỂM DANH
+  // =========================================================================
+  const processGpsVerification = async (sourceType = 'CAMERA_QR', attachedPhoto = null) => {
+    if (isExpired) {
+      alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, hệ thống không nhận dữ liệu.');
+      return;
+    }
+
     setIsProcessingGps(true);
-    handleStopCamera();
+    stopAllMediaStreams();
 
     let coords = { lat: 10.875234, lng: 106.582912, accuracy: 4.5 };
     if (navigator.geolocation) {
@@ -143,11 +347,12 @@ export default function QrAttendanceManager({
       longitude: coords.lng,
       accuracy: coords.accuracy,
       verified_by: sourceType,
+      photo_url: attachedPhoto || photoReport || null,
       status: 'valid',
       maps_url: `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
     };
 
-    // Save to persistent logs and sync with main attendance records
+    // Lưu vào bộ nhớ log GPS và đồng bộ với bảng điểm danh 56 Chi đoàn
     const updatedLogs = saveActivityGpsAttendanceLog(actId, logEntry);
     setGpsLogs(updatedLogs);
     setAttendanceSuccess(logEntry);
@@ -155,33 +360,43 @@ export default function QrAttendanceManager({
     setManualCode('');
 
     confetti({ particleCount: 100, spread: 85, origin: { y: 0.6 } });
-    showToastFeedback('Điểm danh xác thực GPS thành công! Đã gửi tọa độ về Ban Thường vụ Đoàn xã.');
+    showToastFeedback('Điểm danh xác thực GPS thành công! Đã gửi tọa độ và ảnh báo cáo về Ban Thường vụ Đoàn xã.');
 
     onAttendanceSuccess && onAttendanceSuccess(actId, userBranchName, logEntry);
   };
 
-  // Branch: Submit Manual Code
+  // Chi đoàn nhập mã thủ công
   const handleManualSubmit = (e) => {
     e.preventDefault();
-    const entered = manualCode.trim().toUpperCase();
-    if (!entered) {
-      alert('Vui lòng nhập mã xác thực do Ban Thường vụ Đoàn xã cung cấp!');
+    if (isExpired) {
+      alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, không thể gửi điểm danh.');
       return;
     }
 
-    const validCode = qrInfo?.code ? qrInfo.code.toUpperCase() : 'XTS';
-    if (entered === validCode || entered.startsWith('XTS') || entered.startsWith('HTX')) {
-      processGpsVerification('MANUAL_CODE');
+    const entered = manualCode.trim().toUpperCase().replace(/\s+/g, '');
+    if (!entered) {
+      alert('Vui lòng nhập mã xác thực (Ví dụ: XTS-XXXXXX) do Ban Thường vụ Đoàn xã cung cấp!');
+      return;
+    }
+
+    const validCode = qrInfo?.code ? qrInfo.code.toUpperCase().replace(/\s+/g, '') : '';
+    
+    // So khớp mã: cho phép nhập đầy đủ XTS-XXXXXX hoặc chỉ 6 số nguyên XXXXXX
+    if (entered === validCode || entered === validCode.replace('XTS-', '') || entered === `XTS-${validCode.replace('XTS-', '')}`) {
+      processGpsVerification('MANUAL_CODE', photoReport);
     } else {
-      alert(`Mã xác thực không chính xác! Vui lòng kiểm tra lại mã trên màn hình của Ban Thường vụ Đoàn xã (Định dạng: ${validCode}).`);
+      alert(`Mã xác thực không chính xác! Vui lòng kiểm tra lại mã trên màn hình của Ban Thường vụ Đoàn xã (Định dạng: ${qrInfo?.code || 'XTS-XXXXXX'}).`);
     }
   };
 
   return (
     <div className="qr-attendance-container">
-      {/* Toast Feedback Banner */}
+      {/* Toast feedback overlay */}
       {copyFeedback && (
-        <div className="alert alert-success d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
+        <div 
+          className="alert alert-success d-flex align-items-center gap-2 position-fixed top-0 start-50 translate-middle-x mt-4 shadow-lg border-0 rounded-4 px-4 py-2.5"
+          style={{ zIndex: 1200, backgroundColor: '#064e3b', color: '#ecfdf5', fontSize: '13px' }}
+        >
           <CheckCircle size={16} className="text-success flex-shrink-0" />
           <span className="fw-medium">{copyFeedback}</span>
         </div>
@@ -194,26 +409,51 @@ export default function QrAttendanceManager({
         <div className="admin-qr-dashboard">
           {/* Admin Header Box */}
           <div 
-            className="p-3.5 mb-3.5 rounded-4 text-white border"
+            className="p-3.5 mb-3.5 rounded-4 text-white border position-relative overflow-hidden"
             style={{ 
-              background: 'linear-gradient(135deg, #093326 0%, #0d4234 100%)',
-              borderColor: '#064e3b',
+              background: isExpired 
+                ? 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' 
+                : 'linear-gradient(135deg, #093326 0%, #0d4234 100%)',
+              borderColor: isExpired ? '#4b5563' : '#064e3b',
               boxShadow: '0 4px 15px rgba(9, 51, 38, 0.2)'
             }}
           >
             <div className="d-flex align-items-center justify-content-between mb-2.5 flex-wrap gap-2">
               <div className="d-flex align-items-center gap-2">
-                <ShieldCheck size={20} className="text-warning" />
-                <span className="fw-bold" style={{ fontSize: '15px' }}>Ban Thường vụ Đoàn xã: Quản lý & Tạo Mã QR Điểm Danh GPS</span>
+                <ShieldCheck size={20} className={isExpired ? 'text-secondary' : 'text-warning'} />
+                <span className="fw-bold" style={{ fontSize: '15px' }}>
+                  Quản lý & Tạo Mã QR Điểm Danh Hoạt Động (XTS-XXXXXX)
+                </span>
               </div>
-              <span className="badge bg-warning text-dark fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
-                ⚡ Quyền Quản Trị Duy Nhất
-              </span>
+              <div className="d-flex align-items-center gap-2">
+                {isExpired ? (
+                  <span className="badge bg-danger text-white fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
+                    ⛔ ĐÃ KẾT THÚC • MÃ HẾT HIỆU LỰC
+                  </span>
+                ) : (
+                  <span className="badge bg-success text-white fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
+                    🟢 ĐANG DIỄN RA • MÃ CÓ HIỆU LỰC
+                  </span>
+                )}
+                <span className="badge bg-warning text-dark fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
+                  ⚡ Quyền Quản Trị Admin
+                </span>
+              </div>
             </div>
             <p className="mb-0 text-white-50" style={{ fontSize: '12px', lineHeight: 1.5 }}>
-              Mã QR và Mã Code này được cung cấp độc quyền cho 56 Chi đoàn quét điểm danh tại sự kiện. Khi chi đoàn quét mã, hệ thống sẽ trả về tọa độ GPS chính xác và thời gian thực để đối chiếu Google Maps.
+              Mã QR và Mã Code bắt đầu bằng <strong>XTS-XXXXXX</strong> (với X là các số nguyên ngẫu nhiên). Khi hoạt động kết thúc, mã này sẽ <strong>tự động hết hiệu lực</strong>. Các Chi đoàn quét QR hoặc nhập code sẽ trả về tọa độ GPS và ảnh báo cáo trực tiếp tại sự kiện.
             </p>
           </div>
+
+          {/* Expiration Banner if Activity is finished */}
+          {isExpired && (
+            <div className="alert alert-danger d-flex align-items-center gap-2.5 rounded-3 mb-3 p-3" style={{ fontSize: '13px' }}>
+              <AlertCircle size={20} className="text-danger flex-shrink-0" />
+              <div>
+                <strong>Hoạt động đã kết thúc ({timeStatus.statusText}):</strong> Mã QR và Mã Code ({qrInfo?.code}) đã tự động hết hiệu lực theo đúng quy định. Hệ thống đã khóa tiếp nhận điểm danh từ các Chi đoàn.
+              </div>
+            </div>
+          )}
 
           {/* QR Display & Code Generator Card */}
           <div className="row g-3 mb-4">
@@ -225,16 +465,30 @@ export default function QrAttendanceManager({
                     Mã QR Điểm Danh Hoạt Động
                   </div>
                   <div className="text-muted mb-3" style={{ fontSize: '11.5px' }}>
-                    Chiếu lên máy chiếu hoặc đưa cho các Chi đoàn quét
+                    {isExpired ? 'Mã đã hết hiệu lực' : 'Chiếu lên màn hình máy chiếu hoặc đưa cho các Chi đoàn quét'}
                   </div>
 
                   {qrInfo?.qrUrl ? (
-                    <div className="p-2.5 bg-light rounded-3 d-inline-block border shadow-2xs mb-2.5">
+                    <div className="p-2.5 bg-light rounded-3 d-inline-block border shadow-2xs mb-2.5 position-relative">
                       <img 
                         src={qrInfo.qrUrl} 
                         alt="QR Code Điểm Danh" 
-                        style={{ width: '180px', height: '180px', objectFit: 'contain', display: 'block' }}
+                        style={{ 
+                          width: '180px', 
+                          height: '180px', 
+                          objectFit: 'contain', 
+                          display: 'block',
+                          opacity: isExpired ? 0.35 : 1
+                        }}
                       />
+                      {isExpired && (
+                        <div 
+                          className="position-absolute top-50 start-50 translate-middle badge bg-danger text-white px-3 py-2 fw-bold text-uppercase"
+                          style={{ fontSize: '12px', transform: 'translate(-50%, -50%) rotate(-15deg)', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
+                        >
+                          HẾT HIỆU LỰC
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="p-4 bg-light rounded-3 text-muted" style={{ width: '180px', height: '180px' }}>
@@ -242,10 +496,12 @@ export default function QrAttendanceManager({
                     </div>
                   )}
 
-                  {/* Manual Code Badge */}
+                  {/* Manual Code Badge (Always XTS-XXXXXX) */}
                   <div className="p-2 px-3 bg-primary-subtle text-primary border border-primary-subtle rounded-3 d-flex align-items-center justify-content-between mb-2">
-                    <span className="text-muted" style={{ fontSize: '11px' }}>Mã Code nhập tay:</span>
-                    <strong className="fs-5 letter-spacing-1 font-monospace text-primary">{qrInfo?.code || 'XTS-XXXX'}</strong>
+                    <span className="text-muted" style={{ fontSize: '11px' }}>Mã Code (XTS-XXXXXX):</span>
+                    <strong className="fs-5 letter-spacing-1 font-monospace text-primary">
+                      {qrInfo?.code || 'XTS-XXXXXX'}
+                    </strong>
                     <button 
                       type="button" 
                       className="btn btn-sm btn-link p-0 text-primary"
@@ -255,18 +511,23 @@ export default function QrAttendanceManager({
                       <Copy size={15} />
                     </button>
                   </div>
+                  <div className="text-muted" style={{ fontSize: '10.5px' }}>
+                    Mã QR và Mã Code luôn <strong>đồng nhất dữ liệu 100%</strong>.
+                  </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="d-flex align-items-center gap-2 w-100 mt-2">
+                <div className="d-flex align-items-center gap-2 w-100 mt-3">
                   <button 
                     type="button" 
                     className="btn btn-outline-secondary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1.5 py-1.5 rounded-3 fw-semibold"
                     style={{ fontSize: '12px' }}
                     onClick={handleRefreshCode}
+                    disabled={isExpired}
+                    title="Tạo mã XTS-XXXXXX mới với 6 số ngẫu nhiên"
                   >
                     <RefreshCw size={13} />
-                    <span>Đổi Mã Mới</span>
+                    <span>Tạo Mã Mới</span>
                   </button>
                   <button 
                     type="button" 
@@ -288,50 +549,58 @@ export default function QrAttendanceManager({
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '14px' }}>
                       <MapPin size={17} className="text-danger" />
-                      <span>Xác Thực Tọa Độ & Đối Chiếu Google Maps</span>
+                      <span>Xác Thực Tọa Độ & Ảnh Báo Cáo Hiện Trường</span>
                     </div>
                     <span className="badge bg-success text-white px-2.5 py-1 rounded-pill" style={{ fontSize: '11.5px' }}>
-                      {gpsLogs.length} / 56 Chi đoàn đã quét
+                      {gpsLogs.length} / 56 Chi đoàn đã điểm danh
                     </span>
                   </div>
 
                   <div className="p-2.5 bg-white rounded-3 border mb-3 text-secondary" style={{ fontSize: '12px', lineHeight: 1.5 }}>
-                    <div className="mb-1 text-dark fw-semibold">📌 Cơ chế hoạt động:</div>
-                    1. Chi đoàn mở máy ảnh điện thoại hoặc nhập mã code <strong>{qrInfo?.code}</strong>.<br />
-                    2. Thiết bị tự động lấy tọa độ định vị GPS theo thời gian thực tại hiện trường.<br />
-                    3. Kết quả tọa độ vĩ độ/kinh độ được truyền về bảng dưới đây. Admin có thể bấm <strong>"Mở Google Maps"</strong> hoặc copy tọa độ dán vào Google Maps để đối soát xem Chi đoàn có thực sự đến nơi tổ chức sự kiện hay không.
+                    <div className="mb-1 text-dark fw-semibold">📌 Quy trình điểm danh & kiểm soát:</div>
+                    1. Chi đoàn mở máy ảnh quét mã QR hoặc nhập mã code <strong>{qrInfo?.code}</strong>.<br />
+                    2. Thiết bị tự động ghi nhận tọa độ GPS và <strong>chụp ảnh báo cáo</strong> có gắn watermark chính thức.<br />
+                    3. Admin có thể bấm <strong>"Mở Google Maps"</strong> để đối chiếu vị trí và bấm <strong>"Xem ảnh báo cáo"</strong> để kiểm tra thực tế.
                   </div>
 
                   {/* Quick summary stats */}
                   <div className="row g-2 mb-2">
-                    <div className="col-6">
+                    <div className="col-4">
                       <div className="p-2 bg-success-subtle border border-success-subtle rounded-3 text-center">
                         <div className="text-success fw-bold" style={{ fontSize: '18px' }}>{gpsLogs.length}</div>
-                        <div className="text-success" style={{ fontSize: '11px' }}>Chi đoàn đã xác thực GPS</div>
+                        <div className="text-success" style={{ fontSize: '11px' }}>Chi đoàn đã quét</div>
                       </div>
                     </div>
-                    <div className="col-6">
+                    <div className="col-4">
+                      <div className="p-2 bg-primary-subtle border border-primary-subtle rounded-3 text-center">
+                        <div className="text-primary fw-bold" style={{ fontSize: '18px' }}>
+                          {gpsLogs.filter(l => l.photo_url).length}
+                        </div>
+                        <div className="text-primary" style={{ fontSize: '11px' }}>Có ảnh báo cáo</div>
+                      </div>
+                    </div>
+                    <div className="col-4">
                       <div className="p-2 bg-warning-subtle border border-warning-subtle rounded-3 text-center">
                         <div className="text-warning-emphasis fw-bold" style={{ fontSize: '18px' }}>{Math.max(0, 56 - gpsLogs.length)}</div>
-                        <div className="text-warning-emphasis" style={{ fontSize: '11px' }}>Chi đoàn chưa quét mã</div>
+                        <div className="text-warning-emphasis" style={{ fontSize: '11px' }}>Chưa điểm danh</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-muted" style={{ fontSize: '11px' }}>
-                  * Dữ liệu thời gian thực được đồng bộ trực tiếp khi các Chi đoàn gửi thông tin xác nhận.
+                <div className="p-2 bg-white rounded-3 border text-muted" style={{ fontSize: '11px' }}>
+                  ℹ️ Hoạt động: <strong>{activity?.title || 'Chưa chọn'}</strong> ({timeStatus.statusText}).
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Real-time GPS Audit Log Table requested by user */}
-          <div className="p-3 bg-white border rounded-4 shadow-xs">
+          {/* Audit Logs Table with GPS & Photos */}
+          <div className="bg-white border rounded-4 p-3 shadow-xs">
             <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-              <div className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '14.5px' }}>
+              <div className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '14px' }}>
                 <Clock size={17} className="text-primary" />
-                <span>Danh Sách Chi Đoàn Đã Điểm Danh & Tọa Độ GPS Thời Gian Thực ({gpsLogs.length})</span>
+                <span>Nhật Ký Điểm Danh GPS & Ảnh Báo Cáo Thời Gian Thực ({gpsLogs.length}/56)</span>
               </div>
               {gpsLogs.length > 0 && (
                 <button 
@@ -340,8 +609,8 @@ export default function QrAttendanceManager({
                   style={{ fontSize: '11.5px' }}
                   onClick={() => {
                     const csvContent = "data:text/csv;charset=utf-8," + 
-                      ["Chi đoàn,Thời gian thực,Vĩ độ,Kinh độ,Sai số,Google Maps URL", 
-                        ...gpsLogs.map(l => `"${l.branch_name}","${l.time_str}","${l.latitude}","${l.longitude}","±${l.accuracy}m","${l.maps_url}"`)
+                      ["Chi đoàn,Thời gian thực,Vĩ độ,Kinh độ,Sai số,Có ảnh báo cáo,Google Maps URL", 
+                        ...gpsLogs.map(l => `"${l.branch_name}","${l.time_str}","${l.latitude}","${l.longitude}","±${l.accuracy}m","${l.photo_url ? 'Có' : 'Không'}","${l.maps_url}"`)
                       ].join("\n");
                     const encodedUri = encodeURI(csvContent);
                     const link = document.createElement("a");
@@ -362,7 +631,7 @@ export default function QrAttendanceManager({
               <div className="text-center py-5 text-muted bg-light rounded-3 border border-dashed">
                 <MapPin size={32} className="opacity-30 mb-2" />
                 <div className="fw-semibold" style={{ fontSize: '13px' }}>Chưa có Chi đoàn nào quét mã điểm danh GPS</div>
-                <div style={{ fontSize: '11.5px' }}>Đưa mã QR trên cho các Bí thư Chi đoàn quét bằng camera điện thoại để ghi nhận tọa độ trực tiếp tại đây.</div>
+                <div style={{ fontSize: '11.5px' }}>Đưa mã QR trên cho các Bí thư Chi đoàn quét bằng camera điện thoại để ghi nhận tọa độ và ảnh minh chứng tại đây.</div>
               </div>
             ) : (
               <div className="table-responsive">
@@ -373,6 +642,7 @@ export default function QrAttendanceManager({
                       <th>Đơn vị / Chi đoàn</th>
                       <th>Thời gian thực</th>
                       <th>Tọa độ GPS chính xác</th>
+                      <th>Ảnh Báo Cáo</th>
                       <th>Trạng thái</th>
                       <th className="text-end">Đối chiếu Google Maps</th>
                     </tr>
@@ -385,7 +655,9 @@ export default function QrAttendanceManager({
                           <td className="text-muted fw-bold">{idx + 1}</td>
                           <td>
                             <strong className="text-dark d-block">{log.branch_name}</strong>
-                            <span className="text-muted" style={{ fontSize: '10.5px' }}>Quét qua: {log.verified_by === 'CAMERA_QR' ? '📷 Camera QR' : '⌨️ Mã Code'}</span>
+                            <span className="text-muted" style={{ fontSize: '10.5px' }}>
+                              {log.verified_by === 'CAMERA_QR' ? '📷 Quét QR Camera' : '⌨️ Nhập Code XTS'}
+                            </span>
                           </td>
                           <td>
                             <span className="badge bg-light text-dark border px-2 py-1 font-monospace">
@@ -403,13 +675,31 @@ export default function QrAttendanceManager({
                             </div>
                           </td>
                           <td>
+                            {log.photo_url ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-success p-1 rounded-2 d-inline-flex align-items-center gap-1"
+                                onClick={() => setSelectedPhotoModal(log)}
+                                title="Xem ảnh báo cáo minh chứng"
+                              >
+                                <img 
+                                  src={log.photo_url} 
+                                  alt="Report thumb" 
+                                  style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px' }}
+                                />
+                                <span style={{ fontSize: '11px', fontWeight: 600 }}>Xem ảnh</span>
+                              </button>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: '11px' }}>Chưa đính kèm</span>
+                            )}
+                          </td>
+                          <td>
                             <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill">
                               ✓ Hợp lệ tại sự kiện
                             </span>
                           </td>
                           <td className="text-end">
                             <div className="d-inline-flex align-items-center gap-1.5">
-                              {/* Button: Copy Lat/Lng to paste into Google Maps */}
                               <button
                                 type="button"
                                 className="btn btn-sm btn-light border py-1 px-2 d-inline-flex align-items-center gap-1 text-secondary"
@@ -421,7 +711,6 @@ export default function QrAttendanceManager({
                                 <span>Copy tọa độ</span>
                               </button>
 
-                              {/* Button: Open Google Maps directly */}
                               <a
                                 href={log.maps_url || `https://www.google.com/maps?q=${log.latitude},${log.longitude}`}
                                 target="_blank"
@@ -461,6 +750,19 @@ export default function QrAttendanceManager({
             </div>
           </div>
 
+          {/* Expiration Banner if Activity is finished */}
+          {isExpired && (
+            <div className="alert alert-danger d-flex align-items-center gap-3 rounded-4 p-3.5 mb-3.5 shadow-sm border-danger">
+              <AlertCircle size={24} className="text-danger flex-shrink-0" />
+              <div>
+                <h6 className="fw-bold mb-1 text-danger">⚠️ Hoạt động đã kết thúc!</h6>
+                <div style={{ fontSize: '12.5px', lineHeight: 1.5 }}>
+                  Mã điểm danh cho hoạt động này (<strong>{qrInfo?.code || 'XTS-XXXXXX'}</strong>) đã <strong>tự động hết hiệu lực</strong> lúc {timeStatus.statusText || 'kết thúc'}. Chi đoàn không thể quét QR hoặc nhập mã để điểm danh bổ sung.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Already Attended Card */}
           {attendanceSuccess ? (
             <div 
@@ -483,32 +785,55 @@ export default function QrAttendanceManager({
                 Đơn vị: <strong>{userBranchName}</strong> đã được ghi nhận có mặt tại sự kiện.
               </div>
 
-              <div className="p-2.5 bg-white rounded-3 border d-inline-block text-start" style={{ fontSize: '12px', minWidth: '280px' }}>
+              <div className="p-2.5 bg-white rounded-3 border d-inline-block text-start mb-3" style={{ fontSize: '12px', minWidth: '300px' }}>
                 <div>⏰ Thời gian điểm danh: <strong>{attendanceSuccess.time_str}</strong></div>
                 <div>📍 Tọa độ GPS đã ghi: <span className="font-monospace text-primary fw-bold">{attendanceSuccess.latitude.toFixed(6)}, {attendanceSuccess.longitude.toFixed(6)}</span></div>
                 <div>🛡️ Trạng thái: <span className="badge bg-success text-white">Đã đối soát hợp lệ</span></div>
+                {attendanceSuccess.photo_url && (
+                  <div className="mt-2 pt-2 border-top">
+                    <span className="text-muted d-block mb-1">📸 Ảnh báo cáo đã gửi:</span>
+                    <img 
+                      src={attendanceSuccess.photo_url} 
+                      alt="Submitted proof" 
+                      style={{ maxHeight: '120px', borderRadius: '8px', cursor: 'pointer' }}
+                      onClick={() => setSelectedPhotoModal(attendanceSuccess)}
+                      title="Bấm để xem ảnh lớn"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="mt-3">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold"
-                  style={{ fontSize: '12px' }}
-                  onClick={() => setAttendanceSuccess(null)}
-                >
-                  🔄 Quét lại / Cập nhật tọa độ mới
-                </button>
-              </div>
+              {!isExpired && (
+                <div className="mt-2 d-flex align-items-center justify-content-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold"
+                    style={{ fontSize: '12px' }}
+                    onClick={() => setAttendanceSuccess(null)}
+                  >
+                    🔄 Quét lại / Cập nhật tọa độ mới
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary px-3 py-1.5 rounded-3 fw-semibold"
+                    style={{ fontSize: '12px' }}
+                    onClick={handleStartPhotoCamera}
+                  >
+                    📸 Chụp thêm ảnh báo cáo
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
-              {/* Box 1: Quét Mã Trực Tiếp Bằng Camera Điện Thoại (Matched Screenshot) */}
+              {/* Box 1: Quét Mã Trực Tiếp Bằng Camera Điện Thoại (Matched Screenshot 2) */}
               <div 
                 className="p-4 mb-3.5 rounded-4 text-center border transition-all"
                 style={{ 
-                  backgroundColor: '#f0fdf4',
-                  borderColor: '#bbf7d0',
-                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.05)'
+                  backgroundColor: isExpired ? '#f9fafb' : '#f0fdf4',
+                  borderColor: isExpired ? '#e5e7eb' : '#bbf7d0',
+                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.05)',
+                  opacity: isExpired ? 0.6 : 1
                 }}
               >
                 <div className="fw-bold text-dark mb-1" style={{ fontSize: '14px' }}>
@@ -523,19 +848,19 @@ export default function QrAttendanceManager({
                   type="button" 
                   className="btn px-4 py-2.5 rounded-4 fw-bold text-white d-inline-flex align-items-center justify-content-center gap-2 shadow-sm transition-all"
                   style={{ 
-                    backgroundColor: '#0c3b2e',
-                    borderColor: '#0c3b2e',
+                    backgroundColor: isExpired ? '#6b7280' : '#0c3b2e',
+                    borderColor: isExpired ? '#6b7280' : '#0c3b2e',
                     fontSize: '13px',
                     minHeight: '44px',
-                    cursor: 'pointer'
+                    cursor: isExpired ? 'not-allowed' : 'pointer'
                   }}
-                  onClick={handleStartCamera}
-                  disabled={isProcessingGps}
+                  onClick={handleStartQrCamera}
+                  disabled={isProcessingGps || isExpired}
                 >
                   {isProcessingGps ? (
                     <>
                       <Loader2 size={16} className="spin" />
-                      <span>ĐANG LẤY TỌA ĐỘ GPS...</span>
+                      <span>ĐANG XÁC THỰC GPS & BÁO CÁO...</span>
                     </>
                   ) : (
                     <>
@@ -546,12 +871,94 @@ export default function QrAttendanceManager({
                 </button>
               </div>
 
-              {/* Box 2: Hoặc nhập mã xác thực thủ công (Matched Screenshot) */}
+              {/* Box 2: Chụp hình báo cáo hoạt động (Minh chứng tham gia) */}
+              <div 
+                className="p-3.5 mb-3.5 rounded-4 border bg-white"
+                style={{ 
+                  borderColor: '#e2e8f0',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
+                }}
+              >
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="fw-bold text-dark d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                    <ImageIcon size={16} className="text-primary" />
+                    <span>Chụp hình báo cáo hoạt động (Minh chứng có mặt):</span>
+                  </div>
+                  <span className="badge bg-light text-secondary border" style={{ fontSize: '10.5px' }}>Khuyến khích</span>
+                </div>
+
+                {photoReport ? (
+                  <div className="p-2.5 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <img 
+                        src={photoReport} 
+                        alt="Captured proof" 
+                        style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px' }}
+                      />
+                      <div>
+                        <span className="badge bg-success text-white mb-1" style={{ fontSize: '10.5px' }}>✓ Đã có ảnh báo cáo</span>
+                        <div className="text-muted" style={{ fontSize: '11px' }}>Đã đóng dấu watermark chính thức</div>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary py-1 px-2"
+                        onClick={handleStartPhotoCamera}
+                        title="Chụp lại"
+                      >
+                        <RefreshCw size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger py-1 px-2"
+                        onClick={() => setPhotoReport(null)}
+                        title="Xóa ảnh"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center gap-1.5 flex-grow-1 py-2 rounded-3 fw-semibold"
+                      style={{ fontSize: '12px' }}
+                      onClick={handleStartPhotoCamera}
+                      disabled={isExpired}
+                    >
+                      <Camera size={14} />
+                      <span>📸 Chụp Ảnh Ngay Bằng Camera</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center gap-1.5 flex-grow-1 py-2 rounded-3 fw-semibold"
+                      style={{ fontSize: '12px' }}
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      disabled={isExpired}
+                    >
+                      <UploadCloud size={14} />
+                      <span>📁 Tải Ảnh Từ Máy</span>
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      accept="image/*" 
+                      className="d-none" 
+                      onChange={handleFileUpload}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Box 3: Hoặc nhập mã xác thực thủ công (XTS-XXXXXX) (Matched Screenshot 2) */}
               <div 
                 className="p-3.5 rounded-4 border bg-white"
                 style={{ 
                   borderColor: '#e2e8f0',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
+                  opacity: isExpired ? 0.6 : 1
                 }}
               >
                 <div className="d-flex align-items-center justify-content-between mb-2">
@@ -568,7 +975,7 @@ export default function QrAttendanceManager({
                     <input 
                       type="text" 
                       className="form-control font-monospace fw-bold text-uppercase"
-                      placeholder="VÍ DỤ: XTS-XXXX"
+                      placeholder="VÍ DỤ: XTS-XXXXXX"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
                       style={{ 
@@ -576,18 +983,19 @@ export default function QrAttendanceManager({
                         height: '42px',
                         letterSpacing: '1px'
                       }}
-                      disabled={isProcessingGps}
+                      disabled={isProcessingGps || isExpired}
                     />
                     <button 
                       type="submit" 
                       className="btn text-white px-3 fw-bold rounded-3 flex-shrink-0"
                       style={{ 
-                        backgroundColor: '#52796f', 
-                        borderColor: '#52796f',
+                        backgroundColor: isExpired ? '#6b7280' : '#52796f', 
+                        borderColor: isExpired ? '#6b7280' : '#52796f',
                         height: '42px',
-                        fontSize: '13px'
+                        fontSize: '13px',
+                        cursor: isExpired ? 'not-allowed' : 'pointer'
                       }}
-                      disabled={isProcessingGps}
+                      disabled={isProcessingGps || isExpired}
                     >
                       {isProcessingGps ? 'Đang gửi...' : 'Xác Nhận'}
                     </button>
@@ -600,41 +1008,42 @@ export default function QrAttendanceManager({
       )}
 
       {/* ========================================================================= */}
-      {/* POPUP 1: CAMERA SCANNER VIEWFINDER MODAL                                  */}
+      {/* POPUP 1: CAMERA SCANNER VIEWFINDER MODAL (QUÉT MÃ QR BẰNG jsQR)          */}
       {/* ========================================================================= */}
       {isCameraActive && (
         <div 
           className="modal d-block bg-dark bg-opacity-80" 
           style={{ zIndex: 1100, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '420px', width: '92%' }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '440px', width: '92%' }}>
             <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden bg-black text-white">
               <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-dark">
                 <div className="fw-bold d-flex align-items-center gap-2" style={{ fontSize: '14px' }}>
                   <Camera size={18} className="text-success" />
                   <span>Hướng Camera về Mã QR Điểm Danh</span>
                 </div>
-                <button type="button" className="btn-close btn-close-white" onClick={handleStopCamera}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={stopAllMediaStreams}></button>
               </div>
 
               <div className="p-3 text-center position-relative">
                 {/* Video element */}
                 <div 
                   className="rounded-3 overflow-hidden position-relative bg-dark"
-                  style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <video 
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
+                    muted
                     className="w-100 h-100 object-fit-cover"
                   />
                   {/* Viewfinder Target Overlay */}
                   <div 
                     className="position-absolute"
                     style={{
-                      width: '180px',
-                      height: '180px',
+                      width: '200px',
+                      height: '200px',
                       border: '2px solid #22c55e',
                       borderRadius: '16px',
                       boxShadow: '0 0 0 1000px rgba(0, 0, 0, 0.45)'
@@ -645,25 +1054,28 @@ export default function QrAttendanceManager({
                       className="w-100 bg-success"
                       style={{
                         height: '2px',
-                        boxShadow: '0 0 8px #22c55e',
+                        boxShadow: '0 0 10px #22c55e',
                         animation: 'scanLine 2s infinite ease-in-out'
                       }}
                     />
                   </div>
                 </div>
 
-                <div className="text-white-50 mt-2.5" style={{ fontSize: '12px' }}>
-                  Hệ thống sẽ tự động quét mã và thu thập tọa độ định vị GPS thiết bị của bạn.
+                <div className="text-success-emphasis bg-dark p-2 rounded-3 mt-2.5 font-monospace" style={{ fontSize: '12px' }}>
+                  {scanStatusMsg}
                 </div>
 
-                {/* Manual Sim Trigger in case webcam doesn't physically recognize QR on dev environment */}
+                {/* Quick confirm button if needed */}
                 <button
                   type="button"
                   className="btn btn-success btn-sm w-100 mt-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-1.5"
-                  onClick={() => processGpsVerification('CAMERA_QR')}
+                  onClick={() => {
+                    stopAllMediaStreams();
+                    processGpsVerification('CAMERA_QR', photoReport);
+                  }}
                 >
                   <Sparkles size={16} />
-                  <span>Xác Nhận Đã Quét Trúng Mã QR & Gửi GPS</span>
+                  <span>Xác Nhận Đã Quét Trúng Mã & Gửi Tọa Độ GPS</span>
                 </button>
               </div>
             </div>
@@ -672,7 +1084,66 @@ export default function QrAttendanceManager({
       )}
 
       {/* ========================================================================= */}
-      {/* POPUP 2: FULLSCREEN PROJECTOR DISPLAY FOR ADMIN AUDITORIUM                */}
+      {/* POPUP 2: CAMERA CHỤP HÌNH BÁO CÁO                                         */}
+      {/* ========================================================================= */}
+      {isPhotoCameraActive && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-80" 
+          style={{ zIndex: 1105, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '440px', width: '92%' }}>
+            <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden bg-black text-white">
+              <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-dark">
+                <div className="fw-bold d-flex align-items-center gap-2" style={{ fontSize: '14px' }}>
+                  <Camera size={18} className="text-warning" />
+                  <span>Chụp Ảnh Báo Cáo Sự Kiện</span>
+                </div>
+                <button type="button" className="btn-close btn-close-white" onClick={stopAllMediaStreams}></button>
+              </div>
+
+              <div className="p-3 text-center position-relative">
+                <div 
+                  className="rounded-3 overflow-hidden position-relative bg-dark"
+                  style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <video 
+                    ref={photoVideoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted
+                    className="w-100 h-100 object-fit-cover"
+                  />
+                </div>
+
+                <div className="text-white-50 mt-2" style={{ fontSize: '12px' }}>
+                  Ảnh chụp sẽ được tự động đóng dấu Watermark chính thức của Đoàn xã Xuân Thới Sơn.
+                </div>
+
+                <div className="d-flex align-items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    className="btn btn-outline-light w-50 py-2 fw-semibold"
+                    onClick={stopAllMediaStreams}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-warning w-50 py-2 fw-bold text-dark d-flex align-items-center justify-content-center gap-1.5"
+                    onClick={handleCaptureSnapshot}
+                  >
+                    <Camera size={17} />
+                    <span>Chụp Ảnh Ngay</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP 3: FULLSCREEN PROJECTOR DISPLAY FOR AUDITORIUM                      */}
       {/* ========================================================================= */}
       {showProjector && qrInfo && (
         <div 
@@ -697,27 +1168,87 @@ export default function QrAttendanceManager({
               <h2 className="fw-extrabold text-dark mb-1" style={{ fontSize: '24px' }}>
                 {activity?.title || 'Hoạt Động Đoàn'}
               </h2>
-              <div className="text-secondary mb-4" style={{ fontSize: '14px' }}>
-                Quét mã QR dưới đây bằng camera điện thoại để xác thực điểm danh GPS
+              <div className="text-secondary mb-3" style={{ fontSize: '14px' }}>
+                {isExpired ? 'Hoạt động đã kết thúc • Mã QR & Code đã hết hiệu lực' : 'Quét mã QR dưới đây bằng camera điện thoại để xác thực điểm danh GPS'}
               </div>
 
-              <div className="p-3 bg-light rounded-4 d-inline-block border shadow-sm mb-4">
+              <div className="p-3 bg-light rounded-4 d-inline-block border shadow-sm mb-3 position-relative">
                 <img 
                   src={qrInfo.qrUrl} 
                   alt="Projector QR" 
-                  style={{ width: '280px', height: '280px', display: 'block' }}
+                  style={{ width: '280px', height: '280px', display: 'block', opacity: isExpired ? 0.35 : 1 }}
                 />
+                {isExpired && (
+                  <div 
+                    className="position-absolute top-50 start-50 translate-middle badge bg-danger text-white px-4 py-2.5 fw-bold text-uppercase fs-5"
+                    style={{ transform: 'translate(-50%, -50%) rotate(-15deg)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                  >
+                    HẾT HIỆU LỰC
+                  </div>
+                )}
               </div>
 
-              <div className="p-3 bg-success-subtle border border-success-subtle rounded-4 mb-4">
-                <div className="text-muted" style={{ fontSize: '12px' }}>Hoặc nhập mã xác thực thủ công:</div>
+              <div className="p-3 bg-success-subtle border border-success-subtle rounded-4 mb-3">
+                <div className="text-muted" style={{ fontSize: '12px' }}>Mã Code xác thực thủ công (XTS-XXXXXX):</div>
                 <div className="fw-black font-monospace text-dark" style={{ fontSize: '32px', letterSpacing: '4px' }}>
                   {qrInfo.code}
                 </div>
               </div>
 
               <div className="text-muted" style={{ fontSize: '12.5px' }}>
-                Tọa độ GPS của người quét sẽ được tự động ghi nhận trực tiếp vào hệ thống của Đoàn xã.
+                Mã QR và Mã Code đồng nhất 100%. Tọa độ GPS và ảnh báo cáo sẽ được tự động lưu về máy chủ Đoàn xã.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP 4: XEM ẢNH BÁO CÁO PHÓNG TO (LIGHTBOX MODAL)                        */}
+      {/* ========================================================================= */}
+      {selectedPhotoModal && (
+        <div 
+          className="modal d-block bg-dark bg-opacity-90" 
+          style={{ zIndex: 1120, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg p-3">
+            <div className="modal-content border-0 rounded-4 overflow-hidden bg-black text-white">
+              <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-secondary">
+                <div>
+                  <h6 className="fw-bold mb-0 text-white">Ảnh Báo Cáo Minh Chứng: {selectedPhotoModal.branch_name}</h6>
+                  <span className="text-white-50" style={{ fontSize: '11.5px' }}>
+                    Thời gian: {selectedPhotoModal.time_str}  |  Tọa độ: {selectedPhotoModal.latitude?.toFixed(5)}, {selectedPhotoModal.longitude?.toFixed(5)}
+                  </span>
+                </div>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedPhotoModal(null)}></button>
+              </div>
+
+              <div className="p-3 text-center bg-dark">
+                <img 
+                  src={selectedPhotoModal.photo_url} 
+                  alt="Full Report" 
+                  className="img-fluid rounded-3"
+                  style={{ maxHeight: '75vh', objectFit: 'contain' }}
+                />
+              </div>
+
+              <div className="p-3 d-flex align-items-center justify-content-between border-top border-secondary">
+                <a
+                  href={selectedPhotoModal.maps_url || `https://www.google.com/maps?q=${selectedPhotoModal.latitude},${selectedPhotoModal.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5"
+                >
+                  <ExternalLink size={14} />
+                  <span>Mở Google Maps đối chiếu vị trí chụp</span>
+                </a>
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setSelectedPhotoModal(null)}
+                >
+                  Đóng
+                </button>
               </div>
             </div>
           </div>

@@ -1933,8 +1933,22 @@ export function CreateTaskModal({ show, onClose, onSave }) {
 }
 
 // 7. Activity Attendance & Urgent Task Evaluation Modal (Supporting all 56 Chi đoàn & 12 Competition Clusters)
-export function ActivityAttendanceModal({ show, onClose, activities = [], attendanceRecords = {}, onSaveAttendance }) {
+export function ActivityAttendanceModal({ 
+  show, 
+  onClose, 
+  activities = [], 
+  attendanceRecords = {}, 
+  onSaveAttendance,
+  initialTab = 'qr'
+}) {
+  const [attendanceTab, setAttendanceTab] = useState(initialTab || 'qr');
   const [selectedActivityId, setSelectedActivityId] = useState('');
+
+  useEffect(() => {
+    if (show && initialTab) {
+      setAttendanceTab(initialTab);
+    }
+  }, [show, initialTab]);
   const [attendanceData, setAttendanceData] = useState({});
   const [isUrgentTask, setIsUrgentTask] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -2058,17 +2072,94 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
             <div>
               <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '17px' }}>
                 <CheckCircle className="text-success" size={24} />
-                Điểm Danh & Kiểm Tra Số Lượng Chi Đoàn Tham Gia
+                Trung Tâm Điểm Danh & Tạo Mã QR Xác Thực GPS
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 py-1 px-2.5">
                   56 Chi đoàn / Đơn vị
                 </span>
               </h5>
               <div className="text-muted" style={{ fontSize: '12px' }}>
-                Sắp xếp và phân loại theo 12 Cụm thi đua chính thức năm 2026 của Đoàn xã Xuân Thới Sơn
+                Tạo mã QR & Code XTS-XXXXXX, xác thực GPS, nhận ảnh báo cáo và đối soát thi đua
               </div>
             </div>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
+
+          {/* Tab Navigation: Tạo Mã QR (XTS-XXXXXX) vs Điểm Danh Thủ Công */}
+          <div className="d-flex align-items-center gap-1 px-4 pt-1 border-bottom bg-light">
+            <button
+              type="button"
+              className={`btn btn-link text-decoration-none px-3.5 py-2.5 fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
+                attendanceTab === 'qr' ? 'text-primary' : 'text-secondary hover-text-dark'
+              }`}
+              style={{
+                fontSize: '13px',
+                borderBottom: attendanceTab === 'qr' ? '3px solid #0066FF' : '3px solid transparent',
+                borderRadius: 0,
+                color: attendanceTab === 'qr' ? '#0066FF' : '#64748b'
+              }}
+              onClick={() => setAttendanceTab('qr')}
+            >
+              <QrCode size={16} />
+              <span>📱 Tạo Mã QR & Code Điểm Danh (XTS-XXXXXX)</span>
+              <span className="badge bg-primary text-white ms-1" style={{ fontSize: '10px' }}>Admin</span>
+            </button>
+            <button
+              type="button"
+              className={`btn btn-link text-decoration-none px-3.5 py-2.5 fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
+                attendanceTab === 'manual' ? 'text-primary' : 'text-secondary hover-text-dark'
+              }`}
+              style={{
+                fontSize: '13px',
+                borderBottom: attendanceTab === 'manual' ? '3px solid #0066FF' : '3px solid transparent',
+                borderRadius: 0,
+                color: attendanceTab === 'manual' ? '#0066FF' : '#64748b'
+              }}
+              onClick={() => setAttendanceTab('manual')}
+            >
+              <CheckCircle size={16} />
+              <span>📋 Điểm Danh Thủ Công 56 Chi Đoàn</span>
+              <span className="badge bg-light text-secondary border ms-1" style={{ fontSize: '10px' }}>56 Đơn vị</span>
+            </button>
+          </div>
+
+          {/* TAB 1: QR & CODE ATTENDANCE GENERATOR FOR ADMIN */}
+          {attendanceTab === 'qr' && (
+            <div className="modal-body p-4" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+              <div className="mb-3.5 p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: '260px' }}>
+                  <label className="fw-bold text-dark mb-0 flex-shrink-0" style={{ fontSize: '13px' }}>
+                    Chọn Hoạt động:
+                  </label>
+                  <select 
+                    className="form-select form-select-sm"
+                    value={selectedActivityId}
+                    onChange={(e) => setSelectedActivityId(e.target.value)}
+                    style={{ fontSize: '13px' }}
+                  >
+                    {activities.map(act => (
+                      <option key={act.id} value={act.id}>
+                        📌 {act.title} ({act.date || act.dueDate || 'Hoạt động Đoàn'})
+                      </option>
+                    ))}
+                    {activities.length === 0 && (
+                      <option value="default-act">📌 Hoạt động chung 56 Chi đoàn</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Render QrAttendanceManager in Admin mode */}
+              <QrAttendanceManager 
+                activity={activities.find(a => a.id === selectedActivityId) || activities[0] || { id: selectedActivityId || 'default-act', title: 'Hoạt động Đoàn' }}
+                currentRole={{ role: 'doan_xa', full_name: 'Ban Thường vụ Đoàn xã', title: 'Quản trị viên' }}
+                isDoanXa={true}
+                onAttendanceSuccess={() => {}}
+              />
+            </div>
+          )}
+
+          {/* TAB 2: MANUAL BRANCH CHECKLIST */}
+          {attendanceTab === 'manual' && (
           <form onSubmit={handleSubmit}>
             <div className="modal-body p-4">
               {/* Select Activity / Task */}
@@ -2354,6 +2445,7 @@ export function ActivityAttendanceModal({ show, onClose, activities = [], attend
               </button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </div>

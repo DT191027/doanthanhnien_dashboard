@@ -103,6 +103,7 @@ export default function App() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [attendanceModalTab, setAttendanceModalTab] = useState('qr');
   const [selectedActivityDetail, setSelectedActivityDetail] = useState(null);
   const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
@@ -985,7 +986,10 @@ export default function App() {
               submissionsCount={submissionsList.length}
               activities={activitiesList}
               attendanceRecords={attendanceRecords}
-              onOpenAttendanceModal={() => setShowAttendanceModal(true)}
+              onOpenAttendanceModal={(mode = 'qr') => {
+                setAttendanceModalTab(mode);
+                setShowAttendanceModal(true);
+              }}
               onRespondAttendance={handleRespondAttendance}
               isDoanXa={isDoanXa}
             />

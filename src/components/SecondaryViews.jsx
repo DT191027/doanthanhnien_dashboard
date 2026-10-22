@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
+  QrCode,
   Calendar, 
   Clock, 
   MapPin, 
@@ -3038,14 +3039,26 @@ export function ReportsView({
         </div>
 
         {isDoanXa && (
-          <button 
-            className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
-            style={{ backgroundColor: '#16A34A', border: 'none' }}
-            onClick={onOpenAttendanceModal}
-          >
-            <CheckCircle2 size={18} />
-            <span>⚡ Điểm danh & Đánh giá Hoạt động</span>
-          </button>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <button 
+              className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm text-white"
+              style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
+              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal('qr')}
+              title="Tạo mã QR & Code XTS-XXXXXX cho các Chi đoàn quét điểm danh"
+            >
+              <QrCode size={18} />
+              <span>📱 Tạo Mã Điểm Danh QR & Code (XTS-XXXXXX)</span>
+            </button>
+
+            <button 
+              className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
+              style={{ backgroundColor: '#16A34A', border: 'none' }}
+              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal('manual')}
+            >
+              <CheckCircle2 size={18} />
+              <span>⚡ Điểm danh & Đánh giá Hoạt động</span>
+            </button>
+          </div>
         )}
       </div>
 

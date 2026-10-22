@@ -2198,18 +2198,34 @@ export async function syncDeleteMember(memberId, memberName = '') {
 // Only Admin (doanxa) can create QR & Code; branches scan and return Real-time GPS
 // ============================================================================
 
+export function generateRandomXtsCode() {
+  // Sinh số nguyên ngẫu nhiên gồm 6 chữ số: 100000 - 999999
+  const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
+  return `XTS-${randomSixDigits}`;
+}
+
+// Kiểm tra xem hoạt động đã kết thúc hay chưa để tự động hết hiệu lực mã QR & Code
+export function isActivityExpired(activity) {
+  if (!activity) return false;
+  if (activity.status === 'Đã hoàn thành') return true;
+  const timeStatus = getActivityTimeStatus(activity);
+  if (timeStatus && timeStatus.code === 'FINISHED') return true;
+  return false;
+}
+
 export function getOrCreateActivityQrCode(activityId) {
   const allCodes = getPersistedData('activity_qr_codes', {});
-  if (allCodes[activityId]) {
+  // Chỉ tái sử dụng nếu đã đúng chuẩn XTS-XXXXXX (6 chữ số)
+  if (allCodes[activityId] && allCodes[activityId].code && /^XTS-\d{6}$/.test(allCodes[activityId].code)) {
     return allCodes[activityId];
   }
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const newCode = `XTS-${randomNum}`;
+  const newCode = generateRandomXtsCode();
   const qrData = {
     code: newCode,
     activityId: activityId,
     createdAt: new Date().toISOString(),
-    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`XTS_ATTENDANCE_${activityId}_${newCode}`)}`
+    // Dữ liệu mã QR đồng nhất 100% với mã Code: quét ra đúng chuỗi XTS-XXXXXX
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(newCode)}`
   };
   const updated = { ...allCodes, [activityId]: qrData };
   setPersistedData('activity_qr_codes', updated);
@@ -2218,13 +2234,13 @@ export function getOrCreateActivityQrCode(activityId) {
 
 export function refreshActivityQrCode(activityId) {
   const allCodes = getPersistedData('activity_qr_codes', {});
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const newCode = `XTS-${randomNum}`;
+  const newCode = generateRandomXtsCode();
   const qrData = {
     code: newCode,
     activityId: activityId,
     createdAt: new Date().toISOString(),
-    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`XTS_ATTENDANCE_${activityId}_${newCode}`)}`
+    // Dữ liệu mã QR đồng nhất 100% với mã Code: quét ra đúng chuỗi XTS-XXXXXX
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(newCode)}`
   };
   const updated = { ...allCodes, [activityId]: qrData };
   setPersistedData('activity_qr_codes', updated);
@@ -2255,10 +2271,12 @@ export function saveActivityGpsAttendanceLog(activityId, logEntry) {
     [logEntry.branch_name]: {
       attended: true,
       time: logEntry.time_str,
+      photo_url: logEntry.photo_url || null,
       gps: {
         lat: logEntry.latitude,
         lng: logEntry.longitude,
-        accuracy: logEntry.accuracy
+        accuracy: logEntry.accuracy,
+        maps_url: logEntry.maps_url
       }
     }
   };

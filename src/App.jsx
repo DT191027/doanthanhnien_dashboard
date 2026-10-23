@@ -259,6 +259,13 @@ export default function App() {
   const outgoingDocsCount = userDocuments.filter(d => d.type === 'outgoing' || !d.type).length;
 
   
+  
+  const handleUpdateTask = async (updatedTask) => {
+    const updatedList = await syncSaveTask(updatedTask);
+    setTasksList(updatedList);
+    triggerToast(`Đã cập nhật công việc "${updatedTask.title}" thành công!`);
+  };
+
   const handleUpdateActivity = async (updatedActivity) => {
     const updatedList = await syncSaveActivity(updatedActivity);
     setActivitiesList(updatedList);
@@ -1008,12 +1015,16 @@ export default function App() {
             /* DEDICATED ATTENDANCE VIEW (CHI ĐOÀN & ADMIN) */
             <BranchAttendanceWorkspaceView 
               activities={activitiesList}
+              tasks={tasksList}
               currentRole={currentUser}
               attendanceRecords={attendanceRecords}
               onRespondAttendance={handleRespondAttendance}
               onConfirmReceipt={handleConfirmReceipt}
               isDoanXa={isDoanXa}
               onUpdateActivity={handleUpdateActivity}
+              onUpdateTask={handleUpdateTask}
+              onToggleTask={handleToggleTask}
+              onCompleteTask={handleCompleteTask}
             />
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */

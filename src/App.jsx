@@ -156,7 +156,14 @@ export default function App() {
       syncFetchAttendance(),
       syncFetchMembers()
     ]);
-    setActivitiesList(deduplicateActivities(acts));
+    // Clean test attendance confirmations if present
+    const cleanedActs = acts.map(a => {
+      if (a && a.id && a.id.startsWith('act-seed-') && Array.isArray(a.confirmedBy) && a.confirmedBy.length > 5) {
+        return { ...a, confirmedBy: [], absentBy: [] };
+      }
+      return a;
+    });
+    setActivitiesList(deduplicateActivities(cleanedActs));
     setDocumentsList(docs);
     setSubmissionsList(subs);
     setNotificationsList(notis);
@@ -1036,6 +1043,8 @@ export default function App() {
               isDoanXa={isDoanXa}
               onUpdateActivity={handleUpdateActivity}
               onUpdateTask={handleUpdateTask}
+              onDeleteActivity={handleDeleteActivity}
+              onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
               onCompleteTask={handleCompleteTask}
             />

@@ -1073,7 +1073,13 @@ export async function syncFetchActivities() {
   if (localList === null) {
     localList = INITIAL_ACTIVITIES;
   }
-  localList = (localList || []).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
+  localList = (localList || []).map(a => {
+    // Xóa bỏ toàn bộ dữ liệu xác nhận điểm danh test cũ để người dùng tự tạo test mới
+    if (a && a.id && a.id.startsWith('act-seed-') && Array.isArray(a.confirmedBy) && a.confirmedBy.length > 5) {
+      return { ...a, confirmedBy: [], absentBy: [] };
+    }
+    return a;
+  }).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
   setPersistedData('activities', localList);
 
   if (supabase) {

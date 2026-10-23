@@ -37,7 +37,7 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { syncSaveActivity, syncSaveTask, INITIAL_ACTIVITIES, INITIAL_TASKS, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import { syncSaveActivity, syncSaveTask, syncDeleteActivity, syncDeleteTask, INITIAL_ACTIVITIES, INITIAL_TASKS, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
@@ -4123,10 +4123,12 @@ export function BranchAttendanceWorkspaceView({
   isDoanXa,
   onUpdateActivity,
   onUpdateTask,
+  onDeleteActivity,
+  onDeleteTask,
   onToggleTask,
   onCompleteTask
 }) {
-  // Use activities & tasks with rich initial seed fallback so it never displays blank data
+  // Use activities & tasks with clean seed fallback
   const safeActivities = Array.isArray(activities) && activities.length > 0 
     ? activities 
     : (typeof INITIAL_ACTIVITIES !== 'undefined' ? INITIAL_ACTIVITIES : []);
@@ -4137,7 +4139,7 @@ export function BranchAttendanceWorkspaceView({
 
   // Selected item state: format "act:id" or "task:id"
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [activeTab, setActiveTab] = useState('info'); // Default to 'info' as requested
+  const [activeTab, setActiveTab] = useState('info'); // Default to 'info'
 
   // Tab "Chi Đoàn" filter & search states
   const [branchSearch, setBranchSearch] = useState('');
@@ -4161,7 +4163,7 @@ export function BranchAttendanceWorkspaceView({
   const [tasksList, setTasksList] = useState([]);
   const [taskSuccessMsg, setTaskSuccessMsg] = useState('');
 
-  // Determine initial selected item (prefer first ongoing activity)
+  // Determine initial selected item
   useEffect(() => {
     if (!selectedItemId) {
       if (safeActivities.length > 0) {
@@ -4192,7 +4194,8 @@ export function BranchAttendanceWorkspaceView({
     description: 'Tập trung quán triệt và triển khai các chỉ tiêu nhiệm vụ trọng tâm công tác Đoàn.',
     time: '08:00 - 11:30',
     date: '23/10/2026',
-    location: 'Hội trường UBND xã Xuân Thới Sơn'
+    location: 'Hội trường UBND xã Xuân Thới Sơn',
+    confirmedBy: []
   };
 
   const timeStatus = typeof getActivityTimeStatus === 'function' && currentActivity
@@ -4274,6 +4277,32 @@ export function BranchAttendanceWorkspaceView({
     setSaveSuccessMsg('');
   };
 
+  // Delete item handler (đáp ứng yêu cầu: thêm nút xóa ở trong nút chỉnh sửa và trên thẻ chính)
+  const handleDeleteItem = async () => {
+    const itemType = isSelectedTask ? 'công việc Todo' : 'hoạt động';
+    const itemTitle = currentItem?.title || '';
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${itemType} "${itemTitle}" khỏi hệ thống không?`)) {
+      return;
+    }
+
+    if (isSelectedTask) {
+      if (onDeleteTask) {
+        await onDeleteTask(currentTask.id, currentTask.title);
+      } else {
+        await syncDeleteTask(currentTask.id);
+      }
+    } else {
+      if (onDeleteActivity) {
+        await onDeleteActivity(currentActivity.id, currentActivity.title);
+      } else {
+        await syncDeleteActivity(currentActivity.id, currentActivity.title);
+      }
+    }
+
+    setIsEditingInfo(false);
+    setSelectedItemId('');
+  };
+
   // Save changes to item
   const handleSaveEdit = async () => {
     if (!editForm.title.trim()) {
@@ -4315,7 +4344,7 @@ export function BranchAttendanceWorkspaceView({
       } else {
         await syncSaveActivity(updatedAct);
       }
-      setSaveSuccessMsg(`Đã cập nhật hoạt động "${updatedAct.title}" trong Quản lý hoạt động thành công!`);
+      setSaveSuccessMsg(`Đã cập nhật hoạt động "${updatedAct.title}" thành công!`);
     } else {
       // Update Task in Công việc Todo
       const updatedTask = {
@@ -4333,7 +4362,7 @@ export function BranchAttendanceWorkspaceView({
       } else {
         await syncSaveTask(updatedTask);
       }
-      setSaveSuccessMsg(`Đã cập nhật công việc "${updatedTask.title}" trong Công việc Todo thành công!`);
+      setSaveSuccessMsg(`Đã cập nhật công việc "${updatedTask.title}" thành công!`);
     }
 
     setIsEditingInfo(false);
@@ -4517,9 +4546,9 @@ export function BranchAttendanceWorkspaceView({
               )}
 
               {isEditingInfo ? (
-                /* FORM CHỈNH SỬA THÔNG TIN */
+                /* FORM CHỈNH SỬA THÔNG TIN - CÓ NÚT XÓA Ở TRONG NÚT CHỈNH SỬA */
                 <div className="card border border-primary-subtle shadow-sm rounded-4 p-4 bg-white mb-4">
-                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-wrap gap-2">
                     <div className="d-flex align-items-center gap-2">
                       <div className="p-2 bg-primary-subtle rounded-3 text-primary">
                         <Edit3 size={18} />
@@ -4529,16 +4558,33 @@ export function BranchAttendanceWorkspaceView({
                           Chỉnh sửa thông tin {isSelectedTask ? 'Công việc Todo' : 'Hoạt động'}
                         </h6>
                         <div className="text-muted" style={{ fontSize: '11.5px' }}>
-                          Cập nhật dữ liệu đồng bộ trực tiếp với {isSelectedTask ? 'phần Công việc (Todo)' : 'phần Quản lý hoạt động'}
+                          Cập nhật dữ liệu hoặc xóa khỏi hệ thống
                         </div>
                       </div>
                     </div>
-                    <button 
-                      type="button" 
-                      className="btn-close" 
-                      onClick={() => setIsEditingInfo(false)}
-                      title="Đóng chỉnh sửa"
-                    ></button>
+
+                    <div className="d-flex align-items-center gap-2">
+                      {/* NÚT XÓA Ở TRONG NÚT CHỈNH SỬA THEO YÊU CẦU USER */}
+                      {isDoanXa && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-3 fw-bold hover-scale"
+                          style={{ fontSize: '12px' }}
+                          onClick={handleDeleteItem}
+                          title={`Xóa hoàn toàn ${isSelectedTask ? 'công việc' : 'hoạt động'} này khỏi hệ thống`}
+                        >
+                          <Trash2 size={14} />
+                          <span>Xóa {isSelectedTask ? 'công việc' : 'hoạt động'}</span>
+                        </button>
+                      )}
+
+                      <button 
+                        type="button" 
+                        className="btn-close" 
+                        onClick={() => setIsEditingInfo(false)}
+                        title="Đóng chỉnh sửa"
+                      ></button>
+                    </div>
                   </div>
 
                   <div className="row g-3">
@@ -4635,24 +4681,39 @@ export function BranchAttendanceWorkspaceView({
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light border px-3 py-1.5 rounded-3 fw-semibold text-secondary"
-                      style={{ fontSize: '12.5px' }}
-                      onClick={() => setIsEditingInfo(false)}
-                    >
-                      ✕ Hủy bỏ
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary px-3.5 py-1.5 rounded-3 fw-bold text-white shadow-xs d-inline-flex align-items-center gap-1.5 hover-scale"
-                      style={{ fontSize: '12.5px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
-                      onClick={handleSaveEdit}
-                    >
-                      <CheckCircle2 size={15} />
-                      <span>Lưu thay đổi</span>
-                    </button>
+                  <div className="d-flex align-items-center justify-content-between mt-4 pt-3 border-top flex-wrap gap-2">
+                    {/* NÚT XÓA BÊN TRONG FORM CHỈNH SỬA */}
+                    {isDoanXa ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-semibold"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={handleDeleteItem}
+                      >
+                        <Trash2 size={15} />
+                        <span>Xóa bỏ mục này</span>
+                      </button>
+                    ) : <div></div>}
+
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-light border px-3 py-1.5 rounded-3 fw-semibold text-secondary"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={() => setIsEditingInfo(false)}
+                      >
+                        ✕ Hủy bỏ
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary px-3.5 py-1.5 rounded-3 fw-bold text-white shadow-xs d-inline-flex align-items-center gap-1.5 hover-scale"
+                        style={{ fontSize: '12.5px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+                        onClick={handleSaveEdit}
+                      >
+                        <CheckCircle2 size={15} />
+                        <span>Lưu thay đổi</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -4685,16 +4746,33 @@ export function BranchAttendanceWorkspaceView({
                         </h5>
                       </div>
 
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale flex-shrink-0"
-                        style={{ fontSize: '12.5px', backgroundColor: '#eff6ff' }}
-                        onClick={handleOpenEdit}
-                        title="Chỉnh sửa thông tin trực tiếp đồng bộ với Quản lý hoạt động & Công việc Todo"
-                      >
-                        <Edit3 size={14} className="text-primary" />
-                        <span>Chỉnh sửa</span>
-                      </button>
+                      <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                        {/* Nút Chỉnh sửa */}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale"
+                          style={{ fontSize: '12.5px', backgroundColor: '#eff6ff' }}
+                          onClick={handleOpenEdit}
+                          title="Chỉnh sửa thông tin trực tiếp đồng bộ với Quản lý hoạt động & Công việc Todo"
+                        >
+                          <Edit3 size={14} className="text-primary" />
+                          <span>Chỉnh sửa</span>
+                        </button>
+
+                        {/* Nút Xóa nhanh trực tiếp */}
+                        {isDoanXa && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-3 shadow-xs hover-scale"
+                            style={{ fontSize: '12.5px' }}
+                            onClick={handleDeleteItem}
+                            title={`Xóa ${isSelectedTask ? 'công việc' : 'hoạt động'} này`}
+                          >
+                            <Trash2 size={14} />
+                            <span>Xóa</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-secondary mt-2" style={{ fontSize: '13px', lineHeight: 1.6 }}>
@@ -4754,15 +4832,15 @@ export function BranchAttendanceWorkspaceView({
                         </div>
                         <div className="fw-semibold text-success" style={{ fontSize: '13px' }}>
                           {(() => {
-                            const confList = currentItem.confirmedBy || [];
-                            const compList = currentItem.completedBy || [];
+                            const confList = Array.isArray(currentItem.confirmedBy) ? currentItem.confirmedBy : [];
+                            const compList = Array.isArray(currentItem.completedBy) ? currentItem.completedBy : [];
                             if (compList.length > 0) {
                               return `${compList.length} Chi đoàn đã làm xong`;
                             }
                             if (confList.length > 0) {
                               return `${confList.length} Chi đoàn đã tiếp nhận`;
                             }
-                            return 'Đang triển khai tiếp nhận';
+                            return 'Chưa có Chi đoàn tiếp nhận';
                           })()}
                         </div>
                       </div>
@@ -4832,15 +4910,30 @@ export function BranchAttendanceWorkspaceView({
                                 </span>
                               )}
 
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-secondary px-2 py-0.5 rounded-2"
+                                style={{ fontSize: '11px' }}
+                                onClick={() => setSelectedItemId(`task:${t.id}`)}
+                                title="Xem chi tiết nhiệm vụ này"
+                              >
+                                Chi tiết →
+                              </button>
+
                               {isDoanXa && (
                                 <button
                                   type="button"
-                                  className="btn btn-xs btn-outline-secondary px-2 py-0.5 rounded-2"
-                                  style={{ fontSize: '11px' }}
-                                  onClick={() => setSelectedItemId(`task:${t.id}`)}
-                                  title="Xem chi tiết nhiệm vụ này"
+                                  className="btn btn-xs btn-outline-danger p-1 rounded-2 border-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${t.title}" không?`)) {
+                                      if (onDeleteTask) onDeleteTask(t.id, t.title);
+                                      else syncDeleteTask(t.id);
+                                    }
+                                  }}
+                                  title="Xóa công việc này khỏi Todo"
                                 >
-                                  Chi tiết →
+                                  <Trash2 size={13} />
                                 </button>
                               )}
                             </div>
@@ -4854,10 +4947,9 @@ export function BranchAttendanceWorkspaceView({
             </div>
           )}
 
-          {/* TAB 3: CHI ĐOÀN (ĐỔI TỪ THÀNH VIÊN SANG CHI ĐOÀN) */}
+          {/* TAB 3: CHI ĐOÀN */}
           {activeTab === 'members' && (
             <div>
-              {/* Header & Filter Bar */}
               <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
                 <div>
                   <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2" style={{ fontSize: '15px' }}>
@@ -5007,7 +5099,7 @@ export function BranchAttendanceWorkspaceView({
             </div>
           )}
 
-          {/* TAB 4: PHÂN CÔNG (THEO ĐỒNG CHÍ ĐẢM NHIỆM KÈM CHỈNH SỬA) */}
+          {/* TAB 4: PHÂN CÔNG */}
           {activeTab === 'tasks' && (
             <div>
               {taskSuccessMsg && (
@@ -5121,7 +5213,7 @@ export function BranchAttendanceWorkspaceView({
 
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold d-inline-flex align-items-center gap-1"
+                        className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold d-inline-center align-items-center gap-1"
                         style={{ fontSize: '12.5px' }}
                         onClick={handleAddTaskRow}
                       >
@@ -5145,7 +5237,6 @@ export function BranchAttendanceWorkspaceView({
 
               {/* NỘI DUNG BẢNG PHÂN CÔNG */}
               {isEditingTasks ? (
-                /* CHẾ ĐỘ CHỈNH SỬA PHÂN CÔNG */
                 <div className="card border border-primary-subtle shadow-sm rounded-4 p-3 bg-white">
                   <div className="text-primary fw-bold mb-3 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
                     <Edit3 size={15} />

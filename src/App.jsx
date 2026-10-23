@@ -258,6 +258,13 @@ export default function App() {
   const incomingDocsCount = submissionsList.length + userDocuments.filter(d => d.type === 'incoming').length;
   const outgoingDocsCount = userDocuments.filter(d => d.type === 'outgoing' || !d.type).length;
 
+  
+  const handleUpdateActivity = async (updatedActivity) => {
+    const updatedList = await syncSaveActivity(updatedActivity);
+    setActivitiesList(updatedList);
+    triggerToast(`Đã cập nhật thông tin hoạt động "${updatedActivity.title}" thành công!`);
+  };
+
   const handleAddActivity = async (newAct) => {
     const assignedText = Array.isArray(newAct.assigned_to) 
       ? (newAct.assigned_to.length === 0 || newAct.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newAct.assigned_to.join(', '))
@@ -1006,6 +1013,7 @@ export default function App() {
               onRespondAttendance={handleRespondAttendance}
               onConfirmReceipt={handleConfirmReceipt}
               isDoanXa={isDoanXa}
+              onUpdateActivity={handleUpdateActivity}
             />
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */

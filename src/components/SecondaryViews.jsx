@@ -37,7 +37,7 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import { syncSaveActivity, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
@@ -4119,10 +4119,22 @@ export function BranchAttendanceWorkspaceView({
   attendanceRecords = {},
   onRespondAttendance,
   onConfirmReceipt,
-  isDoanXa
+  isDoanXa,
+  onUpdateActivity
 }) {
   const [selectedActId, setSelectedActId] = useState('');
   const [activeTab, setActiveTab] = useState('attendance'); // 'info' | 'attendance' | 'members' | 'tasks'
+
+  // Edit states for "Mục thông tin trong phần điểm danh"
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    time: '',
+    date: '',
+    location: '',
+    description: ''
+  });
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   const safeActivities = Array.isArray(activities) ? activities : [];
 
@@ -4144,6 +4156,67 @@ export function BranchAttendanceWorkspaceView({
     ? getActivityTimeStatus(currentActivity) 
     : { statusText: 'Đang diễn ra', code: 'ONGOING' };
 
+  // Prepare edit form data
+  const handleOpenEdit = () => {
+    const actDate = currentActivity.date || (
+      currentActivity.day && currentActivity.month && currentActivity.year 
+        ? `${currentActivity.day}/${currentActivity.month}/${currentActivity.year}` 
+        : 'Hôm nay'
+    );
+    setEditForm({
+      title: currentActivity.title || '',
+      time: currentActivity.time || '08:00 - 11:30',
+      date: actDate,
+      location: currentActivity.location || 'Hội trường UBND xã Xuân Thới Sơn',
+      description: currentActivity.description || ''
+    });
+    setIsEditingInfo(true);
+    setSaveSuccessMsg('');
+  };
+
+  // Save changes to activity
+  const handleSaveEdit = async () => {
+    if (!editForm.title.trim()) {
+      alert('Vui lòng nhập tên hoạt động!');
+      return;
+    }
+
+    let day = currentActivity.day || '23';
+    let month = currentActivity.month || '10';
+    let year = currentActivity.year || 2026;
+
+    if (editForm.date) {
+      const match = editForm.date.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (match) {
+        day = match[1].padStart(2, '0');
+        month = match[2].padStart(2, '0');
+        year = parseInt(match[3], 10);
+      }
+    }
+
+    const updatedAct = {
+      ...currentActivity,
+      title: editForm.title.trim(),
+      time: editForm.time.trim(),
+      date: editForm.date.trim(),
+      day,
+      month,
+      year,
+      location: editForm.location.trim(),
+      description: editForm.description.trim()
+    };
+
+    if (onUpdateActivity) {
+      await onUpdateActivity(updatedAct);
+    } else {
+      await syncSaveActivity(updatedAct);
+    }
+
+    setIsEditingInfo(false);
+    setSaveSuccessMsg(`Đã cập nhật thông tin hoạt động "${updatedAct.title}" thành công!`);
+    setTimeout(() => setSaveSuccessMsg(''), 5000);
+  };
+
   return (
     <div className="container-fluid px-0">
       {/* Top Bar: Selector chọn hoạt động */}
@@ -4157,12 +4230,15 @@ export function BranchAttendanceWorkspaceView({
             <select
               className="form-select form-select-sm fw-semibold"
               value={selectedActId}
-              onChange={(e) => setSelectedActId(e.target.value)}
+              onChange={(e) => {
+                setSelectedActId(e.target.value);
+                setIsEditingInfo(false);
+              }}
               style={{ fontSize: '13px', maxWidth: '480px' }}
             >
               {safeActivities.map(act => (
                 <option key={act.id} value={act.id}>
-                  📌 {act.title} ({act.date || act.dueDate || 'Hoạt động'})
+                  📌 {act.title} ({act.date || act.dueDate || (act.day && act.month ? `${act.day}/${act.month}` : 'Hoạt động')})
                 </option>
               ))}
               {safeActivities.length === 0 && (
@@ -4206,7 +4282,10 @@ export function BranchAttendanceWorkspaceView({
                     borderRadius: 0,
                     color: isActive ? '#0c3b2e' : '#64748b'
                   }}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (tab.id !== 'info') setIsEditingInfo(false);
+                  }}
                 >
                   <span>{tab.icon}</span>
                   <span>{tab.label}</span>
@@ -4231,30 +4310,200 @@ export function BranchAttendanceWorkspaceView({
             />
           )}
 
-          {/* TAB 2: THÔNG TIN HOẠT ĐỘNG */}
+          {/* TAB 2: THÔNG TIN HOẠT ĐỘNG (KÈM NÚT CHỈNH SỬA KHI CÓ SAI SÓT) */}
           {activeTab === 'info' && (
             <div>
-              <div className="p-3 bg-light rounded-3 border mb-3">
-                <h5 className="fw-bold text-dark mb-2">{currentActivity.title}</h5>
-                <div className="text-secondary" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                  {currentActivity.description || 'Chưa có mô tả chi tiết cho hoạt động này.'}
+              {saveSuccessMsg && (
+                <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
+                  <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+                  <span>{saveSuccessMsg}</span>
                 </div>
-              </div>
+              )}
 
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <div className="p-3 bg-white rounded-3 border">
-                    <div className="text-muted mb-1" style={{ fontSize: '11.5px' }}>Thời gian:</div>
-                    <div className="fw-semibold text-dark">{currentActivity.time || '8:00 - 11:30'} ngày {currentActivity.date || 'Hôm nay'}</div>
+              {isEditingInfo ? (
+                /* FORM CHỈNH SỬA THÔNG TIN HOẠT ĐỘNG */
+                <div className="card border border-primary-subtle shadow-sm rounded-4 p-4 bg-white">
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="p-2 bg-primary-subtle rounded-3 text-primary">
+                        <Edit3 size={18} />
+                      </div>
+                      <div>
+                        <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>
+                          Chỉnh sửa thông tin hoạt động
+                        </h6>
+                        <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                          Cập nhật lại tên, thời gian, ngày tháng và địa điểm tổ chức khi có sai sót
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="btn-close" 
+                      onClick={() => setIsEditingInfo(false)}
+                      title="Đóng chỉnh sửa"
+                    ></button>
+                  </div>
+
+                  <div className="row g-3">
+                    {/* Tên hoạt động */}
+                    <div className="col-12">
+                      <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                        Tên hoạt động <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control fw-semibold"
+                        style={{ fontSize: '13.5px' }}
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        placeholder="Nhập tên hoạt động..."
+                      />
+                    </div>
+
+                    {/* Thời gian & Ngày tháng */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                        <Clock size={14} className="text-primary" />
+                        <span>Thời gian tổ chức</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ fontSize: '13px' }}
+                        value={editForm.time}
+                        onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                        placeholder="Ví dụ: 08:00 - 11:30"
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                        <Calendar size={14} className="text-primary" />
+                        <span>Ngày tháng tổ chức</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ fontSize: '13px' }}
+                        value={editForm.date}
+                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                        placeholder="Ví dụ: 23/10/2026 hoặc Hôm nay"
+                      />
+                    </div>
+
+                    {/* Địa điểm tổ chức */}
+                    <div className="col-12">
+                      <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                        <MapPin size={14} className="text-danger" />
+                        <span>Địa điểm tổ chức</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ fontSize: '13px' }}
+                        value={editForm.location}
+                        onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                        placeholder="Ví dụ: Hội trường UBND xã Xuân Thới Sơn"
+                      />
+                    </div>
+
+                    {/* Mô tả chi tiết */}
+                    <div className="col-12">
+                      <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                        Mô tả / Nội dung chi tiết
+                      </label>
+                      <textarea
+                        className="form-control"
+                        rows={3}
+                        style={{ fontSize: '13px' }}
+                        value={editForm.description}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        placeholder="Nhập mô tả nội dung hoạt động..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Nút hành động */}
+                  <div className="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light border px-3 py-1.5 rounded-3 fw-semibold text-secondary"
+                      style={{ fontSize: '12.5px' }}
+                      onClick={() => setIsEditingInfo(false)}
+                    >
+                      ✕ Hủy bỏ
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary px-3.5 py-1.5 rounded-3 fw-bold text-white shadow-xs d-inline-flex align-items-center gap-1.5 hover-scale"
+                      style={{ fontSize: '12.5px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+                      onClick={handleSaveEdit}
+                    >
+                      <CheckCircle2 size={15} />
+                      <span>Lưu thay đổi</span>
+                    </button>
                   </div>
                 </div>
-                <div className="col-md-6">
-                  <div className="p-3 bg-white rounded-3 border">
-                    <div className="text-muted mb-1" style={{ fontSize: '11.5px' }}>Địa điểm tổ chức:</div>
-                    <div className="fw-semibold text-dark">{currentActivity.location || 'Hội trường UBND xã Xuân Thới Sơn'}</div>
+              ) : (
+                /* GIAO DIỆN HIỂN THỊ THÔNG TIN KÈM NÚT CHỈNH SỬA */
+                <div>
+                  {/* Top Header Card */}
+                  <div className="p-3.5 bg-light rounded-4 border mb-3 position-relative">
+                    <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
+                      <h5 className="fw-bold text-dark mb-0 pe-2" style={{ fontSize: '16px', lineHeight: 1.4 }}>
+                        {currentActivity.title}
+                      </h5>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale flex-shrink-0"
+                        style={{ fontSize: '12.5px', backgroundColor: '#eff6ff' }}
+                        onClick={handleOpenEdit}
+                        title="Bấm để chỉnh sửa tên hoạt động, thời gian, ngày tháng hoặc địa điểm khi có sai sót"
+                      >
+                        <Edit3 size={14} className="text-primary" />
+                        <span>Chỉnh sửa</span>
+                      </button>
+                    </div>
+
+                    <div className="text-secondary" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                      {currentActivity.description || 'Chưa có mô tả chi tiết cho hoạt động này.'}
+                    </div>
+                  </div>
+
+                  {/* Grid: Thời gian & Địa điểm */}
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <div className="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                        <div className="text-muted mb-1 d-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
+                          <Clock size={13} className="text-primary" />
+                          <span>Thời gian & Ngày tháng:</span>
+                        </div>
+                        <div className="fw-semibold text-dark" style={{ fontSize: '13.5px' }}>
+                          {currentActivity.time || '8:00 - 11:30'} ngày {currentActivity.date || (
+                            currentActivity.day && currentActivity.month && currentActivity.year 
+                              ? `${currentActivity.day}/${currentActivity.month}/${currentActivity.year}` 
+                              : 'Hôm nay'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-md-6">
+                      <div className="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                        <div className="text-muted mb-1 d-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
+                          <MapPin size={13} className="text-danger" />
+                          <span>Địa điểm tổ chức:</span>
+                        </div>
+                        <div className="fw-semibold text-dark" style={{ fontSize: '13.5px' }}>
+                          {currentActivity.location || 'Hội trường UBND xã Xuân Thới Sơn'}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

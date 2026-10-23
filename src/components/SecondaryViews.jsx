@@ -4125,6 +4125,10 @@ export function BranchAttendanceWorkspaceView({
   const [selectedActId, setSelectedActId] = useState('');
   const [activeTab, setActiveTab] = useState('attendance'); // 'info' | 'attendance' | 'members' | 'tasks'
 
+  // Tab "Chi Đoàn" filter & search states
+  const [branchSearch, setBranchSearch] = useState('');
+  const [branchFilter, setBranchFilter] = useState('ALL'); // 'ALL' | 'dan_cu' | 'truong_hoc' | 'khac'
+
   // Edit states for "Mục thông tin trong phần điểm danh"
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -4135,6 +4139,11 @@ export function BranchAttendanceWorkspaceView({
     description: ''
   });
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // Edit states for "Mục phân công thực hiện do đồng chí nào đảm nhiệm"
+  const [isEditingTasks, setIsEditingTasks] = useState(false);
+  const [tasksList, setTasksList] = useState([]);
+  const [taskSuccessMsg, setTaskSuccessMsg] = useState('');
 
   const safeActivities = Array.isArray(activities) ? activities : [];
 
@@ -4156,7 +4165,60 @@ export function BranchAttendanceWorkspaceView({
     ? getActivityTimeStatus(currentActivity) 
     : { statusText: 'Đang diễn ra', code: 'ONGOING' };
 
-  // Prepare edit form data
+  // Sync tasksList when currentActivity changes
+  useEffect(() => {
+    if (currentActivity?.subTasks && Array.isArray(currentActivity.subTasks) && currentActivity.subTasks.length > 0) {
+      setTasksList(currentActivity.subTasks);
+    } else {
+      // Default initial assignments based on the activity
+      const actDate = currentActivity.date || (
+        currentActivity.day && currentActivity.month && currentActivity.year 
+          ? `${currentActivity.day}/${currentActivity.month}/${currentActivity.year}` 
+          : 'ngày tổ chức'
+      );
+      setTasksList([
+        {
+          id: 'task-1',
+          task: 'Chuẩn bị hội trường, âm thanh, ánh sáng & cờ Đoàn',
+          branch: 'Chi đoàn Cơ quan Đoàn xã',
+          officer: 'Đ/c Nguyễn Văn Nam - Phó Bí thư Đoàn xã',
+          deadline: `Trước 07:30 ngày ${actDate}`,
+          status: 'Đang tiến hành',
+          notes: 'Kiểm tra máy chiếu, micro, cờ Tổ quốc và cờ Đoàn đầy đủ.'
+        },
+        {
+          id: 'task-2',
+          task: 'Phụ trách bàn đón tiếp, điểm danh mã QR & xác thực GPS',
+          branch: 'Chi đoàn Ban Chỉ huy Quân sự xã',
+          officer: 'Đ/c Trần Minh Đức - Bí thư Chi đoàn',
+          deadline: `07:30 - 08:30 ngày ${actDate}`,
+          status: 'Chờ thực hiện',
+          notes: 'Hướng dẫn 56 Chi đoàn quét mã QR điểm danh xác thực vị trí.'
+        },
+        {
+          id: 'task-3',
+          task: 'Huy động và điều phối lực lượng đoàn viên 30 Chi đoàn Ấp',
+          branch: '30 Chi đoàn Ấp Dân cư',
+          officer: 'Đ/c Bí thư các Chi đoàn Ấp',
+          deadline: `Đúng 08:00 ngày ${actDate}`,
+          status: 'Chờ thực hiện',
+          notes: 'Đảm bảo quân số tối thiểu 05 đoàn viên/chi đoàn có mặt đúng giờ.'
+        },
+        {
+          id: 'task-4',
+          task: 'Ghi hình, truyền thông & lập biên bản hội nghị',
+          branch: 'Chi đoàn Khối Trường học',
+          officer: 'Đ/c Lê Thanh Thảo - Ủy viên BCH',
+          deadline: 'Trong suốt chương trình',
+          status: 'Chờ thực hiện',
+          notes: 'Đăng tải tin bài tuyên truyền trên fanpage Đoàn xã ngay sau hội nghị.'
+        }
+      ]);
+    }
+    setIsEditingTasks(false);
+  }, [currentActivity?.id]);
+
+  // Open edit for activity info
   const handleOpenEdit = () => {
     const actDate = currentActivity.date || (
       currentActivity.day && currentActivity.month && currentActivity.year 
@@ -4174,7 +4236,7 @@ export function BranchAttendanceWorkspaceView({
     setSaveSuccessMsg('');
   };
 
-  // Save changes to activity
+  // Save changes to activity info
   const handleSaveEdit = async () => {
     if (!editForm.title.trim()) {
       alert('Vui lòng nhập tên hoạt động!');
@@ -4217,6 +4279,67 @@ export function BranchAttendanceWorkspaceView({
     setTimeout(() => setSaveSuccessMsg(''), 5000);
   };
 
+  // Handlers for Assignments (Mục phân công thực hiện do đồng chí nào đảm nhiệm)
+  const handleAddTaskRow = () => {
+    const newTask = {
+      id: `task-${Date.now()}`,
+      task: '',
+      branch: 'Chi đoàn trực thuộc',
+      officer: 'Đ/c Phụ trách',
+      deadline: currentActivity.time || 'Trước 08:00',
+      status: 'Chờ thực hiện',
+      notes: ''
+    };
+    setTasksList([...tasksList, newTask]);
+    setIsEditingTasks(true);
+  };
+
+  const handleUpdateTaskField = (index, field, value) => {
+    const updated = [...tasksList];
+    updated[index] = { ...updated[index], [field]: value };
+    setTasksList(updated);
+  };
+
+  const handleDeleteTaskRow = (index) => {
+    const updated = tasksList.filter((_, i) => i !== index);
+    setTasksList(updated);
+  };
+
+  const handleSaveTasks = async () => {
+    const updatedAct = {
+      ...currentActivity,
+      subTasks: tasksList,
+      hasSubTasks: tasksList.length > 0
+    };
+
+    if (onUpdateActivity) {
+      await onUpdateActivity(updatedAct);
+    } else {
+      await syncSaveActivity(updatedAct);
+    }
+
+    setIsEditingTasks(false);
+    setTaskSuccessMsg('Đã cập nhật danh sách phân công nhiệm vụ thành công!');
+    setTimeout(() => setTaskSuccessMsg(''), 5000);
+  };
+
+  // Filter 56 Branches for Tab "Chi Đoàn"
+  const filteredBranches = ALL_BRANCHES.filter(b => {
+    const matchSearch = !branchSearch || b.name.toLowerCase().includes(branchSearch.toLowerCase()) || (b.secretary_name && b.secretary_name.toLowerCase().includes(branchSearch.toLowerCase()));
+    if (!matchSearch) return false;
+
+    if (branchFilter === 'dan_cu') {
+      return b.id && b.id.startsWith('ap-');
+    }
+    if (branchFilter === 'truong_hoc') {
+      return b.id && b.id.includes('school');
+    }
+    if (branchFilter === 'khac') {
+      return !b.id.startsWith('ap-') && !b.id.includes('school');
+    }
+    return true;
+  });
+
   return (
     <div className="container-fluid px-0">
       {/* Top Bar: Selector chọn hoạt động */}
@@ -4233,6 +4356,7 @@ export function BranchAttendanceWorkspaceView({
               onChange={(e) => {
                 setSelectedActId(e.target.value);
                 setIsEditingInfo(false);
+                setIsEditingTasks(false);
               }}
               style={{ fontSize: '13px', maxWidth: '480px' }}
             >
@@ -4257,15 +4381,15 @@ export function BranchAttendanceWorkspaceView({
         </div>
       </div>
 
-      {/* Main Container Card with 4 Tabs exactly matching Screenshot 3 */}
+      {/* Main Container Card with 4 Tabs: Thông Tin | Điểm Danh | Chi Đoàn | Phân Công */}
       <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
-        {/* Navigation Tabs Header: Thông Tin | Điểm Danh | Thành Viên | Phân Công */}
+        {/* Navigation Tabs Header */}
         <div className="border-bottom bg-white px-3 pt-2">
           <div className="d-flex align-items-center gap-1 overflow-x-auto">
             {[
               { id: 'info', label: 'Thông Tin', icon: 'ℹ️' },
               { id: 'attendance', label: 'Điểm Danh', icon: '📷', isMain: true },
-              { id: 'members', label: 'Thành Viên', icon: '👥' },
+              { id: 'members', label: 'Chi Đoàn', icon: '👥' },
               { id: 'tasks', label: 'Phân Công', icon: '📋' }
             ].map(tab => {
               const isActive = activeTab === tab.id;
@@ -4285,6 +4409,7 @@ export function BranchAttendanceWorkspaceView({
                   onClick={() => {
                     setActiveTab(tab.id);
                     if (tab.id !== 'info') setIsEditingInfo(false);
+                    if (tab.id !== 'tasks') setIsEditingTasks(false);
                   }}
                 >
                   <span>{tab.icon}</span>
@@ -4507,25 +4632,533 @@ export function BranchAttendanceWorkspaceView({
             </div>
           )}
 
-          {/* TAB 3: THÀNH VIÊN THAM GIA */}
+          {/* TAB 3: CHI ĐOÀN (ĐỔI TỪ THÀNH VIÊN SANG CHI ĐOÀN - THEO YÊU CẦU USER) */}
           {activeTab === 'members' && (
-            <div className="p-3 bg-light rounded-3 border text-center py-4">
-              <Users size={32} className="text-muted mb-2 opacity-50" />
-              <div className="fw-semibold text-dark mb-1">Danh sách tham gia 56 Chi đoàn / Đơn vị</div>
-              <div className="text-muted" style={{ fontSize: '12px' }}>
-                Hệ thống tự động ghi nhận danh sách có mặt khi các Chi đoàn quét mã QR điểm danh.
+            <div>
+              {/* Header & Filter Bar */}
+              <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+                <div>
+                  <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2" style={{ fontSize: '15px' }}>
+                    <Users size={18} className="text-primary" />
+                    <span>Danh sách 56 Chi đoàn / Đơn vị trực thuộc</span>
+                  </h6>
+                  <div className="text-muted" style={{ fontSize: '12px' }}>
+                    Theo dõi tình hình tiếp nhận và điểm danh tham gia hoạt động của các đơn vị
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <div className="input-group input-group-sm" style={{ width: '240px' }}>
+                    <span className="input-group-text bg-light border-end-0">
+                      <Search size={14} className="text-muted" />
+                    </span>
+                    <input 
+                      type="text" 
+                      className="form-control border-start-0" 
+                      placeholder="Tìm tên Chi đoàn..."
+                      value={branchSearch}
+                      onChange={(e) => setBranchSearch(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <div className="btn-group btn-group-sm">
+                    <button 
+                      type="button" 
+                      className={`btn ${branchFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => setBranchFilter('ALL')}
+                      style={{ fontSize: '11.5px' }}
+                    >
+                      Tất cả (56)
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`btn ${branchFilter === 'dan_cu' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => setBranchFilter('dan_cu')}
+                      style={{ fontSize: '11.5px' }}
+                    >
+                      Khối Dân cư (30)
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`btn ${branchFilter === 'truong_hoc' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => setBranchFilter('truong_hoc')}
+                      style={{ fontSize: '11.5px' }}
+                    >
+                      Khối Trường học
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attendance Statistics Badges */}
+              {(() => {
+                const actRec = (attendanceRecords && currentActivity?.id && attendanceRecords[currentActivity.id]) || {};
+                const confirmedList = Array.isArray(currentActivity?.confirmedBy) ? currentActivity.confirmedBy : [];
+                const attendedCount = ALL_BRANCHES.filter(b => {
+                  return Boolean(
+                    actRec[b.name] || 
+                    confirmedList.some(c => (typeof c === 'string' ? c : c.branch) === b.name)
+                  );
+                }).length;
+                const absentCount = ALL_BRANCHES.length - attendedCount;
+
+                return (
+                  <div className="row g-2 mb-3">
+                    <div className="col-12 col-sm-4">
+                      <div className="p-2.5 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                        <span className="text-secondary fw-semibold" style={{ fontSize: '12px' }}>Tổng số Chi đoàn:</span>
+                        <span className="badge bg-primary px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '12px' }}>56 Đơn vị</span>
+                      </div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="p-2.5 bg-success-subtle rounded-3 border border-success-subtle d-flex align-items-center justify-content-between">
+                        <span className="text-success fw-bold" style={{ fontSize: '12px' }}>✓ Đã có mặt / Tiếp nhận:</span>
+                        <span className="badge bg-success px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '12px' }}>{attendedCount} Chi đoàn</span>
+                      </div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="p-2.5 bg-warning-subtle rounded-3 border border-warning-subtle d-flex align-items-center justify-content-between">
+                        <span className="text-warning-emphasis fw-bold" style={{ fontSize: '12px' }}>⏳ Chưa điểm danh:</span>
+                        <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '12px' }}>{absentCount} Chi đoàn</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Branches Table */}
+              <div className="table-responsive rounded-3 border">
+                <table className="table table-hover align-middle mb-0" style={{ fontSize: '12.5px' }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th style={{ width: '50px' }} className="text-center">STT</th>
+                      <th>Tên Chi Đoàn / Đơn Vị</th>
+                      <th>Cụm Thi Đua / Phân Loại</th>
+                      <th>Bí Thư / Phụ Trách</th>
+                      <th className="text-center" style={{ width: '180px' }}>Trạng Thái Điểm Danh</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBranches.map((b, idx) => {
+                      const actRec = (attendanceRecords && currentActivity?.id && attendanceRecords[currentActivity.id]) || {};
+                      const confirmedList = Array.isArray(currentActivity?.confirmedBy) ? currentActivity.confirmedBy : [];
+                      const record = actRec[b.name];
+                      const conf = confirmedList.find(c => (typeof c === 'string' ? c : c.branch) === b.name);
+                      const isPresent = Boolean(record || conf);
+                      const checkinTime = (typeof record === 'object' ? record?.time : null) || (typeof conf === 'object' ? conf?.time : null) || 'Đã xác nhận';
+
+                      return (
+                        <tr key={b.id || idx}>
+                          <td className="text-center text-muted fw-semibold">{idx + 1}</td>
+                          <td>
+                            <div className="fw-bold text-dark">{b.name}</div>
+                            {b.email && <div className="text-muted" style={{ fontSize: '11px' }}>{b.email}</div>}
+                          </td>
+                          <td>
+                            <span className="badge bg-light text-secondary border px-2 py-1" style={{ fontSize: '11px' }}>
+                              {b.cluster_name || (b.id.startsWith('ap-') ? 'Khối Dân Cư' : 'Khối Đơn Vị')}
+                            </span>
+                          </td>
+                          <td className="text-secondary fw-semibold">
+                            {b.secretary_name || 'Đ/c Bí thư Chi đoàn'}
+                          </td>
+                          <td className="text-center">
+                            {isPresent ? (
+                              <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1" style={{ fontSize: '11px', fontWeight: 650 }}>
+                                <CheckCircle2 size={13} />
+                                <span>Có mặt ({checkinTime})</span>
+                              </span>
+                            ) : (
+                              <span className="badge bg-secondary-subtle text-muted border px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1" style={{ fontSize: '11px', fontWeight: 500 }}>
+                                <Clock size={12} />
+                                <span>Chưa điểm danh</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {/* TAB 4: PHÂN CÔNG NHIỆM VỤ */}
+          {/* TAB 4: PHÂN CÔNG (DỰA VÀO NỘI DUNG VĂN BẢN & MỤC PHÂN CÔNG DO ĐỒNG CHÍ ĐẢM NHIỆM KÈM CHỈNH SỬA) */}
           {activeTab === 'tasks' && (
-            <div className="p-3 bg-light rounded-3 border text-center py-4">
-              <CheckSquare size={32} className="text-muted mb-2 opacity-50" />
-              <div className="fw-semibold text-dark mb-1">Phân công nhiệm vụ chi đoàn</div>
-              <div className="text-muted" style={{ fontSize: '12px' }}>
-                Các nội dung phân công chi tiết từ Ban Thường vụ Đoàn xã sẽ hiển thị tại đây.
+            <div>
+              {taskSuccessMsg && (
+                <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
+                  <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+                  <span>{taskSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* PHẦN 1: NỘI DUNG TRONG VĂN BẢN / KẾ HOẠCH TRIỂN KHAI */}
+              <div className="card border-0 shadow-xs rounded-4 bg-light p-3.5 mb-4 border">
+                <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="p-2 bg-primary text-white rounded-3">
+                      <FileText size={18} />
+                    </div>
+                    <div>
+                      <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>
+                        Nội dung chỉ đạo trong văn bản / Kế hoạch hoạt động
+                      </h6>
+                      <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                        Căn cứ kế hoạch chỉ đạo của Ban Thường vụ Đoàn TNCS Hồ Chí Minh Xã Xuân Thới Sơn
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1 rounded-pill" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      📌 {currentActivity.priority || 'Khẩn cấp'}
+                    </span>
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill" style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      {currentActivity.status || 'Đang triển khai'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-3 border my-2">
+                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '14px' }}>
+                    {currentActivity.title}
+                  </div>
+                  <div className="text-secondary" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                    {currentActivity.description || 'Ban Thường vụ Đoàn xã yêu cầu các Chi đoàn trực thuộc khẩn trương phân công lực lượng đoàn viên, cử đồng chí cán bộ phụ trách đảm nhận các nhiệm vụ trọng tâm để đảm bảo chương trình diễn ra nghiêm túc, đạt hiệu quả cao.'}
+                  </div>
+                </div>
+
+                <div className="row g-2 pt-1 text-secondary" style={{ fontSize: '12.5px' }}>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-1.5">
+                    <Clock size={14} className="text-primary flex-shrink-0" />
+                    <span><strong>Thời gian:</strong> {currentActivity.time || '08:00 - 11:30'}</span>
+                  </div>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-1.5">
+                    <Calendar size={14} className="text-primary flex-shrink-0" />
+                    <span><strong>Ngày tháng:</strong> {currentActivity.date || 'Hôm nay'}</span>
+                  </div>
+                  <div className="col-12 col-md-4 d-flex align-items-center gap-1.5">
+                    <MapPin size={14} className="text-danger flex-shrink-0" />
+                    <span><strong>Địa điểm:</strong> {currentActivity.location || 'Hội trường UBND xã Xuân Thới Sơn'}</span>
+                  </div>
+                </div>
               </div>
+
+              {/* PHẦN 2: MỤC PHÂN CÔNG THỰC HIỆN DO ĐỒNG CHÍ NÀO ĐẢM NHIỆM */}
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div>
+                  <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2" style={{ fontSize: '15px' }}>
+                    <CheckSquare size={18} className="text-success" />
+                    <span>Phân công thực hiện do đồng chí nào đảm nhiệm ({tasksList.length})</span>
+                  </h6>
+                  <div className="text-muted" style={{ fontSize: '12px' }}>
+                    Giao nhiệm vụ chi tiết đến từng Chi đoàn và cá nhân đồng chí phụ trách thực hiện
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  {!isEditingTasks ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5 fw-semibold px-3 py-1.5 rounded-3 shadow-xs hover-scale"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={handleAddTaskRow}
+                      >
+                        <Plus size={15} />
+                        <span>Thêm nhiệm vụ</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-1.5 rounded-3 shadow-xs hover-scale text-white"
+                        style={{ fontSize: '12.5px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+                        onClick={() => setIsEditingTasks(true)}
+                        title="Chỉnh sửa phân công nhiệm vụ và đồng chí đảm nhiệm"
+                      >
+                        <Edit3 size={14} />
+                        <span>Chỉnh sửa phân công</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary px-3 py-1.5 rounded-3 fw-semibold"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={() => {
+                          setIsEditingTasks(false);
+                          // Revert to currentActivity subTasks
+                          if (currentActivity?.subTasks) setTasksList(currentActivity.subTasks);
+                        }}
+                      >
+                        ✕ Hủy bỏ
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold d-inline-flex align-items-center gap-1"
+                        style={{ fontSize: '12.5px' }}
+                        onClick={handleAddTaskRow}
+                      >
+                        <Plus size={14} />
+                        <span>Thêm dòng</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-success px-3.5 py-1.5 rounded-3 fw-bold text-white shadow-xs d-inline-flex align-items-center gap-1.5 hover-scale"
+                        style={{ fontSize: '12.5px', backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                        onClick={handleSaveTasks}
+                      >
+                        <CheckCircle2 size={15} />
+                        <span>Lưu phân công</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* NỘI DUNG BẢNG PHÂN CÔNG */}
+              {isEditingTasks ? (
+                /* CHẾ ĐỘ CHỈNH SỬA PHÂN CÔNG */
+                <div className="card border border-primary-subtle shadow-sm rounded-4 p-3 bg-white">
+                  <div className="text-primary fw-bold mb-3 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                    <Edit3 size={15} />
+                    <span>Cập nhật phân công nhiệm vụ và phân bổ đồng chí đảm nhiệm:</span>
+                  </div>
+
+                  <div className="d-flex flex-column gap-3">
+                    {tasksList.map((t, idx) => (
+                      <div key={t.id || idx} className="p-3 rounded-3 bg-light border position-relative">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span className="badge bg-primary px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                            Nhiệm vụ #{idx + 1}
+                          </span>
+
+                          <button
+                            type="button"
+                            className="btn btn-link text-danger p-0 border-0"
+                            onClick={() => handleDeleteTaskRow(idx)}
+                            title="Xóa nhiệm vụ này"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+
+                        <div className="row g-2">
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '11.5px' }}>
+                              Nội dung công việc / Nhiệm vụ <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm fw-semibold"
+                              value={t.task || ''}
+                              onChange={(e) => handleUpdateTaskField(idx, 'task', e.target.value)}
+                              placeholder="Ví dụ: Phụ trách đón tiếp, điểm danh QR & GPS..."
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '11.5px' }}>
+                              Đơn vị / Chi đoàn phụ trách
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={t.branch || ''}
+                              onChange={(e) => handleUpdateTaskField(idx, 'branch', e.target.value)}
+                              placeholder="Ví dụ: Chi đoàn Ấp Bùi Môn..."
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-4">
+                            <label className="form-label fw-bold text-primary mb-1 d-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
+                              <UserCheck size={13} />
+                              <span>Đồng chí đảm nhiệm</span> <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm fw-bold border-primary"
+                              value={t.officer || ''}
+                              onChange={(e) => handleUpdateTaskField(idx, 'officer', e.target.value)}
+                              placeholder="Ví dụ: Đ/c Nguyễn Văn An - Bí thư..."
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-4">
+                            <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '11.5px' }}>
+                              Thời hạn hoàn thành
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={t.deadline || ''}
+                              onChange={(e) => handleUpdateTaskField(idx, 'deadline', e.target.value)}
+                              placeholder="Ví dụ: Trước 08:00 ngày 23/10..."
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-4">
+                            <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '11.5px' }}>
+                              Tiến độ thực hiện
+                            </label>
+                            <select
+                              className="form-select form-select-sm fw-semibold"
+                              value={t.status || 'Chờ thực hiện'}
+                              onChange={(e) => handleUpdateTaskField(idx, 'status', e.target.value)}
+                            >
+                              <option value="Chờ thực hiện">⏳ Chờ thực hiện</option>
+                              <option value="Đang tiến hành">🔄 Đang tiến hành</option>
+                              <option value="Đã hoàn thành">✅ Đã hoàn thành</option>
+                            </select>
+                          </div>
+
+                          <div className="col-12">
+                            <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '11.5px' }}>
+                              Ghi chú / Yêu cầu chi tiết
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={t.notes || ''}
+                              onChange={(e) => handleUpdateTaskField(idx, 'notes', e.target.value)}
+                              placeholder="Ghi chú phân công cụ thể..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 fw-semibold"
+                      style={{ fontSize: '12px' }}
+                      onClick={handleAddTaskRow}
+                    >
+                      <Plus size={14} />
+                      <span>Thêm mục phân công mới</span>
+                    </button>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-light border px-3 py-1.5 rounded-3 fw-semibold text-secondary"
+                        style={{ fontSize: '12px' }}
+                        onClick={() => setIsEditingTasks(false)}
+                      >
+                        ✕ Hủy bỏ
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-success px-3.5 py-1.5 rounded-3 fw-bold text-white shadow-xs d-inline-flex align-items-center gap-1.5"
+                        style={{ fontSize: '12px', backgroundColor: '#16A34A', borderColor: '#16A34A' }}
+                        onClick={handleSaveTasks}
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>Lưu danh sách phân công</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* CHẾ ĐỘ HIỂN THỊ DANH SÁCH BẢNG PHÂN CÔNG */
+                tasksList.length === 0 ? (
+                  <div className="p-4 bg-light rounded-4 text-center border">
+                    <CheckSquare size={36} className="text-muted mb-2 opacity-50" />
+                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '14px' }}>
+                      Chưa có danh sách phân công nhiệm vụ
+                    </div>
+                    <div className="text-muted mb-3" style={{ fontSize: '12px' }}>
+                      Bấm vào nút bên dưới để thêm các nội dung phân công và đồng chí đảm nhiệm thực hiện.
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-bold shadow-xs"
+                      onClick={handleAddTaskRow}
+                    >
+                      <Plus size={15} />
+                      <span>Thêm phân công nhiệm vụ</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="table-responsive rounded-3 border">
+                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '12.5px' }}>
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: '45px' }} className="text-center">#</th>
+                          <th style={{ minWidth: '220px' }}>Nội Dung Nhiệm Vụ</th>
+                          <th style={{ minWidth: '160px' }}>Đơn Vị Phụ Trách</th>
+                          <th style={{ minWidth: '190px' }} className="text-primary">
+                            <span className="d-flex align-items-center gap-1">
+                              <UserCheck size={14} />
+                              <span>Đồng Chí Đảm Nhiệm</span>
+                            </span>
+                          </th>
+                          <th style={{ minWidth: '140px' }}>Thời Hạn</th>
+                          <th style={{ width: '130px' }} className="text-center">Tiến Độ</th>
+                          <th style={{ minWidth: '180px' }}>Ghi Chú</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tasksList.map((t, idx) => {
+                          const isDone = t.status === 'Đã hoàn thành';
+                          const isInProgress = t.status === 'Đang tiến hành';
+
+                          return (
+                            <tr key={t.id || idx}>
+                              <td className="text-center text-muted fw-bold">{idx + 1}</td>
+                              <td>
+                                <div className="fw-bold text-dark">{t.task || 'Nhiệm vụ'}</div>
+                              </td>
+                              <td>
+                                <span className="badge bg-light text-dark border px-2 py-1" style={{ fontSize: '11px', fontWeight: 600 }}>
+                                  📌 {t.branch || 'Chi đoàn'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 bg-primary-subtle text-primary border border-primary-subtle rounded-3 shadow-xs">
+                                  <UserCheck size={13} className="text-primary flex-shrink-0" />
+                                  <span className="fw-bold" style={{ fontSize: '12px' }}>
+                                    {t.officer || 'Đ/c Phụ trách'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="text-muted" style={{ fontSize: '11.5px' }}>
+                                {t.deadline || 'Trong ngày'}
+                              </td>
+                              <td className="text-center">
+                                {isDone ? (
+                                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    ✅ Đã xong
+                                  </span>
+                                ) : isInProgress ? (
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    🔄 Đang làm
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    ⏳ Chờ làm
+                                  </span>
+                                )}
+                              </td>
+                              <td className="text-secondary" style={{ fontSize: '11.5px' }}>
+                                {t.notes || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
             </div>
           )}
         </div>

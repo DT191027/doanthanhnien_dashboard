@@ -335,126 +335,8 @@ export const INITIAL_ROLES = [
 
 // Initial Empty Constant Exports
 // Seed Activities Dataset for 30 Hamlets & Competition Clusters
-export const INITIAL_ACTIVITIES = [
-  {
-    id: 'act-seed-1',
-    title: 'Hội nghị Học tập & Quán triệt Nghị quyết Đại hội Đoàn TNCS Hồ Chí Minh Xã Xuân Thới Sơn',
-    priority: 'Khẩn cấp',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    day: '15',
-    month: '09',
-    year: 2026,
-    dateIso: '2026-09-15',
-    time: '08:00 - 11:30',
-    location: 'Hội trường lớn UBND Xã Xuân Thới Sơn',
-    status: 'Đang diễn ra',
-    description: 'Tập trung quán triệt các chỉ tiêu thi đua năm 2026 và triển khai kế hoạch thực hiện công trình thanh niên 30 Ấp.',
-    confirmedBy: [
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '14/09/2026 08:30' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 4', time: '14/09/2026 09:15' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 3', time: '14/09/2026 09:40' },
-      { branch: 'Chi đoàn Ấp Bùi Môn', time: '14/09/2026 10:00' },
-      { branch: 'Chi đoàn Ấp Dân Thắng', time: '14/09/2026 10:20' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 1', time: '14/09/2026 11:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 2', time: '14/09/2026 11:30' },
-      { branch: 'Chi đoàn Ấp Nam Xuân', time: '14/09/2026 13:10' },
-      { branch: 'Chi đoàn Ấp Nhị Tân', time: '14/09/2026 14:00' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 1', time: '14/09/2026 14:30' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 2', time: '14/09/2026 15:00' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 3', time: '14/09/2026 15:20' },
-      { branch: 'Chi đoàn Ấp Nhị Xuân', time: '14/09/2026 15:45' },
-      { branch: 'Chi đoàn Ấp Tân Lập', time: '14/09/2026 16:00' },
-      { branch: 'Chi đoàn Ấp Tân Thới Nhì', time: '14/09/2026 16:15' },
-      { branch: 'Chi đoàn Ấp Tân Tiến', time: '14/09/2026 16:30' },
-      { branch: 'Chi đoàn Ấp Thống Nhất 1', time: '14/09/2026 16:45' },
-      { branch: 'Chi đoàn Ấp Thống Nhất 2', time: '14/09/2026 17:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới', time: '14/09/2026 17:15' },
-      { branch: 'Chi đoàn Ấp Xuân Thới 1', time: '14/09/2026 17:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới 2', time: '14/09/2026 17:45' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông', time: '14/09/2026 18:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 3', time: '14/09/2026 18:15' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 4', time: '14/09/2026 18:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 5', time: '14/09/2026 18:45' },
-      { branch: 'Chi đoàn Ấp Nam Xuân 1', time: '14/09/2026 19:00' },
-      { branch: 'Chi đoàn Ấp Nam Xuân 2', time: '14/09/2026 19:15' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 5', time: '14/09/2026 19:30' }
-    ],
-    absentBy: [
-      { branch: 'Chi đoàn Ấp Nhị Xuân 1', reason: 'Bí thư bận công tác đột xuất cấp ủy chỉ đạo tuần tra địa bàn', time: '14/09/2026 14:15' },
-      { branch: 'Chi đoàn Ấp Thới Sơn', reason: 'Bí thư & Phó bí thư tham dự lớp tập huấn lý luận chính trị', time: '14/09/2026 15:30' }
-    ]
-  },
-  {
-    id: 'act-seed-2',
-    title: 'Ngày đồng loạt ra quân "Ngày Chủ nhật Xanh" dọn dẹp vệ sinh môi trường 30 Ấp',
-    priority: 'Bình thường',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    day: '20',
-    month: '09',
-    year: 2026,
-    dateIso: '2026-09-20',
-    time: '07:00 - 10:30',
-    location: 'Tuyến đường thanh niên tự quản 30 Ấp',
-    status: 'Sắp diễn ra',
-    description: 'Chi đoàn 30 Ấp huy động 100% đoàn viên tham gia dọn dẹp rác thải, bóc xóa quảng cáo bẩn và trồng cây xanh.',
-    confirmedBy: [
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '14/09/2026 09:00' },
-      { branch: 'Chi đoàn Ấp Bùi Môn', time: '14/09/2026 10:15' },
-      { branch: 'Chi đoàn Ấp Dân Thắng', time: '14/09/2026 11:20' }
-    ],
-    absentBy: []
-  },
-  {
-    id: 'act-seed-3',
-    title: 'Lễ Thắp nến Tri ân các Anh hùng Liệt sĩ nhân kỷ niệm Ngày Thương binh Liệt sĩ 27/7',
-    priority: 'Quan trọng',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    day: '27',
-    month: '07',
-    year: 2026,
-    dateIso: '2026-07-27',
-    time: '18:30 - 21:00',
-    location: 'Nghĩa trang Liệt sĩ Huyện',
-    status: 'Đã kết thúc',
-    description: 'Dâng hoa, thắp nến tri ân và trao quà hỗ trợ các gia đình chính sách, Bà mẹ Việt Nam Anh hùng.',
-    confirmedBy: [
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 2', time: '26/07/2026 08:00' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 4', time: '26/07/2026 08:30' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 3', time: '26/07/2026 09:00' },
-      { branch: 'Chi đoàn Ấp Bùi Môn', time: '26/07/2026 09:30' },
-      { branch: 'Chi đoàn Ấp Dân Thắng', time: '26/07/2026 10:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 1', time: '26/07/2026 10:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 2', time: '26/07/2026 11:00' },
-      { branch: 'Chi đoàn Ấp Nam Xuân', time: '26/07/2026 11:30' },
-      { branch: 'Chi đoàn Ấp Nhị Tân', time: '26/07/2026 13:00' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 1', time: '26/07/2026 13:30' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 2', time: '26/07/2026 14:00' },
-      { branch: 'Chi đoàn Ấp Nhị Tân 3', time: '26/07/2026 14:30' },
-      { branch: 'Chi đoàn Ấp Nhị Xuân', time: '26/07/2026 15:00' },
-      { branch: 'Chi đoàn Ấp Tân Lập', time: '26/07/2026 15:30' },
-      { branch: 'Chi đoàn Ấp Tân Thới Nhì', time: '26/07/2026 16:00' },
-      { branch: 'Chi đoàn Ấp Tân Tiến', time: '26/07/2026 16:30' },
-      { branch: 'Chi đoàn Ấp Thống Nhất 1', time: '26/07/2026 17:00' },
-      { branch: 'Chi đoàn Ấp Thống Nhất 2', time: '26/07/2026 17:30' },
-      { branch: 'Chi đoàn Ấp Thới Sơn', time: '26/07/2026 18:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới', time: '26/07/2026 18:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới 1', time: '26/07/2026 19:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới 2', time: '26/07/2026 19:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông', time: '26/07/2026 20:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 3', time: '26/07/2026 20:30' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 4', time: '26/07/2026 21:00' },
-      { branch: 'Chi đoàn Ấp Xuân Thới Đông 5', time: '26/07/2026 21:30' },
-      { branch: 'Chi đoàn Ấp Nam Xuân 1', time: '26/07/2026 22:00' },
-      { branch: 'Chi đoàn Ấp Nam Xuân 2', time: '26/07/2026 22:30' },
-      { branch: 'Chi đoàn Ấp Mỹ Hoà 5', time: '26/07/2026 23:00' }
-    ],
-    absentBy: [
-      { branch: 'Chi đoàn Ấp Nhị Xuân 1', reason: 'Đơn vị thực hiện nhiệm vụ bảo đảm an ninh trật tự địa bàn', time: '26/07/2026 14:00' }
-    ]
-  }
-];
+export const INITIAL_ACTIVITIES = [];
 
-// Seed Youth Members Dataset for 30 Hamlets
 // Seed Youth Members Dataset (Đã làm sạch toàn bộ dữ liệu ảo theo yêu cầu)
 export const INITIAL_MEMBERS = [];
 
@@ -606,43 +488,15 @@ export const INITIAL_NOTIFICATIONS = [
   }
 ];
 
-export const INITIAL_TASKS = [
-  {
-    id: 'task-seed-1',
-    title: 'Rà soát và cập nhật danh sách 100% đoàn viên 30 Chi đoàn Ấp trên hệ thống',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    deadline: '2026-09-15',
-    status: 'in_progress',
-    priority: 'Khẩn cấp',
-    description: 'Kiểm tra thông tin cá nhân, ngày vào Đoàn và trình độ học vấn từng đoàn viên.'
-  },
-  {
-    id: 'task-seed-2',
-    title: 'Thu nộp Đoàn phí Quý III/2026 và quyết toán tài chính Chi đoàn',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    deadline: '2026-09-25',
-    status: 'todo',
-    priority: 'Bình thường',
-    description: 'Thực hiện việc thu nộp đoàn phí theo đúng quy định và trích nộp Đoàn xã đúng hạn.'
-  },
-  {
-    id: 'task-seed-3',
-    title: 'Chuẩn bị địa điểm & công cụ ra quân "Ngày Chủ nhật Xanh" dọn dẹp cảnh quan',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp',
-    deadline: '2026-09-19',
-    status: 'completed',
-    priority: 'Quan trọng',
-    description: 'Chuẩn bị chổi, bao chứa rác, cuốc xẻng và sơn để dọn dẹp và xóa quảng cáo bẩn.'
-  }
-];
+export const INITIAL_TASKS = [];
 
 export const INITIAL_TASKS_DOAN_XA = {
-  todo: INITIAL_TASKS.filter(t => t.status === 'todo'),
-  inProgress: INITIAL_TASKS.filter(t => t.status === 'in_progress'),
-  completed: INITIAL_TASKS.filter(t => t.status === 'completed')
+  todo: [],
+  inProgress: [],
+  completed: []
 };
 
-export const INITIAL_TASKS_CHI_DOAN = INITIAL_TASKS;
+export const INITIAL_TASKS_CHI_DOAN = [];
 
 // Helper function to format current live date in Vietnamese
 export function getLiveVietnameseDate() {
@@ -904,6 +758,18 @@ export function getPersistedData(key, fallback = []) {
     if (Array.isArray(parsed)) {
       const seen = new Set();
       return parsed.filter(item => {
+        if (!item) return false;
+        const strId = String(item.id || '');
+        // Xoa sach 100% du lieu ao seed mau
+        if (strId.startsWith('act-seed-') || strId.startsWith('task-seed-') || strId.startsWith('dv-')) return false;
+        if (item.title && (
+          item.title.includes('Hội nghị Học tập & Quán triệt') ||
+          item.title.includes('Ngày đồng loạt ra quân') ||
+          item.title.includes('Lễ Thắp nến Tri ân') ||
+          item.title.includes('Rà soát và cập nhật danh sách') ||
+          item.title.includes('Thu nộp Đoàn phí Quý III') ||
+          item.title.includes('Chuẩn bị địa điểm & công cụ ra quân')
+        )) return false;
         if (item && item.id) {
           if (seen.has(item.id)) return false;
           seen.add(item.id);
@@ -911,7 +777,7 @@ export function getPersistedData(key, fallback = []) {
         return true;
       });
     }
-    return parsed !== null ? parsed : fallback;
+    return parsed;
   } catch (e) {
     return fallback;
   }
@@ -1069,17 +935,20 @@ export function getActivityTimeStatus(act) {
 // ============================================================================
 export async function syncFetchActivities() {
   const deleted = getDeletedItems('activities');
-  let localList = getPersistedData('activities', null);
-  if (localList === null) {
-    localList = INITIAL_ACTIVITIES;
-  }
-  localList = (localList || []).map(a => {
-    // Xóa bỏ toàn bộ dữ liệu xác nhận điểm danh test cũ để người dùng tự tạo test mới
-    if (a && a.id && a.id.startsWith('act-seed-') && Array.isArray(a.confirmedBy) && a.confirmedBy.length > 5) {
-      return { ...a, confirmedBy: [], absentBy: [] };
-    }
-    return a;
-  }).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
+  let localList = getPersistedData('activities', []);
+  // Loc sach 100% hoat dong ao
+  localList = (localList || []).filter(a => {
+    if (!a) return false;
+    const strId = String(a.id || '');
+    if (strId.startsWith('act-seed-')) return false;
+    if (deleted.includes(strId) || (a.title && deleted.includes(a.title))) return false;
+    if (a.title && (
+      a.title.includes('Hội nghị Học tập & Quán triệt') ||
+      a.title.includes('Ngày đồng loạt ra quân') ||
+      a.title.includes('Lễ Thắp nến Tri ân')
+    )) return false;
+    return true;
+  });
   setPersistedData('activities', localList);
 
   if (supabase) {
@@ -1091,41 +960,34 @@ export async function syncFetchActivities() {
           const day = item.day || (d ? String(d.getDate()).padStart(2, '0') : '01');
           const month = item.month || (d ? String(d.getMonth() + 1).padStart(2, '0') : '01');
           const year = item.year || (d ? d.getFullYear() : 2026);
-          const matchedLocal = localList.find(l => String(l.id) === String(item.id)) || {};
-
+          const matchedLocal = (localList || []).find(l => String(l.id) === String(item.id)) || {};
           return {
             ...matchedLocal,
             ...item,
             id: item.id,
             title: item.title,
-            priority: item.priority || matchedLocal.priority || 'Bình thường',
-            day: day,
-            month: month,
-            year: year,
-            dateIso: item.start_date || `${year}-${month}-${day}`,
-            time: item.time || `${item.start_time ? item.start_time.slice(0, 5) : '08:00'} - ${item.end_time ? item.end_time.slice(0, 5) : '11:30'}`,
-            location: item.location || OFFICIAL_ADDRESS,
-            status: item.status || 'Sắp diễn ra',
-            description: item.description || matchedLocal.description || '',
+            priority: item.priority === 'urgent' ? 'Khẩn cấp' : item.priority === 'important' ? 'Quan trọng' : (item.priority || 'Bình thường'),
             assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
-            hasSubTasks: item.hasSubTasks !== undefined ? item.hasSubTasks : (matchedLocal.hasSubTasks || false),
-            subTasks: item.subTasks || matchedLocal.subTasks || [],
-            file_name: item.file_name || matchedLocal.file_name || '',
-            file_url: item.file_url || matchedLocal.file_url || '',
-            notes: item.notes || matchedLocal.notes || '',
-            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || [],
-            absentBy: item.absentBy || matchedLocal.absentBy || []
+            day,
+            month,
+            year,
+            dateIso: item.start_date ? item.start_date.slice(0, 10) : `${year}-${month}-${day}`,
+            time: item.time || matchedLocal.time || '08:00 - 11:30',
+            location: item.location || matchedLocal.location || 'Hội trường UBND Xã Xuân Thới Sơn',
+            status: item.status || matchedLocal.status || 'Đang diễn ra',
+            description: item.description || matchedLocal.description || '',
+            confirmedBy: Array.isArray(matchedLocal.confirmedBy) ? matchedLocal.confirmedBy : [],
+            absentBy: Array.isArray(matchedLocal.absentBy) ? matchedLocal.absentBy : []
           };
-        });
-        const cleanMapped = deduplicateActivities(mapped).filter(a => a && !deleted.includes(String(a.id)) && (!a.title || !deleted.includes(a.title)));
-        setPersistedData('activities', cleanMapped);
-        return cleanMapped;
+        }).filter(a => a && !String(a.id || '').startsWith('act-seed-') && !deleted.includes(String(a.id)));
+        setPersistedData('activities', mapped);
+        return mapped;
       }
     } catch (e) {
-      console.warn('Supabase fetch activities error, using local storage fallback:', e);
+      console.warn('Supabase activities fetch exception:', e);
     }
   }
-  return deduplicateActivities(localList);
+  return localList;
 }
 
 export async function syncSaveActivity(activityItem) {
@@ -1907,11 +1769,20 @@ export async function syncDeleteNotification(notificationId, notificationTitle =
 // ============================================================================
 export async function syncFetchTasks() {
   const deleted = getDeletedItems('tasks');
-  let localList = getPersistedData('tasks', null);
-  if (localList === null) {
-    localList = INITIAL_TASKS;
-  }
-  localList = (localList || []).filter(t => t && !deleted.includes(String(t.id)) && (!t.title || !deleted.includes(t.title)));
+  let localList = getPersistedData('tasks', []);
+  // Loc sach 100% cong viec ao
+  localList = (localList || []).filter(t => {
+    if (!t) return false;
+    const strId = String(t.id || '');
+    if (strId.startsWith('task-seed-')) return false;
+    if (deleted.includes(strId) || (t.title && deleted.includes(t.title))) return false;
+    if (t.title && (
+      t.title.includes('Rà soát và cập nhật danh sách') ||
+      t.title.includes('Thu nộp Đoàn phí Quý III') ||
+      t.title.includes('Chuẩn bị địa điểm & công cụ ra quân')
+    )) return false;
+    return true;
+  });
   setPersistedData('tasks', localList);
 
   if (supabase) {
@@ -1928,22 +1799,17 @@ export async function syncFetchTasks() {
             status: item.status === 'in_progress' ? 'inProgress' : item.status || 'todo',
             priority: item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : (item.priority || 'Bình thường'),
             dueDate: item.due_date || matchedLocal.dueDate || 'Hôm nay',
-            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Đoàn xã',
-            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || []
+            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+            description: item.description || matchedLocal.description || '',
+            confirmedBy: Array.isArray(matchedLocal.confirmedBy) ? matchedLocal.confirmedBy : [],
+            completedBy: Array.isArray(matchedLocal.completedBy) ? matchedLocal.completedBy : []
           };
-        });
-        const seen = new Set();
-        const clean = mapped.filter(t => {
-          if (!t || !t.id || seen.has(t.id)) return false;
-          if (deleted.includes(String(t.id)) || (t.title && deleted.includes(t.title))) return false;
-          seen.add(t.id);
-          return true;
-        });
-        setPersistedData('tasks', clean);
-        return clean;
+        }).filter(t => t && !String(t.id || '').startsWith('task-seed-') && !deleted.includes(String(t.id)));
+        setPersistedData('tasks', mapped);
+        return mapped;
       }
     } catch (e) {
-      console.warn('Supabase fetch tasks error, using local storage fallback:', e);
+      console.warn('Supabase tasks fetch exception:', e);
     }
   }
   return localList;

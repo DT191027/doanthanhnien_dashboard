@@ -4126,20 +4126,27 @@ export function BranchAttendanceWorkspaceView({
   onDeleteActivity,
   onDeleteTask,
   onToggleTask,
-  onCompleteTask
+  onCompleteTask,
+  onOpenCreateActivity,
+  onAddTask
 }) {
-  // Use activities & tasks with clean seed fallback
-  const safeActivities = Array.isArray(activities) && activities.length > 0 
-    ? activities 
-    : (typeof INITIAL_ACTIVITIES !== 'undefined' ? INITIAL_ACTIVITIES : []);
+  // Lọc sạch 100% dữ liệu ảo mẫu
+  const safeActivities = (Array.isArray(activities) ? activities : [])
+    .filter(a => a && !String(a.id || '').startsWith('act-seed-') && (!a.title || !a.title.includes('Hội nghị Học tập & Quán triệt')));
   
-  const safeTasks = Array.isArray(tasks) && tasks.length > 0 
-    ? tasks 
-    : (typeof INITIAL_TASKS !== 'undefined' ? INITIAL_TASKS : []);
+  const safeTasks = (Array.isArray(tasks) ? tasks : [])
+    .filter(t => t && !String(t.id || '').startsWith('task-seed-') && (!t.title || !t.title.includes('Rà soát và cập nhật')));
 
   // Selected item state: format "act:id" or "task:id"
   const [selectedItemId, setSelectedItemId] = useState('');
   const [activeTab, setActiveTab] = useState('info'); // Default to 'info'
+
+  // Quick Inline Creation State
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickTime, setQuickTime] = useState('08:00 - 11:30');
+  const [quickDate, setQuickDate] = useState('Hôm nay');
+  const [quickLocation, setQuickLocation] = useState('Hội trường UBND Xã Xuân Thới Sơn');
 
   // Tab "Chi Đoàn" filter & search states
   const [branchSearch, setBranchSearch] = useState('');
@@ -4163,40 +4170,77 @@ export function BranchAttendanceWorkspaceView({
   const [tasksList, setTasksList] = useState([]);
   const [taskSuccessMsg, setTaskSuccessMsg] = useState('');
 
-  // Determine initial selected item
+  // Determine initial selected item when items exist
   useEffect(() => {
     if (!selectedItemId) {
       if (safeActivities.length > 0) {
-        const activeOne = safeActivities.find(a => a.status !== 'Đã hoàn thành') || safeActivities[0];
-        setSelectedItemId(`act:${activeOne.id}`);
+        setSelectedItemId(`act:${safeActivities[0].id}`);
       } else if (safeTasks.length > 0) {
         setSelectedItemId(`task:${safeTasks[0].id}`);
       }
+    } else {
+      // Check if selected item was deleted
+      const isTask = selectedItemId.startsWith('task:');
+      const rawId = selectedItemId.replace(/^(act:|task:)/, '');
+      if (isTask && !safeTasks.some(t => String(t.id) === String(rawId))) {
+        setSelectedItemId(safeActivities.length > 0 ? `act:${safeActivities[0].id}` : (safeTasks.length > 0 ? `task:${safeTasks[0].id}` : ''));
+      } else if (!isTask && !safeActivities.some(a => String(a.id) === String(rawId))) {
+        setSelectedItemId(safeActivities.length > 0 ? `act:${safeActivities[0].id}` : (safeTasks.length > 0 ? `task:${safeTasks[0].id}` : ''));
+      }
     }
   }, [safeActivities, safeTasks, selectedItemId]);
+
+  // Handle Quick Create Activity
+  const handleQuickCreateSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!quickTitle.trim()) {
+      alert('Vui lòng nhập tên hoạt động!');
+      return;
+    }
+    const newId = `act-${Date.now()}`;
+    const newAct = {
+      id: newId,
+      title: quickTitle.trim(),
+      time: quickTime.trim(),
+      date: quickDate.trim(),
+      dateIso: new Date().toISOString().slice(0, 10),
+      day: String(new Date().getDate()).padStart(2, '0'),
+      month: String(new Date().getMonth() + 1).padStart(2, '0'),
+      year: new Date().getFullYear(),
+      location: quickLocation.trim(),
+      description: 'Hoạt động điểm danh do Đoàn Xã tạo để theo dõi tiến độ tham gia của các Chi đoàn.',
+      assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+      priority: 'Bình thường',
+      status: 'Đang diễn ra',
+      confirmedBy: [],
+      absentBy: []
+    };
+
+    if (onUpdateActivity) {
+      await onUpdateActivity(newAct);
+    } else {
+      await syncSaveActivity(newAct);
+    }
+
+    setQuickTitle('');
+    setShowQuickCreate(false);
+    setSelectedItemId(`act:${newId}`);
+  };
 
   // Parse whether selected item is an Activity or a Todo Task
   const isSelectedTask = selectedItemId.startsWith('task:');
   const rawId = selectedItemId.replace(/^(act:|task:)/, '');
 
   const currentActivity = !isSelectedTask 
-    ? (safeActivities.find(a => String(a.id) === String(rawId)) || safeActivities[0] || {})
+    ? (safeActivities.find(a => String(a.id) === String(rawId)) || safeActivities[0] || null)
     : null;
 
   const currentTask = isSelectedTask 
-    ? (safeTasks.find(t => String(t.id) === String(rawId)) || safeTasks[0] || {})
+    ? (safeTasks.find(t => String(t.id) === String(rawId)) || safeTasks[0] || null)
     : null;
 
-  // Active object being displayed in Info tab
-  const currentItem = currentActivity || currentTask || {
-    id: 'default-item',
-    title: 'Hoạt động phát động phong trào Đoàn xã Xuân Thới Sơn',
-    description: 'Tập trung quán triệt và triển khai các chỉ tiêu nhiệm vụ trọng tâm công tác Đoàn.',
-    time: '08:00 - 11:30',
-    date: '23/10/2026',
-    location: 'Hội trường UBND xã Xuân Thới Sơn',
-    confirmedBy: []
-  };
+  // Active object being displayed in Info tab (null if no activities or tasks yet)
+  const currentItem = currentActivity || currentTask || null;
 
   const timeStatus = typeof getActivityTimeStatus === 'function' && currentActivity
     ? getActivityTimeStatus(currentActivity) 
@@ -4209,56 +4253,37 @@ export function BranchAttendanceWorkspaceView({
   useEffect(() => {
     if (currentActivity?.subTasks && Array.isArray(currentActivity.subTasks) && currentActivity.subTasks.length > 0) {
       setTasksList(currentActivity.subTasks);
-    } else {
-      const actDate = currentItem.date || currentItem.dueDate || (
-        currentItem.day && currentItem.month && currentItem.year 
-          ? `${currentItem.day}/${currentItem.month}/${currentItem.year}` 
-          : 'ngày tổ chức'
-      );
+    } else if (currentItem) {
+      const actDate = currentItem.date || currentItem.dueDate || 'Hôm nay';
       setTasksList([
         {
           id: 'task-1',
-          task: 'Chuẩn bị hội trường, âm thanh, ánh sáng & cờ Đoàn',
+          task: 'Chuẩn bị hội trường, âm thanh & đón tiếp đại biểu',
           branch: 'Chi đoàn Cơ quan Đoàn xã',
-          officer: 'Đ/c Nguyễn Văn Nam - Phó Bí thư Đoàn xã',
+          officer: 'Đ/c Phó Bí thư Đoàn xã',
           deadline: `Trước 07:30 ngày ${actDate}`,
           status: 'Đang tiến hành',
           notes: 'Kiểm tra máy chiếu, micro, cờ Tổ quốc và cờ Đoàn đầy đủ.'
         },
         {
           id: 'task-2',
-          task: 'Phụ trách bàn đón tiếp, điểm danh mã QR & xác thực GPS',
+          task: 'Phụ trách bàn điểm danh mã QR & xác thực vị trí',
           branch: 'Chi đoàn Ban Chỉ huy Quân sự xã',
-          officer: 'Đ/c Trần Minh Đức - Bí thư Chi đoàn',
+          officer: 'Đ/c Bí thư Chi đoàn',
           deadline: `07:30 - 08:30 ngày ${actDate}`,
           status: 'Chờ thực hiện',
-          notes: 'Hướng dẫn 56 Chi đoàn quét mã QR điểm danh xác thực vị trí.'
-        },
-        {
-          id: 'task-3',
-          task: 'Điều phối lực lượng đoàn viên 30 Chi đoàn Ấp',
-          branch: '30 Chi đoàn Ấp Dân cư',
-          officer: 'Đ/c Bí thư các Chi đoàn Ấp',
-          deadline: `Đúng 08:00 ngày ${actDate}`,
-          status: 'Chờ thực hiện',
-          notes: 'Đảm bảo quân số tối thiểu 05 đoàn viên/chi đoàn có mặt đúng giờ.'
-        },
-        {
-          id: 'task-4',
-          task: 'Ghi hình, truyền thông & lập biên bản hội nghị',
-          branch: 'Chi đoàn Khối Trường học',
-          officer: 'Đ/c Lê Thanh Thảo - Ủy viên BCH',
-          deadline: 'Trong suốt chương trình',
-          status: 'Chờ thực hiện',
-          notes: 'Đăng tải tin bài tuyên truyền trên fanpage Đoàn xã ngay sau hội nghị.'
+          notes: 'Hướng dẫn các Chi đoàn quét mã QR điểm danh.'
         }
       ]);
+    } else {
+      setTasksList([]);
     }
     setIsEditingTasks(false);
   }, [selectedItemId]);
 
   // Open edit for item info
   const handleOpenEdit = () => {
+    if (!currentItem) return;
     const itemDate = currentItem.date || currentItem.dueDate || (
       currentItem.day && currentItem.month && currentItem.year 
         ? `${currentItem.day}/${currentItem.month}/${currentItem.year}` 
@@ -4270,15 +4295,16 @@ export function BranchAttendanceWorkspaceView({
       date: itemDate,
       location: currentItem.location || 'Hội trường UBND xã Xuân Thới Sơn',
       description: currentItem.description || '',
-      assigned_to: currentItem.assigned_to || 'Tất cả 56 Chi đoàn / Đơn vị',
+      assigned_to: currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
       priority: currentItem.priority || 'Bình thường'
     });
     setIsEditingInfo(true);
     setSaveSuccessMsg('');
   };
 
-  // Delete item handler (đáp ứng yêu cầu: thêm nút xóa ở trong nút chỉnh sửa và trên thẻ chính)
+  // Delete item handler
   const handleDeleteItem = async () => {
+    if (!currentItem) return;
     const itemType = isSelectedTask ? 'công việc Todo' : 'hoạt động';
     const itemTitle = currentItem?.title || '';
     if (!window.confirm(`Bạn có chắc chắn muốn xóa ${itemType} "${itemTitle}" khỏi hệ thống không?`)) {
@@ -4324,7 +4350,6 @@ export function BranchAttendanceWorkspaceView({
     }
 
     if (!isSelectedTask) {
-      // Update Activity in Quản lý hoạt động
       const updatedAct = {
         ...currentActivity,
         title: editForm.title.trim(),
@@ -4346,7 +4371,6 @@ export function BranchAttendanceWorkspaceView({
       }
       setSaveSuccessMsg(`Đã cập nhật hoạt động "${updatedAct.title}" thành công!`);
     } else {
-      // Update Task in Công việc Todo
       const updatedTask = {
         ...currentTask,
         title: editForm.title.trim(),
@@ -4376,7 +4400,7 @@ export function BranchAttendanceWorkspaceView({
       task: '',
       branch: 'Chi đoàn trực thuộc',
       officer: 'Đ/c Phụ trách',
-      deadline: currentItem.time || 'Trước 08:00',
+      deadline: currentItem?.time || 'Trước 08:00',
       status: 'Chờ thực hiện',
       notes: ''
     };
@@ -4431,6 +4455,122 @@ export function BranchAttendanceWorkspaceView({
     return true;
   });
 
+  // ==========================================================================
+  // EMPTY STATE (KHI CHƯA CÓ HOẠT ĐỘNG HOẶC CÔNG VIỆC NÀO)
+  // ==========================================================================
+  const hasItems = safeActivities.length > 0 || safeTasks.length > 0;
+
+  if (!hasItems) {
+    return (
+      <div className="container-fluid px-0">
+        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center">
+          <div className="mx-auto mb-3 p-3 bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
+            <Calendar size={36} />
+          </div>
+
+          <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '20px' }}>
+            Toàn bộ dữ liệu ảo đã được xóa sạch
+          </h4>
+          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '520px', fontSize: '14px', lineHeight: 1.6 }}>
+            Hệ thống đang sẵn sàng ở trạng thái dữ liệu thực tế (0 hoạt động, 0 dữ liệu ảo). Đồng chí có thể tạo ngay hoạt động mới để kiểm tra chức năng điểm danh QR và xác thực vị trí GPS!
+          </p>
+
+          {/* Quick Create Box */}
+          <div className="card border border-primary-subtle shadow-xs rounded-4 p-4 text-start mx-auto mb-4 bg-light" style={{ maxWidth: '620px' }}>
+            <div className="d-flex align-items-center gap-2 mb-3 text-primary fw-bold" style={{ fontSize: '15px' }}>
+              <Plus size={18} />
+              <span>Tạo nhanh hoạt động điểm danh mới:</span>
+            </div>
+
+            <form onSubmit={handleQuickCreateSubmit} className="row g-3">
+              <div className="col-12">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
+                  Tên hoạt động / cuộc họp <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control fw-semibold"
+                  style={{ fontSize: '13.5px' }}
+                  placeholder="Ví dụ: Hội nghị Ban Chấp hành Đoàn xã mở rộng..."
+                  value={quickTitle}
+                  onChange={(e) => setQuickTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                  Thời gian
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ fontSize: '13px' }}
+                  placeholder="08:00 - 11:30"
+                  value={quickTime}
+                  onChange={(e) => setQuickTime(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                  Ngày tháng
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ fontSize: '13px' }}
+                  placeholder="Hôm nay hoặc 23/10/2026"
+                  value={quickDate}
+                  onChange={(e) => setQuickDate(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                  Địa điểm tổ chức
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ fontSize: '13px' }}
+                  placeholder="Hội trường UBND Xã Xuân Thới Sơn"
+                  value={quickLocation}
+                  onChange={(e) => setQuickLocation(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12 pt-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                {onOpenCreateActivity && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary px-3 py-2 rounded-3 fw-semibold"
+                    style={{ fontSize: '12.5px' }}
+                    onClick={onOpenCreateActivity}
+                  >
+                    📝 Mở form tạo chi tiết
+                  </button>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn btn-primary d-inline-flex align-items-center gap-1.5 px-4 py-2 rounded-3 fw-bold shadow-xs hover-scale"
+                  style={{ fontSize: '13px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
+                >
+                  <Plus size={16} />
+                  <span>Tạo hoạt động & Điểm danh ngay</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // MAIN VIEW (KHI ĐÃ CÓ HOẠT ĐỘNG HOẶC CÔNG VIỆC)
+  // ==========================================================================
   return (
     <div className="container-fluid px-0">
       {/* Top Bar: Selector chọn hoạt động hoặc công việc Todo */}
@@ -4452,33 +4592,98 @@ export function BranchAttendanceWorkspaceView({
               style={{ fontSize: '13px', maxWidth: '520px' }}
             >
               {/* NHÓM 1: TỪ QUẢN LÝ HOẠT ĐỘNG */}
-              <optgroup label="📌 HOẠT ĐỘNG (Từ Quản lý hoạt động)">
-                {safeActivities.map(act => (
-                  <option key={act.id} value={`act:${act.id}`}>
-                    📌 {act.title} ({act.date || act.dueDate || (act.day && act.month ? `${act.day}/${act.month}` : 'Hoạt động')})
-                  </option>
-                ))}
-              </optgroup>
+              {safeActivities.length > 0 && (
+                <optgroup label="📌 HOẠT ĐỘNG (Từ Quản lý hoạt động)">
+                  {safeActivities.map(act => (
+                    <option key={act.id} value={`act:${act.id}`}>
+                      📌 {act.title} ({act.date || act.dueDate || (act.day && act.month ? `${act.day}/${act.month}` : 'Hoạt động')})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
 
               {/* NHÓM 2: TỪ CÔNG VIỆC TODO */}
-              <optgroup label="📋 CÔNG VIỆC & NHIỆM VỤ (Từ Todo List)">
-                {safeTasks.map(task => (
-                  <option key={task.id} value={`task:${task.id}`}>
-                    📋 {task.title} ({task.dueDate || task.due_date ? `Hạn: ${task.dueDate || task.due_date}` : 'Công việc Todo'})
-                  </option>
-                ))}
-              </optgroup>
+              {safeTasks.length > 0 && (
+                <optgroup label="📋 CÔNG VIỆC & NHIỆM VỤ (Từ Todo List)">
+                  {safeTasks.map(task => (
+                    <option key={task.id} value={`task:${task.id}`}>
+                      📋 {task.title} ({task.dueDate || task.due_date ? `Hạn: ${task.dueDate || task.due_date}` : 'Công việc Todo'})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <span className={`badge px-2.5 py-1 rounded-pill ${
-              timeStatus.code === 'FINISHED' ? 'bg-secondary-subtle text-secondary' : 'bg-success-subtle text-success border border-success-subtle'
-            }`} style={{ fontSize: '12px' }}>
-              {timeStatus.statusText}
-            </span>
+            {isDoanXa && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 fw-bold"
+                style={{ fontSize: '12px' }}
+                onClick={() => {
+                  if (onOpenCreateActivity) onOpenCreateActivity();
+                  else setShowQuickCreate(!showQuickCreate);
+                }}
+                title="Tạo thêm hoạt động mới"
+              >
+                <Plus size={14} />
+                <span>Tạo hoạt động</span>
+              </button>
+            )}
+
+            {currentItem && (
+              <span className={`badge px-2.5 py-1 rounded-pill ${
+                timeStatus.code === 'FINISHED' ? 'bg-secondary-subtle text-secondary' : 'bg-success-subtle text-success border border-success-subtle'
+              }`} style={{ fontSize: '12px' }}>
+                {timeStatus.statusText}
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Inline Quick Create Bar if toggled */}
+        {showQuickCreate && (
+          <div className="mt-3 pt-3 border-top">
+            <form onSubmit={handleQuickCreateSubmit} className="row g-2 align-items-end">
+              <div className="col-12 col-md-5">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>Tên hoạt động:</label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  placeholder="Nhập tên hoạt động..."
+                  value={quickTitle}
+                  onChange={(e) => setQuickTitle(e.target.value)}
+                />
+              </div>
+              <div className="col-6 col-md-3">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>Thời gian & Ngày:</label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  value={quickDate}
+                  onChange={(e) => setQuickDate(e.target.value)}
+                />
+              </div>
+              <div className="col-6 col-md-4 d-flex gap-2">
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-primary fw-bold text-white px-3 flex-grow-1"
+                  style={{ fontSize: '12px' }}
+                >
+                  Lưu & Mở điểm danh
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light border px-2.5"
+                  onClick={() => setShowQuickCreate(false)}
+                >
+                  ✕
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
 
       {/* Main Container Card with 4 Tabs: Thông Tin | Điểm Danh | Chi Đoàn | Phân Công */}
@@ -4523,7 +4728,7 @@ export function BranchAttendanceWorkspaceView({
         {/* Tab Body */}
         <div className="p-4">
           {/* TAB 1: ĐIỂM DANH (XÁC THỰC GPS & MÃ QR) */}
-          {activeTab === 'attendance' && (
+          {activeTab === 'attendance' && currentItem && (
             <QrAttendanceManager 
               activity={currentActivity || { id: currentTask?.id, title: currentTask?.title, ...currentItem }}
               currentRole={currentRole}
@@ -4536,7 +4741,7 @@ export function BranchAttendanceWorkspaceView({
           )}
 
           {/* TAB 2: THÔNG TIN (DỰA VÀO PHẦN QUẢN LÝ HOẠT ĐỘNG VÀ CÔNG VIỆC TODO) */}
-          {activeTab === 'info' && (
+          {activeTab === 'info' && currentItem && (
             <div>
               {saveSuccessMsg && (
                 <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
@@ -4619,7 +4824,7 @@ export function BranchAttendanceWorkspaceView({
                       </div>
                     )}
 
-                    <div className={!isSelectedTask ? "col-12 col-md-6" : "col-12 col-md-6"}>
+                    <div className="col-12 col-md-6">
                       <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
                         <Calendar size={14} className="text-primary" />
                         <span>{isSelectedTask ? 'Hạn hoàn thành (Deadline)' : 'Ngày tháng tổ chức'}</span>
@@ -4651,7 +4856,7 @@ export function BranchAttendanceWorkspaceView({
                       </div>
                     )}
 
-                    <div className={!isSelectedTask ? "col-12 col-md-6" : "col-12 col-md-6"}>
+                    <div className="col-12 col-md-6">
                       <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
                         <Building size={14} className="text-primary" />
                         <span>Đơn vị phụ trách / Triệu tập</span>
@@ -4776,11 +4981,7 @@ export function BranchAttendanceWorkspaceView({
                     </div>
 
                     <div className="text-secondary mt-2" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                      {currentItem.description || (
-                        isSelectedTask 
-                          ? 'Công việc nằm trong kế hoạch phân công thực hiện công tác Đoàn và phong trào thanh thiếu nhi của Xã Xuân Thới Sơn.'
-                          : 'Hoạt động trọng tâm do Ban Thường vụ Đoàn TNCS Hồ Chí Minh Xã Xuân Thới Sơn phát động và theo dõi tiến độ thực hiện.'
-                      )}
+                      {currentItem.description || 'Hoạt động trọng tâm do Ban Thường vụ Đoàn TNCS Hồ Chí Minh Xã Xuân Thới Sơn phát động và theo dõi tiến độ thực hiện.'}
                     </div>
                   </div>
 
@@ -4818,8 +5019,8 @@ export function BranchAttendanceWorkspaceView({
                           <Building size={13} className="text-primary" />
                           <span>Đơn vị phụ trách:</span>
                         </div>
-                        <div className="fw-semibold text-dark text-truncate" style={{ fontSize: '13px' }} title={currentItem.assigned_to || 'Tất cả 56 Chi đoàn'}>
-                          {currentItem.assigned_to || 'Tất cả 56 Chi đoàn / Đơn vị'}
+                        <div className="fw-semibold text-dark text-truncate" style={{ fontSize: '13px' }} title={currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}>
+                          {currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}
                         </div>
                       </div>
                     </div>
@@ -4869,78 +5070,84 @@ export function BranchAttendanceWorkspaceView({
                       </span>
                     </div>
 
-                    <div className="d-flex flex-column gap-2">
-                      {safeTasks.map((t, idx) => {
-                        const isDone = t.status === 'completed';
-                        const isInProgress = t.status === 'inProgress' || t.status === 'in_progress';
+                    {safeTasks.length === 0 ? (
+                      <div className="p-3 text-center text-muted" style={{ fontSize: '12.5px' }}>
+                        Chưa có nhiệm vụ Todo nào được tạo.
+                      </div>
+                    ) : (
+                      <div className="d-flex flex-column gap-2">
+                        {safeTasks.map((t, idx) => {
+                          const isDone = t.status === 'completed';
+                          const isInProgress = t.status === 'inProgress' || t.status === 'in_progress';
 
-                        return (
-                          <div 
-                            key={t.id || idx} 
-                            className="p-2.5 px-3 bg-light rounded-3 border d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 transition hover-shadow"
-                          >
-                            <div className="d-flex align-items-start gap-2 flex-grow-1">
-                              <span className="badge bg-white text-dark border px-2 py-0.5 rounded-pill mt-0.5" style={{ fontSize: '10px' }}>
-                                #{idx + 1}
-                              </span>
-                              <div>
-                                <div className={`fw-semibold ${isDone ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ fontSize: '13px' }}>
-                                  {t.title}
-                                </div>
-                                <div className="text-muted d-flex flex-wrap align-items-center gap-2 mt-0.5" style={{ fontSize: '11px' }}>
-                                  <span>📅 Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
-                                  <span>📌 {t.assigned_to || 'Chi đoàn'}</span>
-                                  {t.completed_time && <span className="text-success fw-bold">🎉 Xong lúc: {t.completed_time}</span>}
+                          return (
+                            <div 
+                              key={t.id || idx} 
+                              className="p-2.5 px-3 bg-light rounded-3 border d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 transition hover-shadow"
+                            >
+                              <div className="d-flex align-items-start gap-2 flex-grow-1">
+                                <span className="badge bg-white text-dark border px-2 py-0.5 rounded-pill mt-0.5" style={{ fontSize: '10px' }}>
+                                  #{idx + 1}
+                                </span>
+                                <div>
+                                  <div className={`fw-semibold ${isDone ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ fontSize: '13px' }}>
+                                    {t.title}
+                                  </div>
+                                  <div className="text-muted d-flex flex-wrap align-items-center gap-2 mt-0.5" style={{ fontSize: '11px' }}>
+                                    <span>📅 Hạn: {t.dueDate || t.due_date || 'Hôm nay'}</span>
+                                    <span>📌 {t.assigned_to || 'Chi đoàn'}</span>
+                                    {t.completed_time && <span className="text-success fw-bold">🎉 Xong lúc: {t.completed_time}</span>}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                              {isDone ? (
-                                <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
-                                  ✅ Hoàn thành
-                                </span>
-                              ) : isInProgress ? (
-                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
-                                  🔄 Đang làm
-                                </span>
-                              ) : (
-                                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
-                                  ⏳ Cần làm
-                                </span>
-                              )}
+                              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                                {isDone ? (
+                                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    ✅ Hoàn thành
+                                  </span>
+                                ) : isInProgress ? (
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    🔄 Đang làm
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                    ⏳ Cần làm
+                                  </span>
+                                )}
 
-                              <button
-                                type="button"
-                                className="btn btn-xs btn-outline-secondary px-2 py-0.5 rounded-2"
-                                style={{ fontSize: '11px' }}
-                                onClick={() => setSelectedItemId(`task:${t.id}`)}
-                                title="Xem chi tiết nhiệm vụ này"
-                              >
-                                Chi tiết →
-                              </button>
-
-                              {isDoanXa && (
                                 <button
                                   type="button"
-                                  className="btn btn-xs btn-outline-danger p-1 rounded-2 border-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${t.title}" không?`)) {
-                                      if (onDeleteTask) onDeleteTask(t.id, t.title);
-                                      else syncDeleteTask(t.id);
-                                    }
-                                  }}
-                                  title="Xóa công việc này khỏi Todo"
+                                  className="btn btn-xs btn-outline-secondary px-2 py-0.5 rounded-2"
+                                  style={{ fontSize: '11px' }}
+                                  onClick={() => setSelectedItemId(`task:${t.id}`)}
+                                  title="Xem chi tiết nhiệm vụ này"
                                 >
-                                  <Trash2 size={13} />
+                                  Chi tiết →
                                 </button>
-                              )}
+
+                                {isDoanXa && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-outline-danger p-1 rounded-2 border-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${t.title}" không?`)) {
+                                        if (onDeleteTask) onDeleteTask(t.id, t.title);
+                                        else syncDeleteTask(t.id);
+                                      }
+                                    }}
+                                    title="Xóa công việc này khỏi Todo"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -5100,7 +5307,7 @@ export function BranchAttendanceWorkspaceView({
           )}
 
           {/* TAB 4: PHÂN CÔNG */}
-          {activeTab === 'tasks' && (
+          {activeTab === 'tasks' && currentItem && (
             <div>
               {taskSuccessMsg && (
                 <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
@@ -5455,7 +5662,7 @@ export function BranchAttendanceWorkspaceView({
                                     🔄 Đang làm
                                   </span>
                                 ) : (
-                                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
                                     ⏳ Chờ làm
                                   </span>
                                 )}

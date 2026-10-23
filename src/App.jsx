@@ -156,18 +156,28 @@ export default function App() {
       syncFetchAttendance(),
       syncFetchMembers()
     ]);
-    // Clean test attendance confirmations if present
-    const cleanedActs = acts.map(a => {
-      if (a && a.id && a.id.startsWith('act-seed-') && Array.isArray(a.confirmedBy) && a.confirmedBy.length > 5) {
-        return { ...a, confirmedBy: [], absentBy: [] };
-      }
-      return a;
+    // Xóa sạch 100% dữ liệu hoạt động ảo & công việc ảo theo yêu cầu
+    const cleanedActs = (acts || []).filter(a => {
+      if (!a) return false;
+      const strId = String(a.id || '');
+      if (strId.startsWith('act-seed-')) return false;
+      if (a.title && a.title.includes('Hội nghị Học tập & Quán triệt')) return false;
+      return true;
     });
     setActivitiesList(deduplicateActivities(cleanedActs));
+
     setDocumentsList(docs);
     setSubmissionsList(subs);
     setNotificationsList(notis);
-    setTasksList(tsks);
+
+    const cleanedTasks = (tsks || []).filter(t => {
+      if (!t) return false;
+      const strId = String(t.id || '');
+      if (strId.startsWith('task-seed-')) return false;
+      if (t.title && t.title.includes('Rà soát và cập nhật')) return false;
+      return true;
+    });
+    setTasksList(cleanedTasks);
     setAttendanceRecords(atts || {});
     // Làm sạch toàn bộ dữ liệu đoàn viên ảo trong tài khoản Admin và Chi đoàn
     const DUMMY_MEMBER_NAMES = [
@@ -1047,6 +1057,8 @@ export default function App() {
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
               onCompleteTask={handleCompleteTask}
+              onOpenCreateActivity={() => setShowCreateActivityModal(true)}
+              onAddTask={handleAddTask}
             />
           ) : activeTab === 'notifications' ? (
             /* NOTIFICATIONS VIEW */

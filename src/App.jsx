@@ -162,7 +162,20 @@ export default function App() {
     setNotificationsList(notis);
     setTasksList(tsks);
     setAttendanceRecords(atts || {});
-    setMembersList(mbrs || []);
+    // Làm sạch toàn bộ dữ liệu đoàn viên ảo trong tài khoản Admin và Chi đoàn
+    const DUMMY_MEMBER_NAMES = [
+      'Nguyễn Văn An', 'Trần Thị Bích', 'Lê Hoài Nam', 'Phạm Minh Tâm', 
+      'Ngô Thanh Hương', 'Vũ Quốc Khánh', 'Hoàng Bích Ngọc', 'Đặng Tuấn Anh', 
+      'Nguyễn Thị Thu Hà', 'Bùi Đức Trọng', 'Trịnh Mai Anh', 'Đỗ Hữu Phước', 
+      'Lương Mỹ Duyên', 'Cao Văn Khiêm', 'Phan Bảo Ngọc'
+    ];
+    const cleanMembers = (mbrs || []).filter(item =>
+      item &&
+      !item.id?.match(/^dv-\d+$/) &&
+      !DUMMY_MEMBER_NAMES.includes(item.full_name)
+    );
+    setMembersList(cleanMembers);
+    setPersistedData('members', cleanMembers);
     setSelectedActivityDetail(prev => {
       if (!prev) return null;
       const updated = acts.find(a => a.id === prev.id);

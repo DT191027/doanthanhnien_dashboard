@@ -455,23 +455,8 @@ export const INITIAL_ACTIVITIES = [
 ];
 
 // Seed Youth Members Dataset for 30 Hamlets
-export const INITIAL_MEMBERS = [
-  { id: 'dv-1', full_name: 'Nguyễn Văn An', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1998-05-12', join_date: '2014-03-26', phone: '0903123456', email: 'nguyenvanan@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-2', full_name: 'Trần Thị Bích', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Phó Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2000-08-20', join_date: '2016-03-26', phone: '0912345678', email: 'tranthibich@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
-  { id: 'dv-3', full_name: 'Lê Hoài Nam', branch_name: 'Chi đoàn Ấp Mỹ Hoà 2', position: 'Ủy viên BCH', gender: 'Nam', birth_date: '2002-03-15', join_date: '2018-03-26', phone: '0987654321', email: 'lehoainam@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' },
-  { id: 'dv-4', full_name: 'Phạm Minh Tâm', branch_name: 'Chi đoàn Ấp Bùi Môn', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1997-11-04', join_date: '2013-03-26', phone: '0934567890', email: 'phamminhtam@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-5', full_name: 'Ngô Thanh Hương', branch_name: 'Chi đoàn Ấp Bùi Môn', position: 'Đoàn viên', gender: 'Nữ', birth_date: '2001-02-18', join_date: '2017-03-26', phone: '0945678901', email: 'ngothanhhuong@gmail.com', status: 'Đang sinh hoạt', education: '12/12' },
-  { id: 'dv-6', full_name: 'Vũ Quốc Khánh', branch_name: 'Chi đoàn Ấp Dân Thắng', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1999-09-30', join_date: '2015-03-26', phone: '0956789012', email: 'vuquockhanh@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-7', full_name: 'Hoàng Bích Ngọc', branch_name: 'Chi đoàn Ấp Dân Thắng', position: 'Đoàn viên', gender: 'Nữ', birth_date: '2003-07-25', join_date: '2019-03-26', phone: '0967890123', email: 'hoangbichngoc@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
-  { id: 'dv-8', full_name: 'Đặng Tuấn Anh', branch_name: 'Chi đoàn Ấp Xuân Thới Đông 1', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1998-01-10', join_date: '2014-03-26', phone: '0978901234', email: 'dangtuananh@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-9', full_name: 'Nguyễn Thị Thu Hà', branch_name: 'Chi đoàn Ấp Xuân Thới Đông 1', position: 'Phó Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2001-12-05', join_date: '2017-03-26', phone: '0989012345', email: 'nguyenthithuha@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' },
-  { id: 'dv-10', full_name: 'Bùi Đức Trọng', branch_name: 'Chi đoàn Ấp Nam Xuân', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1996-04-14', join_date: '2012-03-26', phone: '0990123456', email: 'buiductrong@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-11', full_name: 'Trịnh Mai Anh', branch_name: 'Chi đoàn Ấp Nhị Tân 1', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '1999-06-22', join_date: '2015-03-26', phone: '0901234567', email: 'trinhmaianh@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
-  { id: 'dv-12', full_name: 'Đỗ Hữu Phước', branch_name: 'Chi đoàn Ấp Tân Lập', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '2000-10-08', join_date: '2016-03-26', phone: '0912345670', email: 'dohuuphuoc@gmail.com', status: 'Đang sinh hoạt', education: '12/12' },
-  { id: 'dv-13', full_name: 'Lương Mỹ Duyên', branch_name: 'Chi đoàn Ấp Thống Nhất 1', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2002-09-17', join_date: '2018-03-26', phone: '0923456781', email: 'luongmyduyen@gmail.com', status: 'Đang sinh hoạt', education: 'Đại học' },
-  { id: 'dv-14', full_name: 'Cao Văn Khiêm', branch_name: 'Chi đoàn Ấp Xuân Thới', position: 'Bí thư Chi đoàn', gender: 'Nam', birth_date: '1997-03-03', join_date: '2013-03-26', phone: '0934567892', email: 'caovankhiem@gmail.com', status: 'Đoàn viên ưu tú', education: 'Đại học' },
-  { id: 'dv-15', full_name: 'Phan Bảo Ngọc', branch_name: 'Chi đoàn Ấp Thới Sơn', position: 'Bí thư Chi đoàn', gender: 'Nữ', birth_date: '2001-05-19', join_date: '2017-03-26', phone: '0945678903', email: 'phanbaongoc@gmail.com', status: 'Đang sinh hoạt', education: 'Cao đẳng' }
-];
+// Seed Youth Members Dataset (Đã làm sạch toàn bộ dữ liệu ảo theo yêu cầu)
+export const INITIAL_MEMBERS = [];
 
 export const INITIAL_DOCUMENTS = [
   {
@@ -2110,12 +2095,20 @@ export async function syncSaveAttendance(activityId, recordData) {
 // ============================================================================
 export async function syncFetchMembers() {
   const deletedItems = getDeletedItems('members');
-  let localList = getPersistedData('members', null);
-  if (localList === null) {
-    localList = INITIAL_MEMBERS;
-  }
+  let localList = getPersistedData('members', []);
+
+  // Lọc sạch 100% dữ liệu đoàn viên ảo (dv-1 -> dv-15 và các tên mẫu)
+  const DUMMY_NAMES = [
+    'Nguyễn Văn An', 'Trần Thị Bích', 'Lê Hoài Nam', 'Phạm Minh Tâm', 
+    'Ngô Thanh Hương', 'Vũ Quốc Khánh', 'Hoàng Bích Ngọc', 'Đặng Tuấn Anh', 
+    'Nguyễn Thị Thu Hà', 'Bùi Đức Trọng', 'Trịnh Mai Anh', 'Đỗ Hữu Phước', 
+    'Lương Mỹ Duyên', 'Cao Văn Khiêm', 'Phan Bảo Ngọc'
+  ];
 
   let filteredLocal = (localList || []).filter(item =>
+    item &&
+    !item.id?.match(/^dv-\d+$/) &&
+    !DUMMY_NAMES.includes(item.full_name) &&
     !deletedItems.includes(String(item.id)) &&
     !deletedItems.includes(String(item.full_name)) &&
     !deletedItems.includes(String(item.name))
@@ -2143,7 +2136,7 @@ export async function syncFetchMembers() {
 }
 
 export async function syncSaveMember(memberItem) {
-  const current = getPersistedData('members', INITIAL_MEMBERS);
+  const current = getPersistedData('members', []);
   const deletedItems = getDeletedItems('members');
   const updatedDeleted = deletedItems.filter(d =>
     d !== String(memberItem.id) &&
@@ -2174,7 +2167,7 @@ export async function syncSaveMember(memberItem) {
 
 export async function syncDeleteMember(memberId, memberName = '') {
   addDeletedItem('members', memberId, memberName);
-  const current = getPersistedData('members', INITIAL_MEMBERS);
+  const current = getPersistedData('members', []);
   const updated = current.filter(item =>
     String(item.id) !== String(memberId) &&
     (memberName ? item.full_name !== memberName && item.name !== memberName : true)

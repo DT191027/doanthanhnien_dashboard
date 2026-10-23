@@ -119,7 +119,7 @@ export default function BranchMembersView({
   const handleOpenAddModal = () => {
     setEditingMember(null);
     setFormData({
-      id: `dv-${Date.now()}`,
+      id: `member-${Date.now()}`,
       full_name: '',
       branch_name: selectedBranch !== 'ALL' ? selectedBranch : (userBranchName || 'Chi đoàn Ấp Mỹ Hoà 2'),
       position: 'Đoàn viên',
@@ -389,8 +389,27 @@ export default function BranchMembersView({
           <tbody>
             {filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan="10" className="text-center py-4 text-muted" style={{ fontSize: '13.5px' }}>
-                  Không tìm thấy đoàn viên nào phù hợp với bộ lọc tìm kiếm.
+                <td colSpan="10" className="text-center py-5 text-muted">
+                  <div className="d-flex flex-column align-items-center justify-content-center py-3">
+                    <div className="p-3 bg-light rounded-circle text-muted mb-2 shadow-xs border">
+                      <Users size={32} className="opacity-50 text-primary" />
+                    </div>
+                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '15px' }}>
+                      Chưa có dữ liệu đoàn viên
+                    </div>
+                    <div className="text-muted mb-3" style={{ fontSize: '12.5px', maxWidth: '420px' }}>
+                      Toàn bộ dữ liệu đoàn viên mẫu đã được xóa sạch. Bấm vào nút bên dưới để thêm hồ sơ đoàn viên thực tế của đơn vị.
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3.5 py-2 rounded-3 fw-bold shadow-xs hover-scale"
+                      style={{ backgroundColor: '#0066FF', borderColor: '#0066FF', fontSize: '13px' }}
+                      onClick={handleOpenAddModal}
+                    >
+                      <UserPlus size={16} />
+                      <span>Thêm Đoàn viên mới</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             ) : (

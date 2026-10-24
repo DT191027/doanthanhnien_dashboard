@@ -1,28 +1,28 @@
 import QrAttendanceManager from './QrAttendanceManager';
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   QrCode,
   Users,
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Plus, 
-  FileText, 
-  Download, 
-  CheckCircle2, 
+  Calendar,
+  Clock,
+  MapPin,
+  Plus,
+  FileText,
+  Download,
+  CheckCircle2,
   XCircle,
   X,
-  Circle, 
-  Send, 
-  Bell, 
-  Search, 
-  Filter, 
-  BarChart2, 
-  Folder, 
-  Settings, 
-  ShieldCheck, 
-  Database, 
-  UserCheck, 
+  Circle,
+  Send,
+  Bell,
+  Search,
+  Filter,
+  BarChart2,
+  Folder,
+  Settings,
+  ShieldCheck,
+  Database,
+  UserCheck,
   MessageSquare,
   Building,
   FileSpreadsheet,
@@ -37,7 +37,37 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { syncSaveActivity, syncSaveTask, getActivityGpsAuditLogs, syncDeleteActivity, syncDeleteTask, INITIAL_ACTIVITIES, INITIAL_TASKS, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import {
+  normalizeBranchName,
+  getUniqueConfirmedBranches,
+  isActivityExpired,
+  syncSaveActivity,
+  syncSaveTask,
+  getActivityGpsAuditLogs,
+  syncDeleteActivity,
+  syncDeleteTask,
+  INITIAL_ACTIVITIES,
+  INITIAL_TASKS,
+  ALL_BRANCHES,
+  COMPETITION_CLUSTERS,
+  isSupabaseConfigured,
+  OFFICIAL_ADDRESS,
+  sortNotificationsByPriority,
+  sortActivitiesByPriority,
+  getPriorityBadgeStyle,
+  getBranchClusterName,
+  calculateBranchRating,
+  formatDateDDMMYYYY,
+  deduplicateActivities,
+  isItemTargetedToUser,
+  getActivityTimeStatus,
+  recordDocView,
+  removeDocView,
+  setDocViews,
+  getDocViewsMap,
+  recordDocCategory,
+  getDocCategoriesMap
+} from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
@@ -4253,6 +4283,64 @@ export function SettingsView({ currentRole }) {
 
 
 // ============================================================================
+
+// ============================================================================
+// COMPONENT TẠO NHANH HOẠT ĐỘNG TRỰC TIẾP (CHUẨN CHUYÊN NGHIỆP, DỄ DÙNG)
+// ============================================================================
+const QUICK_TEMPLATES = [
+  { 
+    title: 'Hội nghị Ban Chấp hành Đoàn xã mở rộng', 
+    icon: '🏛️', 
+    priority: 'Quan trọng', 
+    location: 'Hội trường UBND Xã Xuân Thới Sơn',
+    notes: 'Trang phục áo Thanh niên Việt Nam, có mặt trước 15 phút để ổn định tổ chức.' 
+  },
+  { 
+    title: 'Ngày Chủ nhật Xanh - Ra quân dọn dẹp vệ sinh môi trường', 
+    icon: '🌿', 
+    priority: 'Bình thường', 
+    location: 'Tuyến đường Thanh niên tự quản Xã Xuân Thới Sơn',
+    notes: 'Đoàn viên mang theo dụng cụ vệ sinh, găng tay bảo hộ và mặc áo Thanh niên.' 
+  },
+  { 
+    title: 'Sinh hoạt Chi đoàn Chủ điểm tháng', 
+    icon: '📚', 
+    priority: 'Bình thường', 
+    location: 'Nhà Văn hóa Xã Xuân Thới Sơn',
+    notes: 'Cử đầy đủ Bí thư, Phó Bí thư Chi đoàn tham gia và chuẩn bị nội dung thảo luận.' 
+  },
+  { 
+    title: 'Đại hội Chi đoàn nhiệm kỳ mới', 
+    icon: '🏆', 
+    priority: 'Quan trọng', 
+    location: 'Hội trường UBND Xã Xuân Thới Sơn',
+    notes: 'Trang phục chỉnh tề, chuẩn bị văn kiện và báo cáo tổng kết nhiệm kỳ.' 
+  },
+  { 
+    title: 'Lễ Kết nạp Đoàn viên mới', 
+    icon: '🌟', 
+    priority: 'Bình thường', 
+    location: 'Hội trường UBND Xã Xuân Thới Sơn',
+    notes: 'Các Chi đoàn dẫn đoàn viên mới tham gia đầy đủ, trang phục chỉnh tề.' 
+  },
+  { 
+    title: 'Tập huấn Kỹ năng Cán bộ Đoàn & Chuyển đổi số', 
+    icon: '💻', 
+    priority: 'Bình thường', 
+    location: 'Phòng họp trực tuyến UBND Xã',
+    notes: 'Đoàn viên mang theo điện thoại thông minh hoặc máy tính bảng để thực hành.' 
+  }
+];
+
+const QUICK_VENUE_LIST = [
+  'Hội trường UBND Xã Xuân Thới Sơn',
+  'Nhà Văn hóa Xã Xuân Thới Sơn',
+  'Văn phòng Đoàn Thanh niên Xã',
+  'Tuyến đường Thanh niên tự quản',
+  'Trường Tiểu học Xuân Thới Sơn',
+  'Trạm Y tế Xã Xuân Thới Sơn'
+];
+
 // GIAO DIỆN ĐIỂM DANH XÁC THỰC VỊ TRÍ CHO CHI ĐOÀN (CHUẨN SCREENSHOT USER)
 // ============================================================================
 export function BranchAttendanceWorkspaceView({
@@ -4263,6 +4351,7 @@ export function BranchAttendanceWorkspaceView({
   onRespondAttendance,
   onConfirmReceipt,
   isDoanXa,
+  onAddActivity,
   onUpdateActivity,
   onUpdateTask,
   onDeleteActivity,
@@ -4426,9 +4515,42 @@ export function BranchAttendanceWorkspaceView({
   // Quick Inline Creation State for Admin
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
-  const [quickTime, setQuickTime] = useState('08:00 - 11:30');
-  const [quickDate, setQuickDate] = useState('Hôm nay');
+
+  // Date helper functions
+  const getTodayIsoStr = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const getTomorrowIsoStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [quickDateIso, setQuickDateIso] = useState(getTodayIsoStr());
+  const [quickDatePreset, setQuickDatePreset] = useState('today'); // 'today' | 'tomorrow' | 'custom'
+
+  // Time preset & values
+  const [quickTimePreset, setQuickTimePreset] = useState('morning'); // 'morning' | 'afternoon' | 'evening' | 'custom'
+  const [quickStartTime, setQuickStartTime] = useState('08:00');
+  const [quickEndTime, setQuickEndTime] = useState('11:30');
+
+  // Location, Priority, Scope, Notes
   const [quickLocation, setQuickLocation] = useState('Hội trường UBND Xã Xuân Thới Sơn');
+  const [quickPriority, setQuickPriority] = useState('Bình thường'); // 'Bình thường' | 'Quan trọng' | 'Khẩn cấp'
+  const [quickAssignedTo, setQuickAssignedTo] = useState('Tất cả 56 Chi đoàn');
+  const [quickNotes, setQuickNotes] = useState('');
+
+  const [isSubmittingQuick, setIsSubmittingQuick] = useState(false);
+  const [quickErrorMsg, setQuickErrorMsg] = useState('');
+  const [quickSuccessMsg, setQuickSuccessMsg] = useState('');
 
   // Tab "Chi Đoàn" filter & search states
   const [branchSearch, setBranchSearch] = useState('');
@@ -4471,42 +4593,500 @@ export function BranchAttendanceWorkspaceView({
     }
   }, [safeActivities, safeTasks, selectedItemId]);
 
-  // Handle Quick Create Activity
+  // Handle Quick Create Activity (Chuẩn dữ liệu, không lỗi, UX hiện đại)
   const handleQuickCreateSubmit = async (e) => {
     if (e) e.preventDefault();
+    setQuickErrorMsg('');
+    setQuickSuccessMsg('');
+
     if (!quickTitle.trim()) {
-      alert('Vui lòng nhập tên hoạt động!');
+      setQuickErrorMsg('Vui lòng nhập tên hoạt động hoặc chọn một gợi ý nhanh bên dưới!');
       return;
     }
-    const newId = `act-${Date.now()}`;
-    const newAct = {
-      id: newId,
-      title: quickTitle.trim(),
-      time: quickTime.trim(),
-      date: quickDate.trim(),
-      dateIso: new Date().toISOString().slice(0, 10),
-      day: String(new Date().getDate()).padStart(2, '0'),
-      month: String(new Date().getMonth() + 1).padStart(2, '0'),
-      year: new Date().getFullYear(),
-      location: quickLocation.trim(),
-      description: 'Hoạt động điểm danh do Đoàn Xã tạo để theo dõi tiến độ tham gia của các Chi đoàn.',
-      assigned_to: 'Tất cả 56 Chi đoàn',
-      priority: 'Bình thường',
-      status: 'Đang diễn ra',
-      confirmedBy: [],
-      absentBy: []
-    };
 
-    if (onUpdateActivity) {
-      await onUpdateActivity(newAct);
-    } else {
-      await syncSaveActivity(newAct);
+    try {
+      setIsSubmittingQuick(true);
+
+      const parts = (quickDateIso || getTodayIsoStr()).split('-');
+      const yearVal = parseInt(parts[0], 10) || new Date().getFullYear();
+      const monthVal = parts[1] || String(new Date().getMonth() + 1).padStart(2, '0');
+      const dayVal = parts[2] || String(new Date().getDate()).padStart(2, '0');
+      const formattedDate = `${dayVal}/${monthVal}/${yearVal}`;
+      const formattedTime = `${quickStartTime} - ${quickEndTime}`;
+
+      const newId = `act-${Date.now()}`;
+      const newAct = {
+        id: newId,
+        title: quickTitle.trim(),
+        priority: quickPriority || 'Bình thường',
+        day: dayVal,
+        month: monthVal,
+        year: yearVal,
+        dateIso: quickDateIso,
+        date: formattedDate,
+        time: formattedTime,
+        startTime: quickStartTime,
+        endTime: quickEndTime,
+        location: quickLocation.trim() || 'Hội trường UBND Xã Xuân Thới Sơn',
+        description: `Hoạt động phát động điểm danh của Đoàn xã Xuân Thới Sơn dành cho ${quickAssignedTo}.`,
+        notes: quickNotes.trim() || 'Đề nghị các Chi đoàn cử lực lượng tham gia đúng giờ, mặc đồng phục áo Thanh niên Việt Nam và quét mã QR xác nhận có mặt.',
+        assigned_to: quickAssignedTo,
+        status: 'Đang diễn ra',
+        confirmedBy: [],
+        absentBy: [],
+        completedBy: [],
+        hasSubTasks: false,
+        subTasks: [],
+        organizer: 'Đoàn xã Xuân Thới Sơn',
+        created_at: new Date().toISOString()
+      };
+
+      let finalAct = newAct;
+      if (onAddActivity) {
+        const res = await onAddActivity(newAct);
+        if (res && res.id) finalAct = res;
+      } else if (onUpdateActivity) {
+        await onUpdateActivity(newAct);
+      } else {
+        await syncSaveActivity(newAct);
+      }
+
+      setQuickTitle('');
+      setQuickNotes('');
+      setShowQuickCreate(false);
+      setSelectedItemId(`act:${finalAct.id || newId}`);
+      setActiveTab('attendance'); // Tự động mở tab Điểm danh để quét QR ngay lập tức
+      setQuickSuccessMsg(`Đã tạo thành công hoạt động "${newAct.title}"! Đang mở bảng điểm danh...`);
+      setTimeout(() => setQuickSuccessMsg(''), 5000);
+    } catch (err) {
+      console.error('Lỗi khi tạo hoạt động trực tiếp:', err);
+      setQuickErrorMsg('Có lỗi xảy ra: ' + (err.message || 'Không thể tạo hoạt động. Vui lòng thử lại.'));
+    } finally {
+      setIsSubmittingQuick(false);
     }
-
-    setQuickTitle('');
-    setShowQuickCreate(false);
-    setSelectedItemId(`act:${newId}`);
   };
+
+  const handleSelectTemplate = (tpl) => {
+    setQuickTitle(tpl.title);
+    if (tpl.priority) setQuickPriority(tpl.priority);
+    if (tpl.location) setQuickLocation(tpl.location);
+    if (tpl.notes) setQuickNotes(tpl.notes);
+    setQuickErrorMsg('');
+  };
+
+
+  // Render Form Tạo Hoạt Động Trực Tiếp (Hiện đại, Sạch sẽ, Chuyên nghiệp)
+  const renderActivityCreateForm = (isInlineExpanded = false) => {
+    return (
+      <div 
+        className={`card border-0 shadow-sm rounded-4 overflow-hidden bg-white ${
+          isInlineExpanded ? 'mt-3 mb-3 border border-primary-subtle' : 'mx-auto mb-4'
+        }`} 
+        style={isInlineExpanded ? {} : { maxWidth: '780px' }}
+      >
+        {/* Header banner */}
+        <div className="p-3.5 px-4 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="p-2 bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
+              <Calendar size={20} />
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>
+                  Khởi Tạo Hoạt Động & Phát Động Điểm Danh
+                </h6>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style={{ fontSize: '10.5px' }}>
+                  Tạo trực tiếp
+                </span>
+              </div>
+              <div className="text-secondary" style={{ fontSize: '12px' }}>
+                Điền nhanh thông tin hoặc chọn mẫu có sẵn để tạo mã QR điểm danh tức thì
+              </div>
+            </div>
+          </div>
+
+          {isInlineExpanded && (
+            <button
+              type="button"
+              className="btn-close"
+              onClick={() => setShowQuickCreate(false)}
+              title="Đóng bảng tạo nhanh"
+            ></button>
+          )}
+        </div>
+
+        <div className="p-4">
+          {/* Error / Success alert */}
+          {quickErrorMsg && (
+            <div className="alert alert-danger py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '12.5px' }}>
+              <AlertTriangle size={16} className="text-danger flex-shrink-0" />
+              <span>{quickErrorMsg}</span>
+            </div>
+          )}
+
+          {quickSuccessMsg && (
+            <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '12.5px' }}>
+              <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+              <span>{quickSuccessMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleQuickCreateSubmit} className="d-flex flex-column gap-3">
+            {/* MỤC 1: TÊN HOẠT ĐỘNG & GỢI Ý MẪU MỘT CHẠM */}
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-1.5 flex-wrap gap-1">
+                <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '13px' }}>
+                  <span>Tên hoạt động / cuộc họp / phong trào</span>
+                  <span className="text-danger">*</span>
+                </label>
+                <span className="text-muted" style={{ fontSize: '11.5px' }}>
+                  (Nhập tên hoặc nhấn gợi ý mẫu bên dưới)
+                </span>
+              </div>
+              <input
+                type="text"
+                className="form-control form-control-lg fw-semibold"
+                style={{ fontSize: '14.5px', borderRadius: '10px' }}
+                placeholder="Ví dụ: Hội nghị Ban Chấp hành Đoàn xã mở rộng..."
+                value={quickTitle}
+                onChange={(e) => {
+                  setQuickTitle(e.target.value);
+                  if (quickErrorMsg) setQuickErrorMsg('');
+                }}
+                autoFocus={!isInlineExpanded}
+              />
+
+              {/* Mẫu gợi ý nhanh 1 chạm */}
+              <div className="mt-2.5">
+                <div className="d-flex align-items-center gap-1.5 text-muted mb-1.5" style={{ fontSize: '11.5px' }}>
+                  <span className="fw-bold text-primary">⚡ Mẫu gợi ý nhanh (1-chạm điền ngay):</span>
+                </div>
+                <div className="d-flex flex-wrap gap-1.5">
+                  {QUICK_TEMPLATES.map((tpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="btn btn-sm btn-light border rounded-pill px-2.5 py-1 text-dark d-inline-flex align-items-center gap-1 hover-shadow-xs transition-all"
+                      style={{ 
+                        fontSize: '11.5px', 
+                        backgroundColor: quickTitle === tpl.title ? '#e0f2fe' : '#f8fafc', 
+                        borderColor: quickTitle === tpl.title ? '#0284c7' : '#e2e8f0' 
+                      }}
+                      onClick={() => handleSelectTemplate(tpl)}
+                      title="Nhấn để tự động điền mẫu này"
+                    >
+                      <span>{tpl.icon}</span>
+                      <span className="fw-medium">{tpl.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* MỤC 2: THỜI GIAN & NGÀY THÁNG */}
+            <div className="p-3 bg-light rounded-3 border">
+              <div className="row g-3">
+                {/* CỘT NGÀY THÁNG */}
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                      <Calendar size={14} className="text-primary" />
+                      <span>Ngày tổ chức:</span>
+                    </label>
+                    <span className="text-primary fw-semibold" style={{ fontSize: '11.5px' }}>
+                      {(() => {
+                        const [y, m, d] = (quickDateIso || getTodayIsoStr()).split('-');
+                        return `${d}/${m}/${y}`;
+                      })()}
+                    </span>
+                  </div>
+
+                  {/* Pills chọn ngày */}
+                  <div className="d-flex gap-1 mb-2">
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'today' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => {
+                        setQuickDatePreset('today');
+                        setQuickDateIso(getTodayIsoStr());
+                      }}
+                    >
+                      Hôm nay
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'tomorrow' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => {
+                        setQuickDatePreset('tomorrow');
+                        setQuickDateIso(getTomorrowIsoStr());
+                      }}
+                    >
+                      Ngày mai
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => setQuickDatePreset('custom')}
+                    >
+                      Ngày khác
+                    </button>
+                  </div>
+
+                  <input
+                    type="date"
+                    className="form-control form-control-sm bg-white"
+                    style={{ fontSize: '12.5px' }}
+                    value={quickDateIso}
+                    onChange={(e) => {
+                      setQuickDateIso(e.target.value);
+                      setQuickDatePreset('custom');
+                    }}
+                  />
+                </div>
+
+                {/* CỘT KHUNG GIỜ */}
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                      <Clock size={14} className="text-primary" />
+                      <span>Khung giờ:</span>
+                    </label>
+                    <span className="text-primary fw-semibold" style={{ fontSize: '11.5px' }}>
+                      {quickStartTime} - {quickEndTime}
+                    </span>
+                  </div>
+
+                  {/* Pills chọn buổi */}
+                  <div className="d-flex gap-1 mb-2">
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'morning' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => {
+                        setQuickTimePreset('morning');
+                        setQuickStartTime('08:00');
+                        setQuickEndTime('11:30');
+                      }}
+                    >
+                      Sáng (8h-11h30)
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'afternoon' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => {
+                        setQuickTimePreset('afternoon');
+                        setQuickStartTime('13:30');
+                        setQuickEndTime('17:00');
+                      }}
+                    >
+                      Chiều (13h30-17h)
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'evening' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => {
+                        setQuickTimePreset('evening');
+                        setQuickStartTime('18:30');
+                        setQuickEndTime('21:00');
+                      }}
+                    >
+                      Tối (18h30-21h)
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm py-1 px-2 rounded-2 fw-semibold ${quickTimePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11.5px' }}
+                      onClick={() => setQuickTimePreset('custom')}
+                    >
+                      Tuỳ chỉnh
+                    </button>
+                  </div>
+
+                  {/* Custom Time inputs */}
+                  <div className="d-flex align-items-center gap-1.5">
+                    <input
+                      type="time"
+                      className="form-control form-control-sm bg-white"
+                      style={{ fontSize: '12.5px' }}
+                      value={quickStartTime}
+                      onChange={(e) => {
+                        setQuickStartTime(e.target.value);
+                        setQuickTimePreset('custom');
+                      }}
+                    />
+                    <span className="text-muted fw-bold">-</span>
+                    <input
+                      type="time"
+                      className="form-control form-control-sm bg-white"
+                      style={{ fontSize: '12.5px' }}
+                      value={quickEndTime}
+                      onChange={(e) => {
+                        setQuickEndTime(e.target.value);
+                        setQuickTimePreset('custom');
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MỤC 3: ĐỊA ĐIỂM & ĐỐI TƯỢNG TRIỆU TẬP */}
+            <div className="row g-3">
+              <div className="col-12 col-md-7">
+                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                  <MapPin size={14} className="text-danger" />
+                  <span>Địa điểm tổ chức:</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ fontSize: '13px' }}
+                  placeholder="Ví dụ: Hội trường UBND Xã Xuân Thới Sơn"
+                  value={quickLocation}
+                  onChange={(e) => setQuickLocation(e.target.value)}
+                />
+                <div className="d-flex flex-wrap gap-1 mt-1.5">
+                  {QUICK_VENUE_LIST.slice(0, 4).map((loc, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="btn btn-sm btn-link text-decoration-none p-0 text-secondary hover-text-primary"
+                      style={{ fontSize: '11px' }}
+                      onClick={() => setQuickLocation(loc)}
+                    >
+                      📍 {loc} •
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="col-12 col-md-5">
+                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
+                  <Users size={14} className="text-primary" />
+                  <span>Phạm vi triệu tập:</span>
+                </label>
+                <select
+                  className="form-select fw-semibold"
+                  style={{ fontSize: '13px' }}
+                  value={quickAssignedTo}
+                  onChange={(e) => setQuickAssignedTo(e.target.value)}
+                >
+                  <option value="Tất cả 56 Chi đoàn">Tất cả 56 Chi đoàn (Toàn xã)</option>
+                  <option value="30 Chi đoàn Ấp">30 Chi đoàn Ấp (Khu dân cư)</option>
+                  <option value="Khối Trường học">Khối Chi đoàn Trường học (16 Chi đoàn)</option>
+                  <option value="Khối Cơ quan - Lực lượng vũ trang">Khối Cơ quan - LLVT (10 Chi đoàn)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* MỤC 4: ĐỘ ƯU TIÊN & GHI CHÚ */}
+            <div className="row g-3">
+              <div className="col-12 col-md-5">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                  Mức độ ưu tiên:
+                </label>
+                <div className="d-flex gap-1.5">
+                  {[
+                    { id: 'Bình thường', label: 'Bình thường', color: 'primary' },
+                    { id: 'Quan trọng', label: 'Quan trọng', color: 'warning' },
+                    { id: 'Khẩn cấp', label: 'Khẩn cấp', color: 'danger' }
+                  ].map(p => {
+                    const isSelected = quickPriority === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold border ${
+                          isSelected ? `btn-${p.color} text-white shadow-xs` : 'btn-light text-dark'
+                        }`}
+                        style={{ fontSize: '11.5px' }}
+                        onClick={() => setQuickPriority(p.id)}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="col-12 col-md-7">
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                  Ghi chú / Nhắc nhở trang phục:
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ fontSize: '13px' }}
+                  placeholder="VD: Trang phục áo Thanh niên Việt Nam, có mặt trước 15 phút..."
+                  value={quickNotes}
+                  onChange={(e) => setQuickNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* MỤC 5: ACTION BUTTONS */}
+            <div className="pt-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div>
+                {onOpenCreateActivity && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary px-3 py-2 rounded-3 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs"
+                    style={{ fontSize: '12.5px' }}
+                    onClick={onOpenCreateActivity}
+                  >
+                    <FileText size={14} />
+                    <span>Mở form đầy đủ (Đính kèm PDF)</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                {isInlineExpanded && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-light border px-3 py-2 rounded-3 fw-semibold text-secondary"
+                    style={{ fontSize: '12.5px' }}
+                    onClick={() => setShowQuickCreate(false)}
+                  >
+                    Đóng
+                  </button>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingQuick}
+                  className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 rounded-3 fw-bold shadow hover-scale"
+                  style={{
+                    fontSize: '13.5px',
+                    backgroundColor: '#0066FF',
+                    borderColor: '#0066FF'
+                  }}
+                >
+                  {isSubmittingQuick ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Đang khởi tạo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={17} />
+                      <span>Tạo hoạt động & Bắt đầu điểm danh</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
 
   // Parse whether selected item is an Activity or a Todo Task
   const isSelectedTask = selectedItemId.startsWith('task:');
@@ -4719,7 +5299,7 @@ export function BranchAttendanceWorkspaceView({
   if (!hasItems) {
     return (
       <div className="container-fluid px-0">
-        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center">
+        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center mb-4">
           <div className="mx-auto mb-3 p-3 bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
             <Calendar size={36} />
           </div>
@@ -4727,98 +5307,11 @@ export function BranchAttendanceWorkspaceView({
           <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '20px' }}>
             Quản Lý Hoạt Động & Điểm Danh
           </h4>
-          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '520px', fontSize: '14px', lineHeight: 1.6 }}>
-            Hệ thống đang ở trạng thái sạch. Đồng chí có thể tạo hoạt động mới để phát động đến các Chi đoàn và bắt đầu tạo mã QR điểm danh:
+          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '540px', fontSize: '14px', lineHeight: 1.6 }}>
+            Hệ thống đang ở trạng thái sạch. Đồng chí có thể tạo hoạt động trực tiếp bên dưới hoặc chọn mẫu nhanh một chạm để phát động đến các Chi đoàn và bắt đầu tạo mã QR điểm danh:
           </p>
 
-          {/* Quick Create Box */}
-          <div className="card border border-primary-subtle shadow-xs rounded-4 p-4 text-start mx-auto mb-4 bg-light" style={{ maxWidth: '620px' }}>
-            <div className="d-flex align-items-center gap-2 mb-3 text-primary fw-bold" style={{ fontSize: '15px' }}>
-              <Plus size={18} />
-              <span>Tạo nhanh hoạt động điểm danh mới:</span>
-            </div>
-
-            <form onSubmit={handleQuickCreateSubmit} className="row g-3">
-              <div className="col-12">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
-                  Tên hoạt động / cuộc họp <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control fw-semibold"
-                  style={{ fontSize: '13.5px' }}
-                  placeholder="Ví dụ: Hội nghị Ban Chấp hành Đoàn xã mở rộng..."
-                  value={quickTitle}
-                  onChange={(e) => setQuickTitle(e.target.value)}
-                  autoFocus
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
-                  Thời gian
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ fontSize: '13px' }}
-                  placeholder="08:00 - 11:30"
-                  value={quickTime}
-                  onChange={(e) => setQuickTime(e.target.value)}
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
-                  Ngày tháng
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ fontSize: '13px' }}
-                  placeholder="Hôm nay hoặc 23/10/2026"
-                  value={quickDate}
-                  onChange={(e) => setQuickDate(e.target.value)}
-                />
-              </div>
-
-              <div className="col-12">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
-                  Địa điểm tổ chức
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ fontSize: '13px' }}
-                  placeholder="Hội trường UBND Xã Xuân Thới Sơn"
-                  value={quickLocation}
-                  onChange={(e) => setQuickLocation(e.target.value)}
-                />
-              </div>
-
-              <div className="col-12 pt-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                {onOpenCreateActivity && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary px-3 py-2 rounded-3 fw-semibold"
-                    style={{ fontSize: '12.5px' }}
-                    onClick={onOpenCreateActivity}
-                  >
-                    📝 Mở form tạo chi tiết
-                  </button>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn btn-primary d-inline-flex align-items-center gap-1.5 px-4 py-2 rounded-3 fw-bold shadow-xs hover-scale"
-                  style={{ fontSize: '13px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
-                >
-                  <Plus size={16} />
-                  <span>Tạo hoạt động & Bắt đầu điểm danh</span>
-                </button>
-              </div>
-            </form>
-          </div>
+          {renderActivityCreateForm(false)}
         </div>
       </div>
     );
@@ -4872,17 +5365,29 @@ export function BranchAttendanceWorkspaceView({
           <div className="d-flex align-items-center gap-2">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 fw-bold"
-              style={{ fontSize: '12px' }}
-              onClick={() => {
-                if (onOpenCreateActivity) onOpenCreateActivity();
-                else setShowQuickCreate(!showQuickCreate);
-              }}
-              title="Tạo thêm hoạt động mới"
+              className={`btn btn-sm d-inline-flex align-items-center gap-1 px-3 py-1.5 rounded-3 fw-bold shadow-xs transition-all ${
+                showQuickCreate ? 'btn-primary text-white' : 'btn-outline-primary'
+              }`}
+              style={{ fontSize: '12.5px' }}
+              onClick={() => setShowQuickCreate(!showQuickCreate)}
+              title="Mở form tạo nhanh hoạt động mới trực tiếp"
             >
               <Plus size={14} />
-              <span>Tạo hoạt động</span>
+              <span>{showQuickCreate ? '✕ Đóng tạo nhanh' : '+ Tạo nhanh hoạt động'}</span>
             </button>
+
+            {onOpenCreateActivity && (
+              <button
+                type="button"
+                className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-3 fw-semibold text-secondary"
+                style={{ fontSize: '12px' }}
+                onClick={onOpenCreateActivity}
+                title="Mở form tạo chi tiết có đính kèm file PDF văn bản"
+              >
+                <FileText size={13} />
+                <span>Mẫu chi tiết / PDF</span>
+              </button>
+            )}
 
             {currentItem && (
               <span className={`badge px-2.5 py-1 rounded-pill ${
@@ -4895,47 +5400,7 @@ export function BranchAttendanceWorkspaceView({
         </div>
 
         {/* Inline Quick Create Bar if toggled */}
-        {showQuickCreate && (
-          <div className="mt-3 pt-3 border-top">
-            <form onSubmit={handleQuickCreateSubmit} className="row g-2 align-items-end">
-              <div className="col-12 col-md-5">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>Tên hoạt động:</label>
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  placeholder="Nhập tên hoạt động..."
-                  value={quickTitle}
-                  onChange={(e) => setQuickTitle(e.target.value)}
-                />
-              </div>
-              <div className="col-6 col-md-3">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>Thời gian & Ngày:</label>
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  value={quickDate}
-                  onChange={(e) => setQuickDate(e.target.value)}
-                />
-              </div>
-              <div className="col-6 col-md-4 d-flex gap-2">
-                <button
-                  type="submit"
-                  className="btn btn-sm btn-primary fw-bold text-white px-3 flex-grow-1"
-                  style={{ fontSize: '12px' }}
-                >
-                  Lưu & Mở điểm danh
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-light border px-2.5"
-                  onClick={() => setShowQuickCreate(false)}
-                >
-                  ✕
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {showQuickCreate && renderActivityCreateForm(true)}
       </div>
 
       {/* Main Container Card with 4 Tabs: Thông Tin | Điểm Danh | Chi Đoàn | Phân Công */}

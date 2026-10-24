@@ -16,9 +16,9 @@ import ChiDoanDocsList from './components/ChiDoanDocsList';
 import Login from './components/Login';
 import GpsPermissionModal from './components/GpsPermissionModal';
 import { 
-  CreateActivityModal, 
-  IssueDocumentModal, 
-  SubmitDocumentModal, 
+  CreateActivityModal,
+  IssueDocumentModal,
+  SubmitDocumentModal,
   SendMessageModal,
   SupportModal,
   CreateTaskModal,
@@ -26,21 +26,21 @@ import {
   ActivityDetailModal
 } from './components/Modals';
 import { 
-  ActivitiesView, 
-  DocumentsView, 
-  SubmissionsView, 
-  NotificationsView, 
-  TasksView, 
-  ReportsView, 
-  StorageArchiveView, 
+  ActivitiesView,
+  DocumentsView,
+  SubmissionsView,
+  NotificationsView,
+  TasksView,
+  ReportsView,
+  StorageArchiveView,
   SettingsView,
   BranchAttendanceWorkspaceView
 } from './components/SecondaryViews';
 import BranchMembersView from './components/BranchMembersView';
 import { 
-  INITIAL_BRANCHES, 
+  INITIAL_BRANCHES,
   SCHOOL_BRANCHES,
-  supabase, 
+  supabase,
   isSupabaseConfigured,
   syncFetchActivities,
   syncSaveActivity,
@@ -65,7 +65,9 @@ import {
   syncFetchMembers,
   syncSaveMember,
   syncDeleteMember,
-  COMPETITION_CLUSTERS, OFFICIAL_ADDRESS, notifySyncEvent,
+  COMPETITION_CLUSTERS,
+  OFFICIAL_ADDRESS,
+  notifySyncEvent,
   isItemTargetedToUser,
   deduplicateActivities
 } from './lib/supabase';
@@ -339,7 +341,7 @@ export default function App() {
     const fixedDateIso = newAct.dateIso || `${yearVal}-${monthVal}-${dayVal}`;
 
     const activityItem = {
-      id: `act-${Date.now()}`,
+      id: newAct.id || `act-${Date.now()}`,
       day: dayVal,
       month: monthVal,
       year: yearVal,
@@ -354,7 +356,10 @@ export default function App() {
       subTasks: newAct.subTasks || [],
       file_name: newAct.file_name || '',
       file_url: newAct.file_url || '',
-      status: 'Sắp diễn ra',
+      status: newAct.status || 'Đang diễn ra',
+      confirmedBy: newAct.confirmedBy || [],
+      absentBy: newAct.absentBy || [],
+      completedBy: newAct.completedBy || [],
       dateIso: fixedDateIso,
       postedAt: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${dayVal}/${monthVal}/${yearVal}`
     };
@@ -412,6 +417,7 @@ export default function App() {
     setNotificationsList(updatedNotis);
 
     triggerToast(`Đã tạo hoạt động "${newAct.title}"${newAct.file_name ? ' & tự động ban hành văn bản đi' : ''}!`);
+    return activityItem;
   };
 
   const handleToggleActivityStatus = async (activityId, newStatus) => {
@@ -1063,6 +1069,7 @@ export default function App() {
           ) : activeTab === 'attendance' ? (
             /* DEDICATED ATTENDANCE VIEW (CHI ĐOÀN & ADMIN) */
             <BranchAttendanceWorkspaceView 
+              onAddActivity={handleAddActivity}
               activities={activitiesList}
               tasks={tasksList}
               currentRole={currentUser}

@@ -35,7 +35,9 @@ import {
   Eye,
   MoreVertical,
   Upload,
-  FileCheck
+  FileCheck,
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import {
   generateUuid,
@@ -3124,11 +3126,17 @@ export function ReportsView({
   setActiveTab,
   onOpenAttendanceModal,
   onRespondAttendance,
-  isDoanXa
+  isDoanXa,
+  currentUser,
+  onRefreshData
 }) {
   const [selectedCluster, setSelectedCluster] = useState('ALL');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const userBranchName = currentUser?.branch_name || currentUser?.full_name || '';
+  const cleanUserBranch = userBranchName.replace(/^Chi đoàn\s*/i, '').trim();
 
   // Lọc danh sách hoạt động thực tế (loại bỏ dữ liệu test ảo cũ)
   const safeActivities = (Array.isArray(activities) ? activities : [])
@@ -3210,7 +3218,7 @@ export function ReportsView({
         if (typeof branchRec === 'boolean') {
           if (branchRec) {
             status = 'ATTENDED';
-            time = matchConf?.time || 'Đã xác nhận';
+            time = (typeof matchConf === 'object' && matchConf?.time) ? matchConf.time : 'Đã xác nhận';
             checkinMethod = 'Xác thực điểm danh';
           } else {
             status = 'ABSENT';
@@ -3233,12 +3241,16 @@ export function ReportsView({
         }
       } else if (matchConf) {
         status = 'ATTENDED';
-        time = matchConf.time || 'Đã xác nhận';
-        checkinMethod = 'Xác thực điểm danh';
+        time = (typeof matchConf === 'object' && matchConf?.time) ? matchConf.time : 'Đã xác nhận';
+        checkinMethod = (typeof matchConf === 'object' && matchConf?.method) ? matchConf.method : 'Xác thực điểm danh';
+        if (typeof matchConf === 'object' && matchConf?.latitude && matchConf?.longitude) {
+          gpsCoords = `${matchConf.latitude.toFixed(5)}, ${matchConf.longitude.toFixed(5)}`;
+        }
+        photoProof = (typeof matchConf === 'object' && matchConf?.photo_url) ? matchConf.photo_url : null;
       } else if (matchAbs) {
         status = 'ABSENT';
-        time = matchAbs.time || 'Vừa xong';
-        reason = matchAbs.reason || 'Báo vắng';
+        time = (typeof matchAbs === 'object' && matchAbs?.time) ? matchAbs.time : 'Vừa xong';
+        reason = (typeof matchAbs === 'object' && matchAbs?.reason) ? matchAbs.reason : 'Báo vắng';
       }
 
       if (status === 'ATTENDED') attendedCount += 1;
@@ -3282,6 +3294,13 @@ export function ReportsView({
     };
   }).filter(Boolean);
 
+  // Chi đoàn của tài khoản hiện tại (nếu đang đăng nhập tài khoản Chi đoàn)
+  const myBranchStats = userBranchName ? branchStats.find(b => {
+    if (!b) return false;
+    const cleanB = (b.name || '').replace(/^Chi đoàn\s*/i, '').trim();
+    return b.name === userBranchName || cleanB === cleanUserBranch || b.name.includes(cleanUserBranch) || userBranchName.includes(cleanB);
+  }) : null;
+
   const filteredBranchStats = branchStats.filter(b => {
     if (!b) return false;
     const matchesCluster = selectedCluster === 'ALL' || b.clusterName === selectedCluster;
@@ -3300,6 +3319,17 @@ export function ReportsView({
   const countFair = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage >= 50 && b.percentage < 80).length : 0;
   const countFailed = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage < 50).length : 0;
 
+  const handleSyncClick = async () => {
+    if (onRefreshData) {
+      setIsSyncing(true);
+      try {
+        await onRefreshData();
+      } finally {
+        setTimeout(() => setIsSyncing(false), 600);
+      }
+    }
+  };
+
   return (
     <div className="reports-view">
       {/* Top Header Card */}
@@ -3310,42 +3340,162 @@ export function ReportsView({
             Báo cáo Thống kê & Đánh giá Thi đua 56 Chi đoàn / Đơn vị
           </h4>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành và kết quả điểm danh qua mã QR / Code.
+            Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành và kết quả điểm danh qua mã QR / Code thực tế.
           </div>
         </div>
 
-        {isDoanXa && (
-          <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {onRefreshData && (
+            <button 
+              type="button"
+              className="btn btn-outline-primary bg-white d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-xs hover-scale"
+              style={{ fontSize: '13px' }}
+              onClick={handleSyncClick}
+              disabled={isSyncing}
+              title="Đồng bộ lại dữ liệu điểm danh và thi đua mới nhất từ máy chủ Supabase"
+            >
+              <RefreshCw size={16} className={isSyncing ? 'spin-animation' : ''} />
+              <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ dữ liệu'}</span>
+            </button>
+          )}
+
+          {!isDoanXa && (
             <button 
               type="button"
               className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
               style={{ backgroundColor: '#0066FF', border: 'none', fontSize: '13px' }}
               onClick={() => {
                 if (setActiveTab) setActiveTab('attendance');
-                else onOpenAttendanceModal && onOpenAttendanceModal('qr');
               }}
-              title="Mở giao diện Quản lý Điểm danh để tạo mã QR và mã Code XTS-XXXXXX"
+              title="Đến màn hình điểm danh để quét mã QR hoặc nhập mã Code XTS-XXXXXX"
             >
               <QrCode size={18} />
-              <span>📱 Tạo Mã Điểm Danh QR & Code (XTS-XXXXXX)</span>
+              <span>📱 Quét mã QR / Nhập mã điểm danh</span>
             </button>
+          )}
 
-            <button 
-              type="button"
-              className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
-              style={{ backgroundColor: '#16A34A', border: 'none', fontSize: '13px' }}
-              onClick={() => {
-                if (setActiveTab) setActiveTab('attendance');
-                else onOpenAttendanceModal && onOpenAttendanceModal('manual');
-              }}
-              title="Đến màn hình điểm danh & đánh giá hoạt động"
-            >
-              <CheckCircle2 size={18} />
-              <span>⚡ Điểm danh & Đánh giá Hoạt động</span>
-            </button>
-          </div>
-        )}
+          {isDoanXa && (
+            <>
+              <button 
+                type="button"
+                className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
+                style={{ backgroundColor: '#0066FF', border: 'none', fontSize: '13px' }}
+                onClick={() => {
+                  if (setActiveTab) setActiveTab('attendance');
+                  else onOpenAttendanceModal && onOpenAttendanceModal('qr');
+                }}
+                title="Mở giao diện Quản lý Điểm danh để tạo mã QR và mã Code XTS-XXXXXX"
+              >
+                <QrCode size={18} />
+                <span>📱 Tạo Mã Điểm Danh QR & Code</span>
+              </button>
+
+              <button 
+                type="button"
+                className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
+                style={{ backgroundColor: '#16A34A', border: 'none', fontSize: '13px' }}
+                onClick={() => {
+                  if (setActiveTab) setActiveTab('attendance');
+                  else onOpenAttendanceModal && onOpenAttendanceModal('manual');
+                }}
+                title="Đến màn hình điểm danh & đánh giá hoạt động"
+              >
+                <CheckCircle2 size={18} />
+                <span>⚡ Điểm danh & Đánh giá</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* DÀNH CHO CHI ĐOÀN CỤ THỂ: BANNER THỐNG KÊ CHI TIẾT CỦA ĐƠN VỊ MÌNH */}
+      {!isDoanXa && myBranchStats && (
+        <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white position-relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%)' }}>
+          <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 position-relative" style={{ zIndex: 1 }}>
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span className="badge bg-white text-primary fw-bold px-2.5 py-1" style={{ fontSize: '12px' }}>
+                  ⭐ Đơn vị của bạn
+                </span>
+                <span className="badge bg-white bg-opacity-20 text-white px-2.5 py-1" style={{ fontSize: '12px' }}>
+                  🏆 {myBranchStats.clusterName}
+                </span>
+                <span className="badge bg-white bg-opacity-20 text-white px-2.5 py-1" style={{ fontSize: '12px' }}>
+                  Mã: {myBranchStats.code || 'CD-XT'}
+                </span>
+              </div>
+              <h3 className="fw-bold mb-1" style={{ fontSize: '22px' }}>{myBranchStats.name}</h3>
+              <p className="mb-0 text-white text-opacity-85" style={{ fontSize: '13px' }}>
+                Bí thư Chi đoàn: <strong>{myBranchStats.secretary_name}</strong> • Tỷ lệ thi đua được hệ thống tự động liên kết chặt chẽ từ kết quả điểm danh qua mã QR / Code.
+              </p>
+            </div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <button 
+                type="button" 
+                className="btn btn-light fw-bold text-primary px-3 py-2 rounded-3 shadow-xs hover-scale d-flex align-items-center gap-2"
+                style={{ fontSize: '13px' }}
+                onClick={() => setSelectedBranchDetail(myBranchStats)}
+                title="Xem chi tiết lịch sử điểm danh GPS và từng hoạt động của đơn vị"
+              >
+                <FileText size={16} />
+                <span>Xem chi tiết hoạt động</span>
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-warning fw-bold text-dark px-3 py-2 rounded-3 shadow-xs hover-scale d-flex align-items-center gap-2"
+                style={{ fontSize: '13px' }}
+                onClick={() => setActiveTab && setActiveTab('attendance')}
+                title="Đến màn hình quét mã QR hoặc nhập mã Code"
+              >
+                <QrCode size={16} />
+                <span>Điểm danh ngay</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="row g-3 mt-2 position-relative" style={{ zIndex: 1 }}>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-white bg-opacity-15 rounded-3 text-center border border-white border-opacity-20 h-100">
+                <div className="text-white text-opacity-80 fw-semibold mb-1" style={{ fontSize: '11px' }}>TỶ LỆ % THAM GIA</div>
+                <div className="fw-extrabold" style={{ fontSize: '26px' }}>
+                  {myBranchStats.percentage !== null ? `${myBranchStats.percentage}%` : '—'}
+                </div>
+                <div className="text-white text-opacity-70 small">{myBranchStats.percentage !== null ? 'Dựa trên điểm danh' : 'Chưa có hoạt động'}</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-white bg-opacity-15 rounded-3 text-center border border-white border-opacity-20 h-100">
+                <div className="text-white text-opacity-80 fw-semibold mb-1" style={{ fontSize: '11px' }}>XẾP LOẠI THI ĐUA</div>
+                <div className="fw-bold d-flex align-items-center justify-content-center gap-1.5" style={{ fontSize: '13.5px', minHeight: '39px' }}>
+                  <span>{myBranchStats.rating?.icon}</span>
+                  <span>{myBranchStats.rating?.label}</span>
+                </div>
+                <div className="text-white text-opacity-70 small">Tiêu chuẩn Đoàn xã</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-white bg-opacity-15 rounded-3 text-center border border-white border-opacity-20 h-100">
+                <div className="text-white text-opacity-80 fw-semibold mb-1" style={{ fontSize: '11px' }}>CÓ MẶT / PHÂN CÔNG</div>
+                <div className="fw-extrabold text-success-emphasis" style={{ fontSize: '24px' }}>
+                  {myBranchStats.totalAssigned > 0 ? `${myBranchStats.attendedCount} / ${myBranchStats.totalAssigned}` : '0 / 0'}
+                </div>
+                <div className="text-white text-opacity-70 small">Hoạt động tham gia</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-white bg-opacity-15 rounded-3 text-center border border-white border-opacity-20 h-100">
+                <div className="text-white text-opacity-80 fw-semibold mb-1" style={{ fontSize: '11px' }}>TRẠNG THÁI KHÁC</div>
+                <div className="fw-bold d-flex align-items-center justify-content-center gap-1.5 mt-1" style={{ fontSize: '12px', minHeight: '39px' }}>
+                  <span className="badge bg-danger text-white">✕ {myBranchStats.absentCount} vắng</span>
+                  <span className="badge bg-light text-dark">⏳ {myBranchStats.unrespondedCount} chưa ĐD</span>
+                </div>
+                <div className="text-white text-opacity-70 small">Cần lưu ý</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Thông báo nếu chưa có hoạt động nào được ban hành */}
       {!hasActivities && (
@@ -3358,7 +3508,7 @@ export function ReportsView({
           </div>
           {isDoanXa && (
             <button 
-              type="button"
+              type="button" 
               className="btn btn-sm btn-primary px-3 py-1.5 rounded-3 fw-bold shadow-xs hover-scale"
               onClick={() => setActiveTab && setActiveTab('attendance')}
             >
@@ -3489,9 +3639,9 @@ export function ReportsView({
             className="form-select form-select-sm fw-semibold"
             value={selectedCluster}
             onChange={(e) => setSelectedCluster(e.target.value)}
-            style={{ width: '220px', fontSize: '12.5px' }}
+            style={{ width: '260px', fontSize: '12.5px' }}
           >
-            <option value="ALL">🏆 Tất cả 6 Cụm thi đua (56 Chi đoàn)</option>
+            <option value="ALL">🏆 Tất cả Cụm thi đua (56 Chi đoàn / Đơn vị)</option>
             {COMPETITION_CLUSTERS.map(cluster => (
               <option key={cluster.id} value={cluster.name}>
                 {cluster.name}
@@ -3500,11 +3650,12 @@ export function ReportsView({
           </select>
         </div>
 
-        <div className="search-box" style={{ maxWidth: '320px', width: '100%' }}>
-          <Search size={16} />
+        <div className="position-relative" style={{ width: '280px' }}>
+          <Search size={16} className="text-muted position-absolute" style={{ top: '10px', left: '12px' }} />
           <input 
             type="text" 
-            placeholder="Tìm tên Chi đoàn / Đơn vị..." 
+            className="form-control form-control-sm ps-5 rounded-3"
+            placeholder="Tìm theo tên Chi đoàn hoặc Bí thư..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             style={{ fontSize: '12.5px' }}
@@ -3535,91 +3686,99 @@ export function ReportsView({
                 </td>
               </tr>
             ) : (
-              filteredBranchStats.map((item, index) => (
-                <tr 
-                  key={item.id || index} 
-                  className="cursor-pointer hover-bg-light transition"
-                  onClick={() => setSelectedBranchDetail(item)}
-                >
-                  <td className="fw-bold text-muted text-center" style={{ fontSize: '12px' }}>{index + 1}</td>
-                  <td>
-                    <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
-                    <div className="text-muted" style={{ fontSize: '11px' }}>{item.code || 'Đơn vị trực thuộc'}</div>
-                  </td>
-                  <td>
-                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
-                      🏆 {item.clusterName}
-                    </span>
-                  </td>
-                  <td className="text-dark" style={{ fontSize: '12.5px' }}>
-                    {item.secretary_name}
-                  </td>
-                  <td>
-                    <div className="d-flex flex-column gap-0.5">
-                      <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-                        {item.totalAssigned > 0 ? `${item.attendedCount} / ${item.totalAssigned} HĐ` : '0 / 0 HĐ'}
-                      </span>
-                      <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '11px' }}>
-                        {item.totalAssigned === 0 ? (
-                          <span className="text-muted">Chưa có HĐ</span>
-                        ) : (
-                          <>
-                            <span className="text-success fw-semibold">✓ {item.attendedCount} có mặt</span>
-                            {item.absentCount > 0 && (
-                              <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
-                            )}
-                            {item.unrespondedCount > 0 && (
-                              <span className="text-muted">• ⏳ {item.unrespondedCount} chưa điểm danh</span>
-                            )}
-                          </>
+              filteredBranchStats.map((item, index) => {
+                const isMyBranch = myBranchStats && item.name === myBranchStats.name;
+                return (
+                  <tr 
+                    key={item.id || index} 
+                    className={`cursor-pointer transition ${isMyBranch ? 'bg-primary-subtle bg-opacity-25 border-start border-4 border-primary' : 'hover-bg-light'}`}
+                    onClick={() => setSelectedBranchDetail(item)}
+                  >
+                    <td className="fw-bold text-muted text-center" style={{ fontSize: '12px' }}>{index + 1}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
+                        {isMyBranch && (
+                          <span className="badge bg-primary text-white" style={{ fontSize: '10px' }}>⭐ Đơn vị của bạn</span>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    {item.percentage === null ? (
-                      <span className="text-muted fw-semibold" style={{ fontSize: '12px' }}>— Chưa phát sinh</span>
-                    ) : (
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
-                          <div 
-                            className="progress-bar transition" 
-                            role="progressbar" 
-                            style={{ 
-                              width: `${item.percentage}%`,
-                              backgroundColor: item.rating?.color || '#0066FF'
-                            }}
-                          ></div>
-                        </div>
-                        <span className="fw-bold" style={{ fontSize: '12px', color: item.rating?.color || '#0066FF', minWidth: '38px' }}>
-                          {item.percentage}%
+                      <div className="text-muted" style={{ fontSize: '11px' }}>{item.code || 'Đơn vị trực thuộc'}</div>
+                    </td>
+                    <td>
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
+                        🏆 {item.clusterName}
+                      </span>
+                    </td>
+                    <td className="text-dark" style={{ fontSize: '12.5px' }}>
+                      {item.secretary_name}
+                    </td>
+                    <td>
+                      <div className="d-flex flex-column gap-0.5">
+                        <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
+                          {item.totalAssigned > 0 ? `${item.attendedCount} / ${item.totalAssigned} HĐ` : '0 / 0 HĐ'}
                         </span>
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '11px' }}>
+                          {item.totalAssigned === 0 ? (
+                            <span className="text-muted">Chưa có HĐ</span>
+                          ) : (
+                            <>
+                              <span className="text-success fw-semibold">✓ {item.attendedCount} có mặt</span>
+                              {item.absentCount > 0 && (
+                                <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
+                              )}
+                              {item.unrespondedCount > 0 && (
+                                <span className="text-muted">• ⏳ {item.unrespondedCount} chưa điểm danh</span>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${item.rating?.badgeClass || 'bg-light text-dark'} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
-                      <span>{item.rating?.icon || '📊'}</span>
-                      <span>{item.rating?.label || 'Hoàn thành'}</span>
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <button 
-                      type="button"
-                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 hover-scale"
-                      style={{ fontSize: '11.5px' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBranchDetail(item);
-                      }}
-                      title="Xem chi tiết từng hoạt động tham gia, hình thức quét QR / nhập code, thời gian và tọa độ GPS"
-                    >
-                      <FileText size={13} />
-                      <span>Xem chi tiết</span>
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td>
+                      {item.percentage === null ? (
+                        <span className="text-muted fw-semibold" style={{ fontSize: '12px' }}>— Chưa phát sinh</span>
+                      ) : (
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
+                            <div 
+                              className="progress-bar transition" 
+                              role="progressbar" 
+                              style={{ 
+                                width: `${item.percentage}%`,
+                                backgroundColor: item.rating?.color || '#0066FF'
+                              }}
+                            ></div>
+                          </div>
+                          <span className="fw-bold" style={{ fontSize: '12px', color: item.rating?.color || '#0066FF', minWidth: '38px' }}>
+                            {item.percentage}%
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${item.rating?.badgeClass || 'bg-light text-dark'} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                        <span>{item.rating?.icon || '📊'}</span>
+                        <span>{item.rating?.label || 'Hoàn thành'}</span>
+                      </span>
+                    </td>
+                    <td className="text-end">
+                      <button 
+                        type="button"
+                        className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 hover-scale"
+                        style={{ fontSize: '11.5px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBranchDetail(item);
+                        }}
+                        title="Xem chi tiết từng hoạt động tham gia, hình thức quét QR / nhập code, thời gian và tọa độ GPS"
+                      >
+                        <FileText size={13} />
+                        <span>Xem chi tiết</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -3817,7 +3976,6 @@ export function ReportsView({
     </div>
   );
 }
-
 
 export function StorageArchiveView({ documents = [], submissions = [], onDeleteDocument, onDeleteSubmission, isDoanXa }) {
   const [search, setSearch] = useState('');

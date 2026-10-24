@@ -205,7 +205,55 @@ export default function App() {
       return true;
     });
     setTasksList(cleanedTasks);
-    setAttendanceRecords(atts || {});
+
+    // Đồng bộ 100% dữ liệu điểm danh từ Supabase (confirmedBy & absentBy) vào attendanceRecords
+    const mergedAttendance = { ...(atts || {}) };
+    if (Array.isArray(cleanedActs)) {
+      cleanedActs.forEach(act => {
+        if (!act || !act.id) return;
+        const actId = String(act.id);
+        if (!mergedAttendance[actId]) {
+          mergedAttendance[actId] = {};
+        }
+        if (Array.isArray(act.confirmedBy)) {
+          act.confirmedBy.forEach(c => {
+            const bName = typeof c === 'string' ? c : c?.branch;
+            if (bName) {
+              const stdBranch = normalizeBranchName(bName);
+              const rec = {
+                attended: true,
+                time: (typeof c === 'object' && c?.time) ? c.time : 'Đã xác nhận',
+                method: (typeof c === 'object' && c?.method) ? c.method : 'Xác thực điểm danh',
+                latitude: typeof c === 'object' ? c?.latitude : undefined,
+                longitude: typeof c === 'object' ? c?.longitude : undefined,
+                photo_url: typeof c === 'object' ? c?.photo_url : undefined
+              };
+              mergedAttendance[actId][stdBranch] = rec;
+              mergedAttendance[actId][bName] = rec;
+            }
+          });
+        }
+        if (Array.isArray(act.absentBy)) {
+          act.absentBy.forEach(a => {
+            const bName = typeof a === 'string' ? a : a?.branch;
+            if (bName) {
+              const stdBranch = normalizeBranchName(bName);
+              if (!mergedAttendance[actId][stdBranch]?.attended) {
+                const rec = {
+                  attended: false,
+                  reason: (typeof a === 'object' && a?.reason) ? a.reason : 'Báo vắng',
+                  time: (typeof a === 'object' && a?.time) ? a.time : 'Đã báo vắng'
+                };
+                mergedAttendance[actId][stdBranch] = rec;
+                mergedAttendance[actId][bName] = rec;
+              }
+            }
+          });
+        }
+      });
+    }
+    setAttendanceRecords(mergedAttendance);
+    setPersistedData('attendance_records', mergedAttendance);
     // Làm sạch toàn bộ dữ liệu đoàn viên ảo trong tài khoản Admin và Chi đoàn
     const DUMMY_MEMBER_NAMES = [
       'Nguyễn Văn An', 'Trần Thị Bích', 'Lê Hoài Nam', 'Phạm Minh Tâm', 
@@ -774,6 +822,17 @@ export default function App() {
     triggerToast('Đã lưu kết quả điểm danh & đánh giá tham gia hoạt động!');
   };
 
+  const handleRefreshAllData = async () => {
+    try {
+      triggerToast('Đang đồng bộ dữ liệu mới nhất từ máy chủ...');
+      await loadAllData();
+      triggerToast('Đã hoàn tất đồng bộ dữ liệu Báo cáo Thống kê & Điểm danh!');
+    } catch (err) {
+      console.warn('Lỗi khi làm mới dữ liệu:', err);
+      triggerToast('Có lỗi khi đồng bộ dữ liệu, vui lòng thử lại.');
+    }
+  };
+
   const handleRespondAttendance = async (activityId, rawBranchName, attended, reason, activityTitle = '') => {
     const branchName = normalizeBranchName(rawBranchName);
     const now = new Date();
@@ -782,36 +841,84 @@ export default function App() {
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const year = now.getFullYear();
-    const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
+    const fallbackTime = `${hours}:${minutes} ${day}/${month}/${year}`;
+
+    const detailObj = (typeof reason === 'object' && reason !== null) ? reason : {};
+    const timeStr = detailObj.time || fallbackTime;
 
     const currentActivityRec = attendanceRecords[activityId] || {};
+    const recordValue = attended ? { 
+      attended: true, 
+      time: timeStr,
+      method: detailObj.method || 'Xác thực điểm danh',
+      latitude: detailObj.latitude,
+      longitude: detailObj.longitude,
+      photo_url: detailObj.photo_url || null
+    } : { 
+      attended: false, 
+      reason: typeof reason === 'string' ? reason : (detailObj.reason || 'Báo vắng'), 
+      time: timeStr 
+    };
+
     const updatedRec = {
       ...currentActivityRec,
-      [branchName]: attended ? { attended: true, time: timeStr } : { attended: false, reason, time: timeStr }
+      [branchName]: recordValue,
+      [rawBranchName]: recordValue
     };
     const updated = await syncSaveAttendance(activityId, updatedRec);
     setAttendanceRecords(updated);
 
-    // Update targetAct on activitiesList so confirmedBy and absentBy are immediately in sync
-    const targetAct = activitiesList.find(a => a.id === activityId);
+    // Update targetAct on activitiesList so confirmedBy and absentBy are immediately saved to Supabase
+    const targetAct = activitiesList.find(a => String(a.id) === String(activityId));
     if (targetAct) {
-      const existingConfirmed = targetAct.confirmedBy || [];
-      const existingAbsent = targetAct.absentBy || [];
+      const existingConfirmed = Array.isArray(targetAct.confirmedBy) ? targetAct.confirmedBy : [];
+      const existingAbsent = Array.isArray(targetAct.absentBy) ? targetAct.absentBy : [];
 
       let updatedConfirmedBy = existingConfirmed;
       let updatedAbsentBy = existingAbsent;
 
       if (attended) {
         // Remove from absentBy if present, add to confirmedBy if not present
-        updatedAbsentBy = existingAbsent.filter(c => c.branch !== branchName);
-        if (!existingConfirmed.some(c => c.branch === branchName)) {
-          updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
+        updatedAbsentBy = existingAbsent.filter(c => {
+          const b = typeof c === 'string' ? c : c?.branch;
+          return normalizeBranchName(b) !== branchName;
+        });
+        const existingIdx = existingConfirmed.findIndex(c => {
+          const b = typeof c === 'string' ? c : c?.branch;
+          return normalizeBranchName(b) === branchName;
+        });
+        const confirmedEntry = {
+          branch: branchName,
+          time: timeStr,
+          method: detailObj.method || 'CAMERA_QR',
+          latitude: detailObj.latitude,
+          longitude: detailObj.longitude,
+          photo_url: detailObj.photo_url || null
+        };
+        if (existingIdx >= 0) {
+          updatedConfirmedBy = [...existingConfirmed];
+          updatedConfirmedBy[existingIdx] = confirmedEntry;
+        } else {
+          updatedConfirmedBy = [...existingConfirmed, confirmedEntry];
         }
       } else {
         // Remove from confirmedBy if present, add/update in absentBy
-        updatedConfirmedBy = existingConfirmed.filter(c => c.branch !== branchName);
-        const filteredAbsent = existingAbsent.filter(c => c.branch !== branchName);
-        updatedAbsentBy = [...filteredAbsent, { branch: branchName, reason, time: timeStr }];
+        updatedConfirmedBy = existingConfirmed.filter(c => {
+          const b = typeof c === 'string' ? c : c?.branch;
+          return normalizeBranchName(b) !== branchName;
+        });
+        const absentReason = typeof reason === 'string' ? reason : (detailObj.reason || 'Báo vắng');
+        const existingAbsIdx = existingAbsent.findIndex(a => {
+          const b = typeof a === 'string' ? a : a?.branch;
+          return normalizeBranchName(b) === branchName;
+        });
+        const absentEntry = { branch: branchName, reason: absentReason, time: timeStr };
+        if (existingAbsIdx >= 0) {
+          updatedAbsentBy = [...existingAbsent];
+          updatedAbsentBy[existingAbsIdx] = absentEntry;
+        } else {
+          updatedAbsentBy = [...existingAbsent, absentEntry];
+        }
       }
 
       const updatedAct = { 
@@ -826,9 +933,9 @@ export default function App() {
     notifySyncEvent('RESPOND_ATTENDANCE', { activityId, branchName, attended, reason, timeStr });
 
     if (attended) {
-      triggerToast(`Đã xác nhận THAM GIA hoạt động thành công!`);
+      triggerToast(`Đã xác nhận THAM GIA hoạt động thành công cho ${branchName}!`);
     } else {
-      triggerToast(`Đã ghi nhận báo VẮNG MẶT thành công!`);
+      triggerToast(`Đã ghi nhận báo VẮNG MẶT thành công cho ${branchName}!`);
     }
   };
 
@@ -1128,6 +1235,8 @@ export default function App() {
               }}
               onRespondAttendance={handleRespondAttendance}
               isDoanXa={isDoanXa}
+              currentUser={currentUser}
+              onRefreshData={handleRefreshAllData}
             />
           ) : activeTab === 'storage' ? (
             /* STORAGE ARCHIVE VIEW */

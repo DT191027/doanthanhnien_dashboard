@@ -603,3 +603,13 @@ body {
     height: 32px;
   }
 }
+
+
+@keyframes spinFast {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+  animation: spinFast 0.8s linear infinite;
+}

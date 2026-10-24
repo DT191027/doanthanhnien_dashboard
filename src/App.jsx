@@ -166,9 +166,29 @@ export default function App() {
     });
     setActivitiesList(deduplicateActivities(cleanedActs));
 
-    setDocumentsList(docs);
-    setSubmissionsList(subs);
-    setNotificationsList(notis);
+    const cleanedDocs = (docs || []).filter(d => {
+      if (!d) return false;
+      const strId = String(d.id || '');
+      if (strId.startsWith('doc-seed-') || (d.file_url && d.file_url.includes('w3.org/WAI')) || (d.summary && d.summary.includes('30 Chi đoàn Ấp'))) return false;
+      return true;
+    });
+    setDocumentsList(cleanedDocs);
+
+    const cleanedSubs = (subs || []).filter(s => {
+      if (!s) return false;
+      const strId = String(s.id || '');
+      if (strId.startsWith('sub-seed-') || (s.file_url && s.file_url.includes('w3.org/WAI'))) return false;
+      return true;
+    });
+    setSubmissionsList(cleanedSubs);
+
+    const cleanedNotis = (notis || []).filter(n => {
+      if (!n) return false;
+      const strId = String(n.id || '');
+      if (strId.startsWith('noti-seed-') || (n.title && n.title.includes('30 Chi đoàn Ấp'))) return false;
+      return true;
+    });
+    setNotificationsList(cleanedNotis);
 
     const cleanedTasks = (tsks || []).filter(t => {
       if (!t) return false;
@@ -278,12 +298,14 @@ export default function App() {
   }
 
   const isDoanXa = currentUser.role === 'doan_xa';
+  const userBranchName = currentUser.branch_name || currentUser.full_name || '';
 
   // Filtered unit-scoped data lists for Chi đoàn user (Đoàn xã sees all items)
   const userActivities = isDoanXa ? activitiesList : activitiesList.filter(a => isItemTargetedToUser(a.assigned_to || 'ALL', currentUser));
   const userDocuments = isDoanXa ? documentsList : documentsList.filter(d => isItemTargetedToUser(d.recipient_scope || 'ALL', currentUser));
   const userNotifications = isDoanXa ? notificationsList : notificationsList.filter(n => isItemTargetedToUser(n.target_scope || 'ALL', currentUser));
   const userTasks = isDoanXa ? tasksList : tasksList.filter(t => isItemTargetedToUser(t.assigned_to || 'ALL', currentUser));
+  const userSubmissions = isDoanXa ? submissionsList : submissionsList.filter(s => s && (s.branch_name === userBranchName || s.sender === userBranchName || s.sender === currentUser.full_name));
 
   const incomingDocsCount = submissionsList.length + userDocuments.filter(d => d.type === 'incoming').length;
   const outgoingDocsCount = userDocuments.filter(d => d.type === 'outgoing' || !d.type).length;
@@ -963,7 +985,7 @@ export default function App() {
                   {/* Bottom Row for Chi Đoàn Ấp: Submission History Table */}
                   {!isDoanXa && (
                     <DocHistoryTable 
-                      submissions={submissionsList}
+                      submissions={userSubmissions}
                       setActiveTab={setActiveTab} 
                       onDeleteSubmission={handleDeleteSubmission}
                     />
@@ -977,7 +999,7 @@ export default function App() {
                   <PendingDocs 
                     currentRole={currentUser}
                     documents={userDocuments}
-                    submissions={submissionsList}
+                    submissions={userSubmissions}
                     setActiveTab={setActiveTab}
                   />
 
@@ -1037,7 +1059,7 @@ export default function App() {
           ) : activeTab === 'submission_history' ? (
             /* SUBMISSIONS HISTORY VIEW */
             <SubmissionsView 
-              submissions={submissionsList}
+              submissions={userSubmissions}
               onOpenSubmitDoc={() => setShowSubmitDocModal(true)}
               onDeleteSubmission={handleDeleteSubmission}
             />

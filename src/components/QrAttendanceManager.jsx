@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  QrCode, Camera, MapPin, Copy, ExternalLink, RefreshCw, CheckCircle, 
+  QrCode, Lock, Camera, MapPin, Copy, ExternalLink, RefreshCw, CheckCircle, 
   Maximize2, X, Download, ShieldCheck, Clock, AlertCircle, Sparkles, Loader2, Navigation,
   Image as ImageIcon, UploadCloud, Eye, Trash2, Smartphone
 } from 'lucide-react';
@@ -33,6 +33,15 @@ export default function QrAttendanceManager({
   const [photoReport, setPhotoReport] = useState(null);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
   const [scanStatusMsg, setScanStatusMsg] = useState('Đang khởi động camera...');
+  const [currentRealTime, setCurrentRealTime] = useState(new Date());
+
+  // Đồng hồ thời gian thực cập nhật từng giây
+  useEffect(() => {
+    const clockTimer = setInterval(() => {
+      setCurrentRealTime(new Date());
+    }, 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
 
   const videoRef = useRef(null);
   const photoVideoRef = useRef(null);
@@ -44,6 +53,24 @@ export default function QrAttendanceManager({
   const userBranchName = currentRole?.branch_name || currentRole?.full_name || 'Chi đoàn';
   const isExpired = isActivityExpired(activity);
   const timeStatus = getActivityTimeStatus(activity);
+
+  // Định dạng ngày tháng và giờ thực tế
+  const realDateDisplay = currentRealTime.toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+  const realClockDisplay = currentRealTime.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  // Kiểm tra xem Chi đoàn đã điểm danh cho hoạt động này chưa (1 lần duy nhất)
+  const isAlreadyAttended = !!attendanceSuccess || 
+    (Array.isArray(gpsLogs) && gpsLogs.some(l => l && l.branch_name === userBranchName)) ||
+    (Array.isArray(activity?.confirmedBy) && activity.confirmedBy.some(c => (c.name || c) === userBranchName));
 
   // Tải mã QR và Lịch sử GPS logs của hoạt động
   useEffect(() => {
@@ -117,6 +144,10 @@ export default function QrAttendanceManager({
   // CAMERA 1: QUÉT MÃ QR BẰNG jsQR TRỰC TIẾP TỪ VIDEO
   // =========================================================================
   const handleStartQrCamera = async () => {
+    if (isAlreadyAttended || attendanceSuccess) {
+      alert(`Đơn vị "${userBranchName}" đã hoàn thành điểm danh rồi (chỉ được điểm danh đúng 1 lần duy nhất)!`);
+      return;
+    }
     if (isExpired) {
       alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, không thể quét QR.');
       return;
@@ -305,6 +336,14 @@ export default function QrAttendanceManager({
   // XÁC THỰC GPS & GỬI DỮ LIỆU ĐIỂM DANH
   // =========================================================================
   const processGpsVerification = async (sourceType = 'CAMERA_QR', attachedPhoto = null) => {
+    // Chặn tuyệt đối nếu đơn vị đã điểm danh rồi (chỉ điểm danh đúng 1 lần duy nhất)
+    const currentAuditLogs = getActivityGpsAuditLogs(actId);
+    const existingLog = currentAuditLogs.find(l => l && l.branch_name === userBranchName);
+    if (existingLog || attendanceSuccess) {
+      alert(`Đơn vị "${userBranchName}" đã hoàn tất điểm danh cho hoạt động này rồi.\nTheo quy định: Mỗi Chi đoàn chỉ được điểm danh đúng 01 lần duy nhất!`);
+      return;
+    }
+
     if (isExpired) {
       alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, hệ thống không nhận dữ liệu.');
       return;
@@ -334,7 +373,9 @@ export default function QrAttendanceManager({
     }
 
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
+    const dateFormatted = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const clockFormatted = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const fullTimeStr = `${clockFormatted} ngày ${dateFormatted}`;
 
     const logEntry = {
       id: `gps-log-${Date.now()}`,
@@ -342,7 +383,9 @@ export default function QrAttendanceManager({
       user_name: currentRole?.full_name || userBranchName,
       user_id: currentRole?.id,
       timestamp: now.toISOString(),
-      time_str: timeStr,
+      date_str: dateFormatted,
+      clock_str: clockFormatted,
+      time_str: fullTimeStr,
       latitude: coords.lat,
       longitude: coords.lng,
       accuracy: coords.accuracy,
@@ -368,6 +411,10 @@ export default function QrAttendanceManager({
   // Chi đoàn nhập mã thủ công
   const handleManualSubmit = (e) => {
     e.preventDefault();
+    if (isAlreadyAttended || attendanceSuccess) {
+      alert(`Đơn vị "${userBranchName}" đã hoàn thành điểm danh rồi (chỉ được điểm danh đúng 1 lần duy nhất)!`);
+      return;
+    }
     if (isExpired) {
       alert('Hoạt động này đã kết thúc! Mã điểm danh đã hết hiệu lực, không thể gửi điểm danh.');
       return;
@@ -743,63 +790,116 @@ export default function QrAttendanceManager({
         /* MATCHED 100% WITH USER SCREENSHOT                                         */
         /* ========================================================================= */
         <div className="branch-qr-attendance">
-          {/* Header text matching screenshot */}
+          {/* Header thông tin xác thực */}
           <div className="mb-3">
             <h5 className="fw-bold text-dark d-flex align-items-center gap-2 mb-1" style={{ fontSize: '16px' }}>
               <QrCode size={19} className="text-success" />
               <span>Điểm Danh Xác Thực Vị Trí</span>
             </h5>
             <div className="text-secondary" style={{ fontSize: '12.5px' }}>
-              Quét mã QR do Ban Chủ Nhiệm cung cấp để xác nhận có mặt tại sự kiện
+              Quét mã QR do Ban Chủ Nhiệm cung cấp hoặc nhập mã xác thực (XTS-XXXXXX) để xác nhận có mặt tại sự kiện
             </div>
           </div>
 
-          {/* Expiration Banner if Activity is finished */}
+          {/* BANNER THỜI GIAN THỰC & ĐỊNH VỊ GPS CHÍNH XÁC */}
+          <div 
+            className="card border-0 shadow-sm rounded-4 mb-3.5 p-3.5 text-white" 
+            style={{ background: 'linear-gradient(135deg, #0c3b2e 0%, #174e3f 100%)' }}
+          >
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5">
+              <div className="d-flex align-items-center gap-3">
+                <div className="p-2.5 rounded-3 bg-white bg-opacity-15 text-white d-flex align-items-center justify-content-center">
+                  <Clock size={26} />
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-danger text-white px-2 py-0.5 rounded-pill fw-bold" style={{ fontSize: '10.5px' }}>
+                      🔴 THỜI GIAN THỰC
+                    </span>
+                    <span className="text-light text-capitalize" style={{ fontSize: '12.5px' }}>
+                      {realDateDisplay}
+                    </span>
+                  </div>
+                  <div className="fw-bold font-monospace mt-0.5" style={{ fontSize: '22px', letterSpacing: '1px' }}>
+                    {realClockDisplay}
+                  </div>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <div 
+                  className="badge bg-success bg-opacity-25 border border-success border-opacity-50 text-white px-3 py-2 rounded-pill d-flex align-items-center gap-1.5" 
+                  style={{ fontSize: '12px' }}
+                >
+                  <Navigation size={13} />
+                  <span>GPS: Sẵn sàng định vị vị trí thực</span>
+                </div>
+                <div 
+                  className="badge bg-warning bg-opacity-20 border border-warning border-opacity-50 text-warning px-3 py-2 rounded-pill d-flex align-items-center gap-1.5" 
+                  style={{ fontSize: '12px' }}
+                >
+                  <Lock size={13} />
+                  <span>Quy định: Điểm danh đúng 01 lần duy nhất</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Cảnh báo nếu hoạt động đã kết thúc trong quá khứ */}
           {isExpired && (
             <div className="alert alert-danger d-flex align-items-center gap-3 rounded-4 p-3.5 mb-3.5 shadow-sm border-danger">
               <AlertCircle size={24} className="text-danger flex-shrink-0" />
               <div>
                 <h6 className="fw-bold mb-1 text-danger">⚠️ Hoạt động đã kết thúc!</h6>
                 <div style={{ fontSize: '12.5px', lineHeight: 1.5 }}>
-                  Mã điểm danh cho hoạt động này (<strong>{qrInfo?.code || 'XTS-XXXXXX'}</strong>) đã <strong>tự động hết hiệu lực</strong> lúc {timeStatus.statusText || 'kết thúc'}. Chi đoàn không thể quét QR hoặc nhập mã để điểm danh bổ sung.
+                  Hoạt động này đã hoàn thành. Hệ thống đã khóa tiếp nhận điểm danh bổ sung từ các Chi đoàn.
                 </div>
               </div>
             </div>
           )}
 
-          {/* Already Attended Card */}
-          {attendanceSuccess ? (
+          {/* TRƯỜNG HỢP 1: ĐÃ ĐIỂM DANH THÀNH CÔNG -> KHÓA LẠI (CHỈ ĐIỂM DANH 1 LẦN DUY NHẤT) */}
+          {(isAlreadyAttended || attendanceSuccess) ? (
             <div 
-              className="p-4 mb-3 rounded-4 border text-center"
+              className="p-4 mb-3 rounded-4 border text-center shadow-sm"
               style={{ 
                 backgroundColor: '#f0fdf4',
-                borderColor: '#bbf7d0'
+                borderColor: '#86efac'
               }}
             >
               <div 
-                className="p-3 rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center mb-2.5 shadow-sm"
-                style={{ width: '56px', height: '56px' }}
+                className="p-3.5 rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center mb-2.5 shadow-sm"
+                style={{ width: '64px', height: '64px' }}
               >
-                <CheckCircle size={32} />
+                <CheckCircle size={36} />
               </div>
-              <h5 className="fw-bold text-success mb-1" style={{ fontSize: '16px' }}>
+              <h5 className="fw-bold text-success mb-1" style={{ fontSize: '17px' }}>
                 ĐÃ ĐIỂM DANH XÁC THỰC GPS THÀNH CÔNG!
               </h5>
-              <div className="text-secondary mb-3" style={{ fontSize: '12.5px' }}>
-                Đơn vị: <strong>{userBranchName}</strong> đã được ghi nhận có mặt tại sự kiện.
+              <div className="d-inline-flex align-items-center gap-1.5 badge bg-success text-white px-3 py-1.5 rounded-pill fw-bold mb-3 shadow-xs" style={{ fontSize: '12px' }}>
+                <Lock size={13} />
+                <span>HOÀN TẤT ĐIỂM DANH (ĐÚNG 1 LẦN DUY NHẤT)</span>
+              </div>
+              <div className="text-secondary mb-3" style={{ fontSize: '13px' }}>
+                Đơn vị: <strong className="text-dark">{userBranchName}</strong> đã được ghi nhận có mặt chính thức tại hoạt động: <strong className="text-dark">{activity?.title || 'Hoạt động Đoàn'}</strong>.
               </div>
 
-              <div className="p-2.5 bg-white rounded-3 border d-inline-block text-start mb-3" style={{ fontSize: '12px', minWidth: '300px' }}>
-                <div>⏰ Thời gian điểm danh: <strong>{attendanceSuccess.time_str}</strong></div>
-                <div>📍 Tọa độ GPS đã ghi: <span className="font-monospace text-primary fw-bold">{attendanceSuccess.latitude.toFixed(6)}, {attendanceSuccess.longitude.toFixed(6)}</span></div>
-                <div>🛡️ Trạng thái: <span className="badge bg-success text-white">Đã đối soát hợp lệ</span></div>
-                {attendanceSuccess.photo_url && (
-                  <div className="mt-2 pt-2 border-top">
-                    <span className="text-muted d-block mb-1">📸 Ảnh báo cáo đã gửi:</span>
+              <div className="p-3 bg-white rounded-3 border d-inline-block text-start mb-3 shadow-xs" style={{ fontSize: '12.5px', minWidth: '340px' }}>
+                <div className="mb-1.5">🏢 <strong>Đơn vị:</strong> {userBranchName}</div>
+                <div className="mb-1.5">⏰ <strong>Thời gian thực tế:</strong> <span className="fw-bold text-dark">{(attendanceSuccess && attendanceSuccess.time_str) || 'Đã ghi nhận'}</span></div>
+                <div className="mb-1.5">📍 <strong>Tọa độ GPS ghi nhận:</strong> <span className="font-monospace text-primary fw-bold">{(attendanceSuccess && attendanceSuccess.latitude) ? `${attendanceSuccess.latitude.toFixed(6)}, ${attendanceSuccess.longitude.toFixed(6)}` : 'Đã định vị thành công'}</span></div>
+                <div className="mb-1.5">🛡️ <strong>Phương thức:</strong> <span className="badge bg-primary text-white">{(attendanceSuccess && attendanceSuccess.verified_by === 'CAMERA_QR') ? '📷 Quét mã QR Camera' : '⌨️ Nhập mã xác thực (XTS-XXXXXX)'}</span></div>
+                <div className="mb-1.5">🛡️ <strong>Trạng thái:</strong> <span className="badge bg-success text-white">✓ Hợp lệ tại sự kiện</span></div>
+                <div className="mt-2.5 pt-2 border-top text-secondary" style={{ fontSize: '11.5px', lineHeight: 1.5 }}>
+                  🔒 <em>Quy định bảo mật: Dữ liệu điểm danh của Chi đoàn đã được khóa trên hệ thống và liên kết trực tiếp vào Báo cáo Thống kê. Mỗi đơn vị chỉ điểm danh đúng 1 lần duy nhất cho mỗi hoạt động.</em>
+                </div>
+                {attendanceSuccess && attendanceSuccess.photo_url && (
+                  <div className="mt-2.5 pt-2 border-top">
+                    <span className="text-muted d-block mb-1 fw-semibold">📸 Minh chứng có mặt:</span>
                     <img 
                       src={attendanceSuccess.photo_url} 
                       alt="Submitted proof" 
-                      style={{ maxHeight: '120px', borderRadius: '8px', cursor: 'pointer' }}
+                      style={{ maxHeight: '140px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #e2e8f0' }}
                       onClick={() => setSelectedPhotoModal(attendanceSuccess)}
                       title="Bấm để xem ảnh lớn"
                     />
@@ -807,30 +907,25 @@ export default function QrAttendanceManager({
                 )}
               </div>
 
-              {!isExpired && (
-                <div className="mt-2 d-flex align-items-center justify-content-center gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-success px-3 py-1.5 rounded-3 fw-semibold"
+              {attendanceSuccess && (
+                <div className="mt-1">
+                  <a
+                    href={attendanceSuccess.maps_url || `https://www.google.com/maps?q=${attendanceSuccess.latitude},${attendanceSuccess.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-sm btn-outline-success py-1.5 px-3 rounded-3 d-inline-flex align-items-center gap-1.5 fw-semibold"
                     style={{ fontSize: '12px' }}
-                    onClick={() => setAttendanceSuccess(null)}
                   >
-                    🔄 Quét lại / Cập nhật tọa độ mới
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary px-3 py-1.5 rounded-3 fw-semibold"
-                    style={{ fontSize: '12px' }}
-                    onClick={handleStartPhotoCamera}
-                  >
-                    📸 Chụp thêm ảnh báo cáo
-                  </button>
+                    <ExternalLink size={14} />
+                    <span>Xem vị trí điểm danh trên Google Maps</span>
+                  </a>
                 </div>
               )}
             </div>
           ) : (
+            /* TRƯỜNG HỢP 2: CHƯA ĐIỂM DANH -> HIỂN THỊ Ô QUÉT QR & NHẬP MÃ */
             <>
-              {/* Box 1: Quét Mã Trực Tiếp Bằng Camera Điện Thoại (Matched Screenshot 2) */}
+              {/* Box 1: Quét Mã Trực Tiếp Bằng Camera Điện Thoại */}
               <div 
                 className="p-4 mb-3.5 rounded-4 text-center border transition-all"
                 style={{ 
@@ -844,10 +939,9 @@ export default function QrAttendanceManager({
                   Quét Mã Trực Tiếp Bằng Camera Điện Thoại
                 </div>
                 <div className="text-secondary mb-3.5" style={{ fontSize: '12px' }}>
-                  Camera sẽ tự động quét mã QR từ Ban Chủ Nhiệm và lưu vị trí GPS xác minh.
+                  Camera sẽ tự động quét mã QR từ Ban Chủ Nhiệm và lưu vị trí GPS xác minh thời gian thực.
                 </div>
 
-                {/* Big Forest Green Camera CTA Button matching screenshot */}
                 <button 
                   type="button" 
                   className="btn px-4 py-2.5 rounded-4 fw-bold text-white d-inline-flex align-items-center justify-content-center gap-2 shadow-sm transition-all"
@@ -864,7 +958,7 @@ export default function QrAttendanceManager({
                   {isProcessingGps ? (
                     <>
                       <Loader2 size={16} className="spin" />
-                      <span>ĐANG XÁC THỰC GPS & BÁO CÁO...</span>
+                      <span>ĐANG XÁC THỰC GPS & THỜI GIAN THỰC...</span>
                     </>
                   ) : (
                     <>
@@ -956,7 +1050,7 @@ export default function QrAttendanceManager({
                 )}
               </div>
 
-              {/* Box 3: Hoặc nhập mã xác thực thủ công (XTS-XXXXXX) (Matched Screenshot 2) */}
+              {/* Box 3: Hoặc nhập mã xác thực thủ công (XTS-XXXXXX) */}
               <div 
                 className="p-3.5 rounded-4 border bg-white"
                 style={{ 

@@ -4294,9 +4294,46 @@ export function BranchAttendanceWorkspaceView({
   // KHÔNG hiển thị form tạo hoạt động, không hiển thị các tab phức tạp.
   // ==========================================================================
   if (!isDoanXa) {
-    const currentBranchAct = safeActivities.find(a => String(a.id) === String(branchSelectedActId)) 
-      || safeActivities[0] 
-      || { id: 'live-attendance-session', title: 'Hoạt động & Sự kiện Đoàn xã', status: 'Đang diễn ra' };
+    const userBranchName = currentRole?.branch_name || currentRole?.full_name || '';
+    const branchActivities = safeActivities.filter(a => 
+      a && isItemTargetedToUser(a.assigned_to || 'ALL', currentRole)
+    );
+
+    // Nếu Ban Thường vụ Đoàn xã chưa ban hành hoạt động nào cho Chi đoàn này
+    if (branchActivities.length === 0) {
+      return (
+        <div className="container-fluid px-0">
+          <div className="card border-0 shadow-sm rounded-4 mb-3 p-3.5 bg-white">
+            <div className="d-flex align-items-center gap-2.5">
+              <div className="p-2.5 bg-success-subtle text-success rounded-3">
+                <QrCode size={22} />
+              </div>
+              <div>
+                <h5 className="fw-bold text-dark mb-0.5" style={{ fontSize: '16.5px' }}>
+                  Điểm Danh Hoạt Động & Sự Kiện
+                </h5>
+                <div className="text-secondary" style={{ fontSize: '12.5px' }}>
+                  Đơn vị: <strong className="text-dark">{userBranchName || 'Chi đoàn trực thuộc'}</strong> • Quét mã QR hoặc nhập mã để xác nhận có mặt
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+            <div className="p-3.5 bg-success-subtle text-success rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '64px', height: '64px' }}>
+              <Calendar size={32} />
+            </div>
+            <h5 className="fw-bold text-dark mb-1">Hiện Chưa Có Hoạt Động Cần Điểm Danh</h5>
+            <p className="text-secondary mb-0 mx-auto" style={{ maxWidth: '520px', fontSize: '13px', lineHeight: 1.6 }}>
+              Ban Thường vụ Đoàn xã chưa ban hành hoạt động cần điểm danh cho đơn vị <strong>{userBranchName}</strong>. Khi có hoạt động mới diễn ra, giao diện điểm danh quét mã QR và nhập mã Code xác thực sẽ tự động xuất hiện tại đây.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const currentBranchAct = branchActivities.find(a => String(a.id) === String(branchSelectedActId)) 
+      || branchActivities[0];
 
     return (
       <div className="container-fluid px-0">
@@ -4312,12 +4349,12 @@ export function BranchAttendanceWorkspaceView({
                   Điểm Danh Hoạt Động & Sự Kiện
                 </h5>
                 <div className="text-secondary" style={{ fontSize: '12.5px' }}>
-                  Đơn vị: <strong className="text-dark">{currentRole?.branch_name || currentRole?.full_name || 'Chi đoàn trực thuộc'}</strong> • Quét mã QR hoặc nhập mã để xác nhận có mặt
+                  Đơn vị: <strong className="text-dark">{userBranchName || 'Chi đoàn trực thuộc'}</strong> • Quét mã QR hoặc nhập mã để xác nhận có mặt
                 </div>
               </div>
             </div>
 
-            {safeActivities.length > 1 && (
+            {branchActivities.length > 1 && (
               <div className="d-flex align-items-center gap-2">
                 <label className="text-muted small mb-0 fw-semibold">Chọn hoạt động:</label>
                 <select 
@@ -4326,7 +4363,7 @@ export function BranchAttendanceWorkspaceView({
                   onChange={(e) => setBranchSelectedActId(e.target.value)}
                   style={{ fontSize: '12.5px', maxWidth: '320px' }}
                 >
-                  {safeActivities.map(act => (
+                  {branchActivities.map(act => (
                     <option key={act.id} value={act.id}>
                       📌 {act.title}
                     </option>
@@ -4336,7 +4373,7 @@ export function BranchAttendanceWorkspaceView({
             )}
           </div>
 
-          {currentBranchAct?.title && safeActivities.length > 0 && (
+          {currentBranchAct?.title && (
             <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center gap-3 flex-wrap" style={{ fontSize: '12.5px' }}>
               <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold">
                 📌 {currentBranchAct.title}
@@ -4360,8 +4397,14 @@ export function BranchAttendanceWorkspaceView({
             activity={currentBranchAct}
             currentRole={currentRole}
             isDoanXa={false}
-            onAttendanceSuccess={(actId, branch, log) => {
-              onRespondAttendance && onRespondAttendance(actId, branch, true, '', currentBranchAct?.title);
+            onAttendanceSuccess={(actId, branchName, log) => {
+              onRespondAttendance && onRespondAttendance(actId, branchName, true, {
+                time: log?.time_str || 'Đã xác nhận có mặt',
+                method: log?.verified_by || 'CAMERA_QR',
+                latitude: log?.latitude,
+                longitude: log?.longitude,
+                photo_url: log?.photo_url || null
+              });
               onConfirmReceipt && onConfirmReceipt('activity', currentBranchAct);
             }}
           />

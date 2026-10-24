@@ -340,153 +340,12 @@ export const INITIAL_ACTIVITIES = [];
 // Seed Youth Members Dataset (Đã làm sạch toàn bộ dữ liệu ảo theo yêu cầu)
 export const INITIAL_MEMBERS = [];
 
-export const INITIAL_DOCUMENTS = [
-  {
-    id: 'doc-seed-1',
-    doc_number: '15-KH/ĐX-XTS',
-    title: 'Kế hoạch Tổ chức Chiến dịch Thanh niên Tình nguyện Mùa Hè Xanh năm 2026',
-    summary: 'Ban hành ngày 10/08/2026 - Kế hoạch triển khai công trình thanh niên tại 30 Chi đoàn Ấp',
-    sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 56 Chi đoàn',
-    status: 'Đã đọc',
-    type: 'outgoing',
-    date: '10/08/2026',
-    file_name: 'Ke_hoach_15_KH_DX_Mua_He_Xanh_2026.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    storage_provider: 'supabase'
-  },
-  {
-    id: 'doc-seed-2',
-    doc_number: '28-TB/ĐX-XTS',
-    title: 'Thông báo Triệu tập Đại biểu tham dự Hội nghị Học tập & Quán triệt Nghị quyết Đoàn xã',
-    summary: 'Ban hành ngày 01/09/2026 - Triệu tập Bí thư, Phó Bí thư và Đoàn viên ưu tú 30 Ấp',
-    sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 56 Chi đoàn',
-    status: 'Chưa đọc',
-    type: 'incoming',
-    date: '01/09/2026',
-    file_name: 'Thong_bao_28_TB_Trieu_tap_Hoi_nghi.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    storage_provider: 'supabase'
-  },
-  {
-    id: 'doc-seed-3',
-    doc_number: '42-QĐ/ĐX-XTS',
-    title: 'Quyết định Phê duyệt Kế hoạch Ra quân Đồng loạt "Ngày Chủ nhật Xanh" Quý III/2026',
-    summary: 'Ban hành ngày 05/09/2026 - Quy định nội dung và chỉ tiêu triển khai cho 6 Cụm thi đua',
-    sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 56 Chi đoàn',
-    status: 'Chưa đọc',
-    type: 'incoming',
-    date: '05/09/2026',
-    file_name: 'Quyet_dinh_42_QD_Ngay_Chu_Nhat_Xanh.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    storage_provider: 'supabase'
-  },
-  {
-    id: 'doc-seed-4',
-    doc_number: '09-HD/ĐX-XTS',
-    title: 'Hướng dẫn Công tác Quản lý Đoàn viên và Thu nộp Đoàn phí năm 2026',
-    summary: 'Ban hành ngày 15/05/2026 - Quy trình cập nhật sổ đoàn viên và báo cáo đoàn phí 30 Ấp',
-    sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 56 Chi đoàn',
-    status: 'Đã đọc',
-    type: 'outgoing',
-    date: '15/05/2026',
-    file_name: 'Huong_dan_09_HD_Quan_ly_Doan_vien.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    storage_provider: 'supabase'
-  }
-];
-
-export const INITIAL_DOCUMENTS_DOAN_XA = INITIAL_DOCUMENTS;
-export const INITIAL_DOCUMENTS_CHI_DOAN = INITIAL_DOCUMENTS;
-
-export const INITIAL_SUBMISSION_HISTORY = [
-  {
-    id: 'sub-seed-1',
-    doc_title: 'Báo cáo Kết quả Hoạt động Tháng 8/2026 và Phương hướng Nhiệm vụ Tháng 9/2026',
-    branch_name: 'Chi đoàn Ấp Mỹ Hoà 2',
-    sender: 'Bí thư Chi đoàn Ấp Mỹ Hoà 2',
-    submitted_at: '28/08/2026 15:30',
-    status: 'Đã tiếp nhận',
-    file_name: 'Bao_cao_Thang_8_Chi_doan_Ap_My_Hoa_2.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    notes: 'Đã gửi kèm danh sách đoàn viên tham gia Chiến dịch Mùa Hè Xanh.'
-  },
-  {
-    id: 'sub-seed-2',
-    doc_title: 'Danh sách Rà soát Đoàn viên Ưu tú và Cảm tình Đảng Quý III/2026',
-    branch_name: 'Chi đoàn Ấp Bùi Môn',
-    sender: 'Bí thư Chi đoàn Ấp Bùi Môn',
-    submitted_at: '30/08/2026 09:15',
-    status: 'Đã tiếp nhận',
-    file_name: 'Danh_sach_Doan_vien_uu_tu_Ap_Bui_Mon.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    notes: 'Trình 03 hồ sơ đoàn viên ưu tú xuất sắc.'
-  },
-  {
-    id: 'sub-seed-3',
-    doc_title: 'Báo cáo Thu nộp Đoàn phí Quý II/2026 và Danh sách Đoàn viên Sinh hoạt',
-    branch_name: 'Chi đoàn Ấp Dân Thắng',
-    sender: 'Bí thư Chi đoàn Ấp Dân Thắng',
-    submitted_at: '02/09/2026 14:20',
-    status: 'Đang xử lý',
-    file_name: 'Bao_cao_Doan_phi_Ap_Dan_Thang.pdf',
-    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    notes: 'Số tiền đoàn phí đã chuyển qua tài khoản Đoàn xã.'
-  }
-];
-
-export const INITIAL_REQUIRED_SUBMISSIONS = [
-  {
-    id: 'req-seed-1',
-    title: 'Nộp Báo cáo Kết quả Ra quân "Ngày Chủ nhật Xanh" và Hình ảnh Tư liệu 30 Ấp',
-    deadline: '22/09/2026',
-    status: 'Chưa nộp',
-    assigned_to: 'Tất cả 56 Chi đoàn'
-  },
-  {
-    id: 'req-seed-2',
-    title: 'Nộp Danh sách Rà soát Cập nhật Số lượng Đoàn viên Tháng 9/2026',
-    deadline: '15/09/2026',
-    status: 'Chưa nộp',
-    assigned_to: 'Tất cả 56 Chi đoàn'
-  }
-];
-
-export const INITIAL_NOTIFICATIONS = [
-  {
-    id: 'noti-seed-1',
-    title: '🚨 KHẨN: Triệu tập Bán Thường vụ & Bí thư 30 Chi đoàn Ấp họp đột xuất sáng mai',
-    content: 'Ban Thường vụ Đoàn xã triệu tập đồng chí Bí thư (hoặc Phó Bí thư) 30 Chi đoàn Ấp tham dự buổi họp rà soát công tác chuẩn bị Ngày Chủ nhật Xanh vào lúc 08h00 ngày 10/09/2026 tại Phòng họp số 2 UBND Xã.',
-    priority: 'Khẩn cấp',
-    target_scope: 'Tất cả 56 Chi đoàn',
-    created_at: '2026-09-08 16:00',
-    date: '08/09/2026',
-    sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
-  },
-  {
-    id: 'noti-seed-2',
-    title: '📢 V/v Nhắc nhở nộp Báo cáo Kết quả Hoạt động Tháng 8/2026 đúng thời hạn',
-    content: 'Yêu cầu các Chi đoàn Ấp chưa nộp báo cáo hoạt động tháng 8 khẩn trương hoàn thiện văn bản và nộp trên Hệ thống Quản lý trước 17h00 ngày 12/09/2026.',
-    priority: 'Quan trọng',
-    target_scope: 'Tất cả 56 Chi đoàn',
-    created_at: '2026-09-07 09:30',
-    date: '07/09/2026',
-    sender: 'Văn phòng Đoàn xã Xuân Thới Sơn'
-  },
-  {
-    id: 'noti-seed-3',
-    title: '🌟 Thông báo Khen thưởng Tập thể & Cá nhân xuất sắc trong Chiến dịch Mùa Hè Xanh',
-    content: 'Chúc mừng 6 Chi đoàn Ấp thuộc Cụm thi đua số 1 đã hoàn thành xuất sắc chỉ tiêu công trình thanh niên Mùa Hè Xanh năm 2026.',
-    priority: 'Bình thường',
-    target_scope: 'Tất cả 56 Chi đoàn',
-    created_at: '2026-09-05 14:15',
-    date: '05/09/2026',
-    sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
-  }
-];
+export const INITIAL_DOCUMENTS = [];
+export const INITIAL_DOCUMENTS_DOAN_XA = [];
+export const INITIAL_DOCUMENTS_CHI_DOAN = [];
+export const INITIAL_SUBMISSION_HISTORY = [];
+export const INITIAL_REQUIRED_SUBMISSIONS = [];
+export const INITIAL_NOTIFICATIONS = [];
 
 export const INITIAL_TASKS = [];
 
@@ -1205,14 +1064,13 @@ export async function syncFetchDocuments() {
     meeting_docs: 'Văn bản cuộc họp'
   };
 
-  let localList = getPersistedData('documents', null);
-  if (localList === null) {
-    localList = INITIAL_DOCUMENTS;
-  }
+  let localList = getPersistedData('documents', []);
   const seenLocal = new Set();
   localList = (localList || []).filter(d => {
     if (!d) return false;
-    if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
+    const strId = String(d.id || '');
+    if (strId.startsWith('doc-seed-') || (d.file_url && d.file_url.includes('w3.org/WAI')) || (d.summary && d.summary.includes('30 Chi đoàn Ấp'))) return false;
+    if (deleted.includes(strId) || (d.title && deleted.includes(d.title))) return false;
     const key = (d.title && d.title.trim()) ? d.title.trim() : String(d.id);
     if (seenLocal.has(key)) return false;
     seenLocal.add(key);
@@ -1418,13 +1276,15 @@ export async function syncDeleteDocument(docId, docTitle = '') {
 // ============================================================================
 export async function syncFetchSubmissions() {
   const deleted = getDeletedItems('submissions');
-  let localList = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
-  if (!localList || localList.length === 0) {
-    localList = INITIAL_SUBMISSION_HISTORY;
-    setPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
-  }
-
-  localList = (localList || []).filter(s => s && !deleted.includes(String(s.id)) && (!s.title || !deleted.includes(s.title)) && (!s.doc_title || !deleted.includes(s.doc_title)));
+  let localList = getPersistedData('submissions', []);
+  localList = (localList || []).filter(s => {
+    if (!s) return false;
+    const strId = String(s.id || '');
+    if (strId.startsWith('sub-seed-') || (s.file_url && s.file_url.includes('w3.org/WAI'))) return false;
+    if (deleted.includes(strId) || (s.title && deleted.includes(s.title)) || (s.doc_title && deleted.includes(s.doc_title))) return false;
+    return true;
+  });
+  setPersistedData('submissions', localList);
 
   if (supabase) {
     try {
@@ -1626,11 +1486,14 @@ export function sortNotificationsByPriority(notis = []) {
 // ============================================================================
 export async function syncFetchNotifications() {
   const deleted = getDeletedItems('notifications');
-  let localList = getPersistedData('notifications', null);
-  if (localList === null) {
-    localList = INITIAL_NOTIFICATIONS;
-  }
-  localList = (localList || []).filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
+  let localList = getPersistedData('notifications', []);
+  localList = (localList || []).filter(n => {
+    if (!n) return false;
+    const strId = String(n.id || '');
+    if (strId.startsWith('noti-seed-') || (n.title && n.title.includes('30 Chi đoàn Ấp'))) return false;
+    if (deleted.includes(strId) || (n.title && deleted.includes(n.title))) return false;
+    return true;
+  });
   setPersistedData('notifications', localList);
 
   if (supabase) {
@@ -2082,9 +1945,31 @@ export function generateRandomXtsCode() {
 // Kiểm tra xem hoạt động đã kết thúc hay chưa để tự động hết hiệu lực mã QR & Code
 export function isActivityExpired(activity) {
   if (!activity) return false;
-  if (activity.status === 'Đã hoàn thành') return true;
-  const timeStatus = getActivityTimeStatus(activity);
-  if (timeStatus && timeStatus.code === 'FINISHED') return true;
+  if (activity.status === 'Đã hoàn thành' || activity.status === 'Đã kết thúc') return true;
+  if (activity.is_closed === true) return true;
+
+  const now = new Date();
+  let year = parseInt(activity.year, 10);
+  let month = parseInt(activity.month, 10);
+  let day = parseInt(activity.day, 10);
+
+  if (activity.dateIso && (!year || !month || !day)) {
+    const parts = String(activity.dateIso).split('T')[0].split('-');
+    if (parts.length === 3) {
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    }
+  }
+
+  // Hoạt động chỉ tự động hết hiệu lực khi ngày diễn ra đã kết thúc trong quá khứ (trước hôm nay)
+  if (year && month && day) {
+    const actEndOfDay = new Date(year, month - 1, day, 23, 59, 59);
+    if (now > actEndOfDay) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -2130,8 +2015,15 @@ export function getActivityGpsAuditLogs(activityId) {
 export function saveActivityGpsAttendanceLog(activityId, logEntry) {
   const allLogs = getPersistedData('activity_gps_audit_logs', {});
   const currentActivityLogs = allLogs[activityId] || [];
-  const filtered = currentActivityLogs.filter(l => l.branch_name !== logEntry.branch_name);
-  const updatedList = [logEntry, ...filtered];
+  
+  // Quy định: Mỗi Chi đoàn chỉ điểm danh đúng 1 lần duy nhất cho mỗi hoạt động
+  const alreadyExists = currentActivityLogs.find(l => l.branch_name === logEntry.branch_name);
+  if (alreadyExists) {
+    console.warn(`Chi đoàn ${logEntry.branch_name} đã điểm danh cho hoạt động ${activityId} rồi (chỉ được điểm danh 1 lần duy nhất).`);
+    return currentActivityLogs;
+  }
+
+  const updatedList = [logEntry, ...currentActivityLogs];
   const updatedAll = {
     ...allLogs,
     [activityId]: updatedList

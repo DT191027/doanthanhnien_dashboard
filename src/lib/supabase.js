@@ -817,11 +817,70 @@ export function getActivityTimeStatus(act) {
 // ============================================================================
 // 1. ACTIVITIES SYNC (BẢNG HOẠT ĐỘNG)
 // ============================================================================
+
+// ============================================================================
+// UUID & METADATA SERIALIZATION HELPERS FOR ROBUST MULTI-DEVICE SYNC
+// ============================================================================
+export function generateUuid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {}
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+export function isValidUuid(id) {
+  if (!id || typeof id !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
+
+export function serializeActivityDescription(description, meta) {
+  return (description || '') + '\n<!--XTS_ACT_META:' + JSON.stringify(meta) + '-->';
+}
+
+export function deserializeActivityDescription(rawDesc) {
+  if (!rawDesc || typeof rawDesc !== 'string') return { description: '', meta: {} };
+  const marker = '\n<!--XTS_ACT_META:';
+  const idx = rawDesc.indexOf(marker);
+  if (idx !== -1 && rawDesc.endsWith('-->')) {
+    const description = rawDesc.slice(0, idx);
+    const jsonStr = rawDesc.slice(idx + marker.length, rawDesc.length - 3);
+    try {
+      return { description, meta: JSON.parse(jsonStr) };
+    } catch (e) {
+      return { description: rawDesc, meta: {} };
+    }
+  }
+  return { description: rawDesc, meta: {} };
+}
+
+export function serializeNotificationContent(content, meta) {
+  return (content || '') + '\n<!--XTS_NOTI_META:' + JSON.stringify(meta) + '-->';
+}
+
+export function deserializeNotificationContent(rawContent) {
+  if (!rawContent || typeof rawContent !== 'string') return { content: '', meta: {} };
+  const marker = '\n<!--XTS_NOTI_META:';
+  const idx = rawContent.indexOf(marker);
+  if (idx !== -1 && rawContent.endsWith('-->')) {
+    const content = rawContent.slice(0, idx);
+    const jsonStr = rawContent.slice(idx + marker.length, rawContent.length - 3);
+    try {
+      return { content, meta: JSON.parse(jsonStr) };
+    } catch (e) {
+      return { content: rawContent, meta: {} };
+    }
+  }
+  return { content: rawContent, meta: {} };
+}
+
 export async function syncFetchActivities() {
   const deleted = getDeletedItems('activities');
-  let localList = getPersistedData('activities', []);
-  // Loc sach 100% hoat dong ao
-  localList = (localList || []).filter(a => {
+  let localList = (getPersistedData('activities', INITIAL_ACTIVITIES) || []).filter(a => {
     if (!a) return false;
     const strId = String(a.id || '');
     if (strId.startsWith('act-seed-')) return false;
@@ -833,37 +892,103 @@ export async function syncFetchActivities() {
     )) return false;
     return true;
   });
-  setPersistedData('activities', localList);
 
   if (supabase) {
     try {
       const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        const mapped = data.map(item => {
+
+      // AUTO-SYNC: If there are activities in localList that are NOT yet in Supabase, upload them!
+      if (localList.length > 0) {
+        const supabaseIds = new Set((data || []).map(d => String(d.id)));
+        const supabaseTitles = new Set((data || []).map(d => String(d.title || '').trim().toLowerCase()));
+
+        for (const loc of localList) {
+          if (!supabaseIds.has(String(loc.id)) && !supabaseTitles.has(String(loc.title || '').trim().toLowerCase())) {
+            const locId = isValidUuid(loc.id) ? loc.id : generateUuid();
+            loc.id = locId;
+            let sTime = '08:00:00';
+            let eTime = '11:30:00';
+            if (loc.time && loc.time.includes(' - ')) {
+              const p = loc.time.split(' - ');
+              sTime = p[0].trim();
+              eTime = p[1].trim();
+              if (sTime.length === 5) sTime += ':00';
+              if (eTime.length === 5) eTime += ':00';
+            }
+            const meta = {
+              priority: loc.priority || 'Bình thường',
+              assigned_to: loc.assigned_to || 'Tất cả 56 Chi đoàn',
+              notes: loc.notes || '',
+              confirmedBy: loc.confirmedBy || [],
+              absentBy: loc.absentBy || [],
+              completedBy: loc.completedBy || [],
+              day: loc.day,
+              month: loc.month,
+              year: loc.year
+            };
+            try {
+              await supabase.from('activities').upsert([{
+                id: locId,
+                title: loc.title,
+                description: serializeActivityDescription(loc.description || '', meta),
+                start_date: loc.dateIso || new Date().toISOString().split('T')[0],
+                start_time: sTime,
+                end_time: eTime,
+                location: loc.location || OFFICIAL_ADDRESS,
+                status: loc.status || 'Đang diễn ra',
+                organizer: loc.organizer || 'Đoàn xã Xuân Thới Sơn'
+              }]);
+              console.log('Auto-migrated local activity to Supabase:', loc.title);
+            } catch (err) {
+              console.warn('Auto-migrate activity error:', err);
+            }
+          }
+        }
+      }
+
+      // Re-fetch after auto-sync
+      const { data: freshData, error: freshErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
+
+      if (!freshErr && freshData && freshData.length > 0) {
+        const mapped = freshData.map(item => {
+          const { description: cleanDesc, meta } = deserializeActivityDescription(item.description);
           const d = item.start_date ? new Date(item.start_date) : null;
-          const day = item.day || (d ? String(d.getDate()).padStart(2, '0') : '01');
-          const month = item.month || (d ? String(d.getMonth() + 1).padStart(2, '0') : '01');
-          const year = item.year || (d ? d.getFullYear() : 2026);
-          const matchedLocal = (localList || []).find(l => String(l.id) === String(item.id)) || {};
+          const day = meta.day || (d ? String(d.getDate()).padStart(2, '0') : '01');
+          const month = meta.month || (d ? String(d.getMonth() + 1).padStart(2, '0') : '01');
+          const year = meta.year || (d ? d.getFullYear() : 2026);
+          const time = item.start_time && item.end_time 
+            ? `${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)}` 
+            : '08:00 - 11:30';
+
           return {
-            ...matchedLocal,
-            ...item,
             id: item.id,
             title: item.title,
-            priority: item.priority === 'urgent' ? 'Khẩn cấp' : item.priority === 'important' ? 'Quan trọng' : (item.priority || 'Bình thường'),
-            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 56 Chi đoàn',
+            priority: meta.priority || (item.priority === 'urgent' ? 'Khẩn cấp' : item.priority === 'important' ? 'Quan trọng' : 'Bình thường'),
+            assigned_to: meta.assigned_to || 'Tất cả 56 Chi đoàn',
             day,
             month,
             year,
             dateIso: item.start_date ? item.start_date.slice(0, 10) : `${year}-${month}-${day}`,
-            time: item.time || matchedLocal.time || '08:00 - 11:30',
-            location: item.location || matchedLocal.location || 'Hội trường UBND Xã Xuân Thới Sơn',
-            status: item.status || matchedLocal.status || 'Đang diễn ra',
-            description: item.description || matchedLocal.description || '',
-            confirmedBy: Array.isArray(matchedLocal.confirmedBy) ? matchedLocal.confirmedBy : [],
-            absentBy: Array.isArray(matchedLocal.absentBy) ? matchedLocal.absentBy : []
+            date: `${day}/${month}/${year}`,
+            time,
+            startTime: item.start_time ? item.start_time.slice(0, 5) : '08:00',
+            endTime: item.end_time ? item.end_time.slice(0, 5) : '11:30',
+            location: item.location || OFFICIAL_ADDRESS,
+            status: item.status || 'Đang diễn ra',
+            description: cleanDesc,
+            notes: meta.notes || '',
+            confirmedBy: Array.isArray(meta.confirmedBy) ? meta.confirmedBy : [],
+            absentBy: Array.isArray(meta.absentBy) ? meta.absentBy : [],
+            completedBy: Array.isArray(meta.completedBy) ? meta.completedBy : [],
+            hasSubTasks: Boolean(meta.hasSubTasks),
+            subTasks: meta.subTasks || [],
+            file_name: meta.file_name || '',
+            file_url: meta.file_url || '',
+            organizer: item.organizer || 'Đoàn xã Xuân Thới Sơn',
+            created_at: item.created_at
           };
         }).filter(a => a && !String(a.id || '').startsWith('act-seed-') && !deleted.includes(String(a.id)));
+
         setPersistedData('activities', mapped);
         return mapped;
       }
@@ -871,46 +996,77 @@ export async function syncFetchActivities() {
       console.warn('Supabase activities fetch exception:', e);
     }
   }
+
+  setPersistedData('activities', localList);
   return localList;
 }
 
 export async function syncSaveActivity(activityItem) {
+  const finalId = isValidUuid(activityItem.id) ? activityItem.id : generateUuid();
+  const normalizedAct = {
+    ...activityItem,
+    id: finalId,
+    priority: activityItem.priority || 'Bình thường',
+    assigned_to: activityItem.assigned_to || 'Tất cả 56 Chi đoàn',
+    status: activityItem.status || 'Đang diễn ra'
+  };
+
   const current = getPersistedData('activities', []);
-  const exists = current.some(item => item.id === activityItem.id);
+  const exists = current.some(item => String(item.id) === String(finalId));
   const updatedRaw = exists
-    ? current.map(item => item.id === activityItem.id ? { ...item, ...activityItem } : item)
-    : [activityItem, ...current];
+    ? current.map(item => String(item.id) === String(finalId) ? { ...item, ...normalizedAct } : item)
+    : [normalizedAct, ...current];
 
   const cleanList = deduplicateActivities(updatedRaw);
   setPersistedData('activities', cleanList);
-  notifySyncEvent('SAVE_ACTIVITY', activityItem);
+  notifySyncEvent('SAVE_ACTIVITY', normalizedAct);
 
   if (supabase) {
     try {
       let startTime = '08:00:00';
       let endTime = '11:30:00';
-      if (activityItem.time && activityItem.time.includes(' - ')) {
-        const parts = activityItem.time.split(' - ');
-        startTime = parts[0].length === 5 ? `${parts[0]}:00` : parts[0];
-        endTime = parts[1].length === 5 ? `${parts[1]}:00` : parts[1];
+      if (normalizedAct.time && normalizedAct.time.includes(' - ')) {
+        const parts = normalizedAct.time.split(' - ');
+        startTime = parts[0].trim();
+        endTime = parts[1].trim();
+        if (startTime.length === 5) startTime += ':00';
+        if (endTime.length === 5) endTime += ':00';
       }
 
-      const { data, error } = await supabase.from('activities').insert([{
-        title: activityItem.title,
-        priority: activityItem.priority || 'Bình thường',
-        description: activityItem.description || '',
-        start_date: activityItem.dateIso || new Date().toISOString().split('T')[0],
+      const meta = {
+        priority: normalizedAct.priority || 'Bình thường',
+        assigned_to: normalizedAct.assigned_to || 'Tất cả 56 Chi đoàn',
+        notes: normalizedAct.notes || '',
+        confirmedBy: normalizedAct.confirmedBy || [],
+        absentBy: normalizedAct.absentBy || [],
+        completedBy: normalizedAct.completedBy || [],
+        day: normalizedAct.day,
+        month: normalizedAct.month,
+        year: normalizedAct.year,
+        hasSubTasks: normalizedAct.hasSubTasks || false,
+        subTasks: normalizedAct.subTasks || [],
+        file_name: normalizedAct.file_name || '',
+        file_url: normalizedAct.file_url || '',
+        doc_category: normalizedAct.doc_category || 'act_docs'
+      };
+
+      const payload = {
+        id: finalId,
+        title: normalizedAct.title,
+        description: serializeActivityDescription(normalizedAct.description || '', meta),
+        start_date: normalizedAct.dateIso || new Date().toISOString().split('T')[0],
         start_time: startTime,
         end_time: endTime,
-        location: activityItem.location || OFFICIAL_ADDRESS,
-        status: activityItem.status || 'Sắp diễn ra',
-        organizer: 'Đoàn xã Xuân Thới Sơn'
-      }]).select();
+        location: normalizedAct.location || OFFICIAL_ADDRESS,
+        status: normalizedAct.status || 'Đang diễn ra',
+        organizer: normalizedAct.organizer || 'Đoàn xã Xuân Thới Sơn'
+      };
 
+      const { data, error } = await supabase.from('activities').upsert([payload]).select();
       if (error) {
-        console.error('Supabase error inserting activity:', error);
+        console.error('Supabase error saving activity:', error);
       } else {
-        console.log('Supabase activity inserted successfully:', data);
+        console.log('Supabase activity saved successfully:', data);
       }
     } catch (e) {
       console.error('Supabase save activity exception:', e);
@@ -921,13 +1077,15 @@ export async function syncSaveActivity(activityItem) {
 
 export async function syncToggleActivityStatus(activityId, newStatus) {
   const current = getPersistedData('activities', []);
-  const updatedLocal = current.map(a => a.id === activityId ? { ...a, status: newStatus } : a);
+  const updatedLocal = current.map(a => String(a.id) === String(activityId) ? { ...a, status: newStatus } : a);
   setPersistedData('activities', updatedLocal);
   notifySyncEvent('TOGGLE_ACTIVITY', { activityId, newStatus });
 
   if (supabase) {
     try {
-      await supabase.from('activities').update({ status: newStatus }).eq('id', activityId);
+      if (isValidUuid(activityId)) {
+        await supabase.from('activities').update({ status: newStatus }).eq('id', activityId);
+      }
     } catch (e) {
       console.error('Supabase toggle activity status error:', e);
     }
@@ -946,7 +1104,9 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
 
   if (supabase) {
     try {
-      await supabase.from('activities').delete().eq('id', activityId);
+      if (isValidUuid(activityId)) {
+        await supabase.from('activities').delete().eq('id', activityId);
+      }
       if (targetTitle) {
         await supabase.from('activities').delete().eq('title', targetTitle);
       }
@@ -1519,28 +1679,61 @@ export async function syncFetchNotifications() {
     if (deleted.includes(strId) || (n.title && deleted.includes(n.title))) return false;
     return true;
   });
-  setPersistedData('notifications', localList);
 
   if (supabase) {
     try {
       const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        const mapped = data.map(item => {
-          const matchedLocal = (localList || []).find(l => String(l.id) === String(item.id)) || {};
+
+      // AUTO-SYNC: If there are notifications in localList not yet in Supabase, upload them!
+      if (localList.length > 0) {
+        const supabaseIds = new Set((data || []).map(d => String(d.id)));
+        const supabaseTitles = new Set((data || []).map(d => String(d.title || '').trim().toLowerCase()));
+
+        for (const loc of localList) {
+          if (!supabaseIds.has(String(loc.id)) && !supabaseTitles.has(String(loc.title || '').trim().toLowerCase())) {
+            const locId = isValidUuid(loc.id) ? loc.id : generateUuid();
+            loc.id = locId;
+            const meta = {
+              priority: loc.priority || 'Bình thường',
+              target_scope: loc.target_scope || 'Tất cả 56 Chi đoàn',
+              activity_details: loc.activity_details || null,
+              confirmedBy: loc.confirmedBy || [],
+              sender: loc.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+            };
+            try {
+              await supabase.from('notifications').upsert([{
+                id: locId,
+                title: loc.title,
+                content: serializeNotificationContent(loc.content || '', meta),
+                type: loc.type || 'general',
+                time_ago: loc.time_ago || 'Vừa xong'
+              }]);
+              console.log('Auto-migrated local notification to Supabase:', loc.title);
+            } catch (err) {
+              console.warn('Auto-migrate notification error:', err);
+            }
+          }
+        }
+      }
+
+      // Re-fetch after auto-sync
+      const { data: freshData, error: freshErr } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+
+      if (!freshErr && freshData && freshData.length > 0) {
+        const mapped = freshData.map(item => {
+          const { content: cleanContent, meta } = deserializeNotificationContent(item.content);
           return {
-            ...matchedLocal,
-            ...item,
             id: item.id,
             title: item.title,
-            content: item.content || matchedLocal.content || '',
-            target_scope: item.target_scope || matchedLocal.target_scope || 'Tất cả 56 Chi đoàn',
-            priority: item.priority || matchedLocal.priority || item.type || 'Bình thường',
-            type: item.type || matchedLocal.type || 'general',
-            time_ago: item.time_ago || matchedLocal.time_ago || 'Vừa xong',
-            createdAt: item.created_at ? new Date(item.created_at).getTime() : (matchedLocal.createdAt || Date.now()),
-            confirmedBy: item.confirmedBy || matchedLocal.confirmedBy || [],
-            activity_details: item.activity_details || matchedLocal.activity_details || null,
-            sender: item.sender || matchedLocal.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+            content: cleanContent,
+            target_scope: meta.target_scope || 'Tất cả 56 Chi đoàn',
+            priority: meta.priority || 'Bình thường',
+            type: item.type || 'general',
+            time_ago: item.time_ago || 'Vừa xong',
+            createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now(),
+            confirmedBy: meta.confirmedBy || [],
+            activity_details: meta.activity_details || null,
+            sender: meta.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
           };
         });
         const cleanCombined = mapped.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
@@ -1552,19 +1745,25 @@ export async function syncFetchNotifications() {
       console.warn('Supabase fetch notifications error, using local storage fallback:', e);
     }
   }
+
+  setPersistedData('notifications', localList);
   return sortNotificationsByPriority(localList);
 }
 
 export async function syncSaveNotification(notiItem) {
-  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
+  const finalId = isValidUuid(notiItem.id) ? notiItem.id : generateUuid();
   const newItem = {
     ...notiItem,
+    id: finalId,
     priority: notiItem.priority || 'Bình thường',
+    target_scope: notiItem.target_scope || 'Tất cả 56 Chi đoàn',
     createdAt: notiItem.createdAt || Date.now()
   };
-  const exists = current.some(item => item.id === newItem.id);
+
+  const current = getPersistedData('notifications', INITIAL_NOTIFICATIONS);
+  const exists = current.some(item => String(item.id) === String(finalId));
   const updatedRaw = exists
-    ? current.map(item => item.id === newItem.id ? { ...item, ...newItem } : item)
+    ? current.map(item => String(item.id) === String(finalId) ? { ...item, ...newItem } : item)
     : [newItem, ...current];
 
   const seen = new Set();
@@ -1582,24 +1781,31 @@ export async function syncSaveNotification(notiItem) {
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('notifications').insert([{
-        title: newItem.title,
-        content: newItem.content || '',
-        type: newItem.type || 'general',
-        time_ago: newItem.time_ago || 'Vừa xong',
+      const meta = {
         priority: newItem.priority || 'Bình thường',
-        target_scope: newItem.target_scope || 'Tất cả 56 Chi đoàn'
-      }]).select();
+        target_scope: newItem.target_scope || 'Tất cả 56 Chi đoàn',
+        activity_details: newItem.activity_details || null,
+        confirmedBy: newItem.confirmedBy || [],
+        sender: newItem.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+      };
 
+      const payload = {
+        id: finalId,
+        title: newItem.title,
+        content: serializeNotificationContent(newItem.content || '', meta),
+        type: newItem.type || 'general',
+        time_ago: newItem.time_ago || 'Vừa xong'
+      };
+
+      const { data, error } = await supabase.from('notifications').upsert([payload]).select();
       if (error) {
-        console.error('Supabase error inserting notification:', error);
+        console.error('Supabase error saving notification:', error);
       } else {
-        console.log('Supabase notification inserted successfully:', data);
+        console.log('Supabase notification saved successfully:', data);
       }
     } catch (e) {
       console.error('Supabase save notification exception:', e);
     }
-    return await syncFetchNotifications();
   }
   return updatedLocal;
 }
@@ -1614,16 +1820,25 @@ export async function syncUpdateNotification(updatedNoti) {
 
   if (supabase) {
     try {
-      await supabase.from('notifications').update({
-        title: updatedNoti.title,
-        content: updatedNoti.content || '',
+      const meta = {
         priority: updatedNoti.priority || 'Bình thường',
-        target_scope: updatedNoti.target_scope || 'Tất cả 56 Chi đoàn'
-      }).eq('id', updatedNoti.id);
+        target_scope: updatedNoti.target_scope || 'Tất cả 56 Chi đoàn',
+        activity_details: updatedNoti.activity_details || null,
+        confirmedBy: updatedNoti.confirmedBy || [],
+        sender: updatedNoti.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
+      };
+
+      if (isValidUuid(updatedNoti.id)) {
+        await supabase.from('notifications').update({
+          title: updatedNoti.title,
+          content: serializeNotificationContent(updatedNoti.content || '', meta),
+          type: updatedNoti.type || 'general',
+          time_ago: updatedNoti.time_ago || 'Vừa xong'
+        }).eq('id', updatedNoti.id);
+      }
     } catch (e) {
       console.error('Supabase update notification exception:', e);
     }
-    return await syncFetchNotifications();
   }
   return updatedLocal;
 }
@@ -1639,20 +1854,19 @@ export async function syncDeleteNotification(notificationId, notificationTitle =
 
   if (supabase) {
     try {
-      await supabase.from('notifications').delete().eq('id', notificationId);
+      if (isValidUuid(notificationId)) {
+        await supabase.from('notifications').delete().eq('id', notificationId);
+      }
       if (notificationTitle) {
         await supabase.from('notifications').delete().eq('title', notificationTitle);
       }
     } catch (e) {
-      console.error('Supabase delete notification exception:', e);
+      console.error('Supabase delete notification error:', e);
     }
-    const fetched = await syncFetchNotifications();
-    return fetched.filter(n => n && !deleted.includes(String(n.id)) && (!notificationTitle || n.title !== notificationTitle));
   }
   return updatedLocal;
 }
 
-// ============================================================================
 // 5. TASKS SYNC (BẢNG CÔNG VIỆC / TODO LIST)
 // ============================================================================
 export async function syncFetchTasks() {

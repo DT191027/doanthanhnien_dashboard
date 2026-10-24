@@ -124,6 +124,7 @@ export default function App() {
       sessionStorage.setItem('xts_current_user', JSON.stringify(user));
     } catch (e) {}
     // Khi vừa đăng nhập bằng tài khoản, mật khẩu: hiển thị popup cài đặt cấp quyền điểm danh GPS
+    loadAllData(); // Trigger immediate sync on login
     setShowGpsModal(true);
     triggerToast(`Đăng nhập thành công với vai trò ${user.full_name}! Vui lòng kích hoạt điểm danh GPS.`);
   };
@@ -341,7 +342,7 @@ export default function App() {
     const fixedDateIso = newAct.dateIso || `${yearVal}-${monthVal}-${dayVal}`;
 
     const activityItem = {
-      id: newAct.id || `act-${Date.now()}`,
+      id: (newAct.id && !newAct.id.startsWith("act-")) ? newAct.id : `act-${Date.now()}`, // normalized in syncSaveActivity
       day: dayVal,
       month: monthVal,
       year: yearVal,

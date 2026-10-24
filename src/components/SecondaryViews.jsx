@@ -38,6 +38,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import {
+  generateUuid,
   normalizeBranchName,
   getUniqueConfirmedBranches,
   isActivityExpired,
@@ -4614,7 +4615,7 @@ export function BranchAttendanceWorkspaceView({
       const formattedDate = `${dayVal}/${monthVal}/${yearVal}`;
       const formattedTime = `${quickStartTime} - ${quickEndTime}`;
 
-      const newId = `act-${Date.now()}`;
+      const newId = generateUuid ? generateUuid() : `act-${Date.now()}`;
       const newAct = {
         id: newId,
         title: quickTitle.trim(),

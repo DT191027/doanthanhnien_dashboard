@@ -37,7 +37,7 @@ import {
   Upload,
   FileCheck
 } from 'lucide-react';
-import { syncSaveActivity, syncSaveTask, syncDeleteActivity, syncDeleteTask, INITIAL_ACTIVITIES, INITIAL_TASKS, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
+import { syncSaveActivity, syncSaveTask, getActivityGpsAuditLogs, syncDeleteActivity, syncDeleteTask, INITIAL_ACTIVITIES, INITIAL_TASKS, ALL_BRANCHES, COMPETITION_CLUSTERS, isSupabaseConfigured, OFFICIAL_ADDRESS, sortNotificationsByPriority, sortActivitiesByPriority, getPriorityBadgeStyle, getBranchClusterName, calculateBranchRating, formatDateDDMMYYYY, deduplicateActivities, isItemTargetedToUser, getActivityTimeStatus, recordDocView, removeDocView, setDocViews, getDocViewsMap, recordDocCategory, getDocCategoriesMap } from '../lib/supabase';
 import { getStorageQuotaMetrics, DOAN_XA_GMAIL, uploadPdfWithFailover } from '../lib/storageStrategy';
 import TaskCountdown, { formatDeadlineDisplay } from './TaskCountdown';
 
@@ -3089,6 +3089,7 @@ export function ReportsView({
   submissionsCount = 0,
   activities = [],
   attendanceRecords = {},
+  setActiveTab,
   onOpenAttendanceModal,
   onRespondAttendance,
   isDoanXa
@@ -3097,12 +3098,17 @@ export function ReportsView({
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState(null);
 
-  const safeActivities = Array.isArray(activities) ? activities : [];
+  // Lọc danh sách hoạt động thực tế (loại bỏ dữ liệu test ảo cũ)
+  const safeActivities = (Array.isArray(activities) ? activities : [])
+    .filter(a => a && !String(a.id || '').startsWith('act-seed-') && (!a.title || !a.title.includes('Hội nghị Học tập & Quán triệt')));
 
-  // Calculate participation & evaluation rating per Hamlet branch dynamically based on activities issued by Admin
+  const hasActivities = safeActivities.length > 0;
+
+  // Tính toán kết quả thi đua & tỷ lệ % tham gia của từng Chi đoàn dựa trên quét mã QR hoặc nhập mã Code
   const branchStats = (ALL_BRANCHES || []).map(branch => {
     if (!branch) return null;
     const branchName = branch.name || '';
+    const cleanBranch = branchName.replace(/^Chi đoàn\s*/i, '').trim();
     const clusterName = getBranchClusterName(branchName);
 
     let attendedCount = 0;
@@ -3121,21 +3127,59 @@ export function ReportsView({
       const actAttendance = (attendanceRecords && act.id) 
         ? (attendanceRecords[act.id] || attendanceRecords[String(act.id)] || {}) 
         : {};
-      const branchRec = actAttendance[branchName];
 
+      // 1. Kiểm tra trong attendanceRecords
+      let branchRec = actAttendance[branchName];
+      if (!branchRec) {
+        for (const [k, v] of Object.entries(actAttendance)) {
+          if (k === branchName || k.replace(/^Chi đoàn\s*/i, '').trim() === cleanBranch || k.includes(cleanBranch)) {
+            branchRec = v;
+            break;
+          }
+        }
+      }
+
+      // 2. Kiểm tra trong Nhật ký GPS Audit Logs (lưu vết khi quét camera QR hoặc nhập mã code XTS-XXXXXX)
+      const gpsLogs = typeof getActivityGpsAuditLogs === 'function' ? getActivityGpsAuditLogs(act.id) : [];
+      const matchGps = gpsLogs.find(l => 
+        l && (l.branch_name === branchName || l.branch_name?.replace(/^Chi đoàn\s*/i, '').trim() === cleanBranch || l.branch_name?.includes(cleanBranch))
+      );
+
+      // 3. Kiểm tra trong confirmedBy & absentBy của hoạt động
       const confirmedList = Array.isArray(act.confirmedBy) ? act.confirmedBy : [];
       const absentList = Array.isArray(act.absentBy) ? act.absentBy : [];
+
+      const matchConf = confirmedList.find(c => {
+        const bName = typeof c === 'string' ? c : c?.branch;
+        return bName && (bName === branchName || bName.replace(/^Chi đoàn\s*/i, '').trim() === cleanBranch || bName.includes(cleanBranch));
+      });
+
+      const matchAbs = absentList.find(a => {
+        const bName = typeof a === 'string' ? a : a?.branch;
+        return bName && (bName === branchName || bName.replace(/^Chi đoàn\s*/i, '').trim() === cleanBranch || bName.includes(cleanBranch));
+      });
 
       let status = 'UNRESPONDED'; // 'ATTENDED' | 'ABSENT' | 'UNRESPONDED'
       let time = '';
       let reason = '';
+      let checkinMethod = '';
+      let gpsCoords = null;
+      let photoProof = null;
 
-      if (branchRec !== undefined) {
+      if (matchGps) {
+        status = 'ATTENDED';
+        time = matchGps.time_str || 'Đã xác nhận';
+        checkinMethod = matchGps.verified_by === 'CAMERA_QR' ? '📷 Quét mã QR Camera' : '⌨️ Nhập mã xác thực (XTS-XXXXXX)';
+        if (matchGps.latitude && matchGps.longitude) {
+          gpsCoords = `${matchGps.latitude.toFixed(5)}, ${matchGps.longitude.toFixed(5)}`;
+        }
+        photoProof = matchGps.photo_url || null;
+      } else if (branchRec !== undefined) {
         if (typeof branchRec === 'boolean') {
           if (branchRec) {
             status = 'ATTENDED';
-            const matchConf = confirmedList.find(c => c && c.branch === branchName);
             time = matchConf?.time || 'Đã xác nhận';
+            checkinMethod = 'Xác thực điểm danh';
           } else {
             status = 'ABSENT';
             reason = 'Báo vắng';
@@ -3144,24 +3188,25 @@ export function ReportsView({
           if (branchRec.attended) {
             status = 'ATTENDED';
             time = branchRec.time || 'Đã xác nhận';
+            checkinMethod = branchRec.method === 'CAMERA_QR' ? '📷 Quét mã QR Camera' : branchRec.method === 'MANUAL_CODE' ? '⌨️ Nhập mã xác thực' : 'Xác thực điểm danh';
+            if (branchRec.latitude && branchRec.longitude) {
+              gpsCoords = `${branchRec.latitude.toFixed(5)}, ${branchRec.longitude.toFixed(5)}`;
+            }
+            photoProof = branchRec.photo_url || null;
           } else {
             status = 'ABSENT';
             time = branchRec.time || 'Vừa xong';
             reason = branchRec.reason || 'Báo vắng';
           }
         }
-      } else {
-        const matchConf = confirmedList.find(c => c && c.branch === branchName);
-        const matchAbs = absentList.find(a => a && a.branch === branchName);
-
-        if (matchConf) {
-          status = 'ATTENDED';
-          time = matchConf.time || 'Đã xác nhận';
-        } else if (matchAbs) {
-          status = 'ABSENT';
-          time = matchAbs.time || 'Vừa xong';
-          reason = matchAbs.reason || 'Báo vắng';
-        }
+      } else if (matchConf) {
+        status = 'ATTENDED';
+        time = matchConf.time || 'Đã xác nhận';
+        checkinMethod = 'Xác thực điểm danh';
+      } else if (matchAbs) {
+        status = 'ABSENT';
+        time = matchAbs.time || 'Vừa xong';
+        reason = matchAbs.reason || 'Báo vắng';
       }
 
       if (status === 'ATTENDED') attendedCount += 1;
@@ -3178,12 +3223,16 @@ export function ReportsView({
         location: act.location || 'Trụ sở UBND Xã',
         status,
         time,
-        reason
+        reason,
+        checkinMethod,
+        gpsCoords,
+        photoProof
       };
     }).filter(Boolean);
 
-    const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : 100;
-    const rating = calculateBranchRating(percentage) || calculateBranchRating(100);
+    // Tính tỷ lệ %: Nếu chưa có hoạt động nào được ban hành thì tỷ lệ là null (chưa phát sinh)
+    const percentage = totalAssigned > 0 ? Math.min(100, Math.round((attendedCount / totalAssigned) * 100)) : null;
+    const rating = calculateBranchRating(percentage, totalAssigned);
 
     return {
       ...branch,
@@ -3213,41 +3262,51 @@ export function ReportsView({
 
   const activeBranchDetail = selectedBranchDetail ? branchStats.find(b => b && b.name === selectedBranchDetail.name) : null;
 
-  const countExcellent = branchStats.filter(b => b && b.percentage >= 90).length;
-  const countGood = branchStats.filter(b => b && b.percentage >= 80 && b.percentage < 90).length;
-  const countFair = branchStats.filter(b => b && b.percentage >= 50 && b.percentage < 80).length;
-  const countFailed = branchStats.filter(b => b && b.percentage < 50).length;
+  // Thống kê 4 nhóm thi đua: Chỉ tính khi đã có hoạt động được ban hành
+  const countExcellent = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage >= 90).length : 0;
+  const countGood = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage >= 80 && b.percentage < 90).length : 0;
+  const countFair = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage >= 50 && b.percentage < 80).length : 0;
+  const countFailed = hasActivities ? branchStats.filter(b => b && b.totalAssigned > 0 && b.percentage !== null && b.percentage < 50).length : 0;
 
   return (
-    <div className="content-card">
-      {/* Header section */}
-      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3 border-bottom pb-3">
+    <div className="reports-view">
+      {/* Top Header Card */}
+      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
-          <h3 className="card-title-header mb-1 d-flex align-items-center gap-2">
+          <h4 className="fw-bold text-dark d-flex align-items-center gap-2 mb-1" style={{ fontSize: '20px' }}>
             <BarChart2 className="text-primary" size={24} />
             Báo cáo Thống kê & Đánh giá Thi đua 56 Chi đoàn / Đơn vị
-          </h3>
+          </h4>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành.
+            Hệ thống tự động tính toán tỷ lệ % tham gia hoạt động dựa trên số hoạt động do Quản trị viên ban hành và kết quả điểm danh qua mã QR / Code.
           </div>
         </div>
 
         {isDoanXa && (
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <button 
-              className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm text-white"
-              style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
-              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal('qr')}
-              title="Tạo mã QR & Code XTS-XXXXXX cho các Chi đoàn quét điểm danh"
+              type="button"
+              className="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
+              style={{ backgroundColor: '#0066FF', border: 'none', fontSize: '13px' }}
+              onClick={() => {
+                if (setActiveTab) setActiveTab('attendance');
+                else onOpenAttendanceModal && onOpenAttendanceModal('qr');
+              }}
+              title="Mở giao diện Quản lý Điểm danh để tạo mã QR và mã Code XTS-XXXXXX"
             >
               <QrCode size={18} />
               <span>📱 Tạo Mã Điểm Danh QR & Code (XTS-XXXXXX)</span>
             </button>
 
             <button 
-              className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm"
-              style={{ backgroundColor: '#16A34A', border: 'none' }}
-              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal('manual')}
+              type="button"
+              className="btn btn-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm hover-scale"
+              style={{ backgroundColor: '#16A34A', border: 'none', fontSize: '13px' }}
+              onClick={() => {
+                if (setActiveTab) setActiveTab('attendance');
+                else onOpenAttendanceModal && onOpenAttendanceModal('manual');
+              }}
+              title="Đến màn hình điểm danh & đánh giá hoạt động"
             >
               <CheckCircle2 size={18} />
               <span>⚡ Điểm danh & Đánh giá Hoạt động</span>
@@ -3256,127 +3315,177 @@ export function ReportsView({
         )}
       </div>
 
-      {/* Overview Metric Cards */}
+      {/* Thông báo nếu chưa có hoạt động nào được ban hành */}
+      {!hasActivities && (
+        <div className="alert alert-info py-3 px-3.5 rounded-4 d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 border-info shadow-xs">
+          <div className="d-flex align-items-center gap-2.5">
+            <Info size={22} className="text-primary flex-shrink-0" />
+            <div style={{ fontSize: '13px' }}>
+              <strong>Hiện chưa có hoạt động nào được ban hành điểm danh.</strong> Tỷ lệ % tham gia và kết quả xếp loại thi đua của 56 Chi đoàn sẽ được tự động tính toán tức thì ngay khi Quản trị viên ban hành hoạt động và các Chi đoàn tiến hành quét mã QR hoặc nhập mã xác thực (XTS-XXXXXX).
+            </div>
+          </div>
+          {isDoanXa && (
+            <button 
+              type="button"
+              className="btn btn-sm btn-primary px-3 py-1.5 rounded-3 fw-bold shadow-xs hover-scale"
+              onClick={() => setActiveTab && setActiveTab('attendance')}
+            >
+              ➕ Tạo hoạt động & Điểm danh ngay
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 4 Overview Metric Cards (Phản ánh số liệu thi đua chính xác) */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="p-3 bg-success-subtle border border-success-subtle rounded-3 h-100">
-            <div className="d-flex align-items-center justify-content-between text-success mb-1">
-              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🌟 Xuất sắc (90-100%)</span>
-              <span className="badge bg-success text-white">90 - 100%</span>
+          <div className="p-3 bg-success-subtle border border-success-subtle rounded-3 h-100 shadow-xs">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span className="text-success fw-bold" style={{ fontSize: '13px' }}>
+                🌟 Xuất sắc (90-100%)
+              </span>
+              <span className="badge bg-success text-white px-2 py-0.5" style={{ fontSize: '11px' }}>
+                90 - 100%
+              </span>
             </div>
-            <div className="fw-extrabold text-success" style={{ fontSize: '28px', lineHeight: 1.1 }}>
-              {countExcellent} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            <div className="d-flex align-items-baseline gap-2 mb-1">
+              <h3 className="fw-extrabold text-success mb-0">{countExcellent}</h3>
+              <span className="text-secondary fw-semibold" style={{ fontSize: '13px' }}>Chi đoàn</span>
             </div>
-            <div className="text-success mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành xuất sắc nhiệm vụ</div>
+            <div className="text-muted" style={{ fontSize: '11.5px' }}>
+              {hasActivities ? 'Hoàn thành xuất sắc nhiệm vụ' : 'Chưa phát sinh hoạt động'}
+            </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 h-100">
-            <div className="d-flex align-items-center justify-content-between text-primary mb-1">
-              <span className="fw-bold" style={{ fontSize: '12.5px' }}>💙 Tốt (80 - dưới 90%)</span>
-              <span className="badge bg-primary text-white">80 - 89%</span>
+          <div className="p-3 bg-primary-subtle border border-primary-subtle rounded-3 h-100 shadow-xs">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span className="text-primary fw-bold" style={{ fontSize: '13px' }}>
+                💙 Tốt (80 - dưới 90%)
+              </span>
+              <span className="badge bg-primary text-white px-2 py-0.5" style={{ fontSize: '11px' }}>
+                80 - 89%
+              </span>
             </div>
-            <div className="fw-extrabold text-primary" style={{ fontSize: '28px', lineHeight: 1.1 }}>
-              {countGood} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            <div className="d-flex align-items-baseline gap-2 mb-1">
+              <h3 className="fw-extrabold text-primary mb-0">{countGood}</h3>
+              <span className="text-secondary fw-semibold" style={{ fontSize: '13px' }}>Chi đoàn</span>
             </div>
-            <div className="text-primary mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành tốt nhiệm vụ</div>
+            <div className="text-muted" style={{ fontSize: '11.5px' }}>
+              {hasActivities ? 'Hoàn thành tốt nhiệm vụ' : 'Chưa phát sinh hoạt động'}
+            </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="p-3 bg-warning-subtle border border-warning-subtle rounded-3 h-100">
-            <div className="d-flex align-items-center justify-content-between text-warning-emphasis mb-1">
-              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🟡 Hoàn thành (50 - dưới 80%)</span>
-              <span className="badge bg-warning text-dark">50 - 79%</span>
+          <div className="p-3 bg-warning-subtle border border-warning-subtle rounded-3 h-100 shadow-xs">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span className="text-warning-emphasis fw-bold" style={{ fontSize: '13px' }}>
+                🟡 Hoàn thành (50 - dưới 80%)
+              </span>
+              <span className="badge bg-warning text-dark px-2 py-0.5" style={{ fontSize: '11px' }}>
+                50 - 79%
+              </span>
             </div>
-            <div className="fw-extrabold text-warning-emphasis" style={{ fontSize: '28px', lineHeight: 1.1 }}>
-              {countFair} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            <div className="d-flex align-items-baseline gap-2 mb-1">
+              <h3 className="fw-extrabold text-warning-emphasis mb-0">{countFair}</h3>
+              <span className="text-secondary fw-semibold" style={{ fontSize: '13px' }}>Chi đoàn</span>
             </div>
-            <div className="text-warning-emphasis mt-1 fw-semibold" style={{ fontSize: '11px' }}>Hoàn thành nhiệm vụ</div>
+            <div className="text-muted" style={{ fontSize: '11.5px' }}>
+              {hasActivities ? 'Hoàn thành nhiệm vụ' : 'Chưa phát sinh hoạt động'}
+            </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="p-3 bg-danger-subtle border border-danger-subtle rounded-3 h-100">
-            <div className="d-flex align-items-center justify-content-between text-danger mb-1">
-              <span className="fw-bold" style={{ fontSize: '12.5px' }}>🔴 Chưa hoàn thành (&lt;50%)</span>
-              <span className="badge bg-danger text-white">&lt; 50%</span>
+          <div className="p-3 bg-danger-subtle border border-danger-subtle rounded-3 h-100 shadow-xs">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span className="text-danger fw-bold" style={{ fontSize: '13px' }}>
+                🔴 Chưa hoàn thành (&lt;50%)
+              </span>
+              <span className="badge bg-danger text-white px-2 py-0.5" style={{ fontSize: '11px' }}>
+                &lt; 50%
+              </span>
             </div>
-            <div className="fw-extrabold text-danger" style={{ fontSize: '28px', lineHeight: 1.1 }}>
-              {countFailed} <span className="fs-6 fw-normal text-muted">Chi đoàn</span>
+            <div className="d-flex align-items-baseline gap-2 mb-1">
+              <h3 className="fw-extrabold text-danger mb-0">{countFailed}</h3>
+              <span className="text-secondary fw-semibold" style={{ fontSize: '13px' }}>Chi đoàn</span>
             </div>
-            <div className="text-danger mt-1 fw-semibold" style={{ fontSize: '11px' }}>Không hoàn thành nhiệm vụ</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Criteria Legend Card */}
-      <div className="p-3 bg-light rounded-3 border mb-4">
-        <div className="fw-bold text-dark mb-2" style={{ fontSize: '13.5px' }}>📌 Tiêu chí Đánh giá & Xếp loại Thi đua theo Tỷ lệ % Tham gia Hoạt động:</div>
-        <div className="row g-2 text-dark" style={{ fontSize: '12px' }}>
-          <div className="col-12 col-md-6 col-lg-3">
-            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
-              <span className="badge bg-success text-white">90 - 100%</span>
-              <span className="fw-bold text-success">🌟 Hoàn thành xuất sắc nhiệm vụ</span>
-            </div>
-          </div>
-          <div className="col-12 col-md-6 col-lg-3">
-            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
-              <span className="badge bg-primary text-white">80 - dưới 90%</span>
-              <span className="fw-bold text-primary">💙 Hoàn thành tốt nhiệm vụ</span>
-            </div>
-          </div>
-          <div className="col-12 col-md-6 col-lg-3">
-            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
-              <span className="badge bg-warning text-dark">50 - dưới 80%</span>
-              <span className="fw-bold text-warning-emphasis">🟡 Hoàn thành nhiệm vụ</span>
-            </div>
-          </div>
-          <div className="col-12 col-md-6 col-lg-3">
-            <div className="p-2 bg-white rounded-2 border d-flex align-items-center gap-2">
-              <span className="badge bg-danger text-white">dưới 50%</span>
-              <span className="fw-bold text-danger">🔴 Không hoàn thành nhiệm vụ</span>
+            <div className="text-muted" style={{ fontSize: '11.5px' }}>
+              {hasActivities ? 'Không hoàn thành nhiệm vụ' : 'Chưa phát sinh hoạt động'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter & Search Toolbar */}
-      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
-        <div className="d-flex align-items-center gap-2">
-          <Filter size={18} className="text-secondary" />
-          <span className="fw-semibold text-dark" style={{ fontSize: '13px' }}>Lọc theo Cụm thi đua:</span>
+      {/* Ranking Standards Info Banner */}
+      <div className="card border-0 shadow-xs rounded-4 p-3 mb-4 bg-light">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <div className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '13.5px' }}>
+            <span>📌</span>
+            <span>Tiêu chí Đánh giá & Xếp loại Thi đua theo Tỷ lệ % Tham gia Hoạt động:</span>
+          </div>
+          <span className="badge bg-white text-secondary border px-2.5 py-1" style={{ fontSize: '11px' }}>
+            Tổng số: 56 Chi đoàn / Đơn vị
+          </span>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: '12px' }}>
+          <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill">
+            🌟 90 - 100%: Hoàn thành xuất sắc nhiệm vụ
+          </span>
+          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill">
+            💙 80 - dưới 90%: Hoàn thành tốt nhiệm vụ
+          </span>
+          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill">
+            🟡 50 - dưới 80%: Hoàn thành nhiệm vụ
+          </span>
+          <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1 rounded-pill">
+            🔴 Dưới 50%: Không hoàn thành nhiệm vụ
+          </span>
+        </div>
+      </div>
+
+      {/* Controls: Cluster Filter & Search Input */}
+      <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <label className="text-secondary fw-semibold mb-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+            <Filter size={15} />
+            Lọc theo Cụm thi đua:
+          </label>
           <select 
-            className="form-select form-select-sm"
-            style={{ width: '240px' }}
+            className="form-select form-select-sm fw-semibold"
             value={selectedCluster}
             onChange={(e) => setSelectedCluster(e.target.value)}
+            style={{ width: '220px', fontSize: '12.5px' }}
           >
-            <option value="ALL">🏆 Tất cả 6 Cụm thi đua</option>
-            {COMPETITION_CLUSTERS.map(c => (
-              <option key={c.id} value={c.name}>{c.name}</option>
+            <option value="ALL">🏆 Tất cả 6 Cụm thi đua (56 Chi đoàn)</option>
+            {COMPETITION_CLUSTERS.map(cluster => (
+              <option key={cluster.id} value={cluster.name}>
+                {cluster.name}
+              </option>
             ))}
           </select>
         </div>
 
-        <div className="search-input-group" style={{ maxWidth: '280px' }}>
-          <Search size={15} className="text-secondary me-2" />
+        <div className="search-box" style={{ maxWidth: '320px', width: '100%' }}>
+          <Search size={16} />
           <input 
             type="text" 
             placeholder="Tìm tên Chi đoàn / Đơn vị..." 
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
+            style={{ fontSize: '12.5px' }}
           />
         </div>
       </div>
 
-      {/* Ratings Table for 30 Hamlets */}
-      <div className="table-responsive">
+      {/* Main Ranking Table */}
+      <div className="table-responsive rounded-4 border bg-white shadow-xs">
         <table className="custom-table align-middle">
           <thead>
             <tr>
-              <th style={{ width: '40px' }}>STT</th>
+              <th style={{ width: '45px' }} className="text-center">STT</th>
               <th>Chi đoàn / Đơn vị</th>
               <th>Cụm thi đua</th>
               <th>Bí thư Chi đoàn</th>
@@ -3400,10 +3509,10 @@ export function ReportsView({
                   className="cursor-pointer hover-bg-light transition"
                   onClick={() => setSelectedBranchDetail(item)}
                 >
-                  <td className="fw-bold text-muted" style={{ fontSize: '12px' }}>{index + 1}</td>
+                  <td className="fw-bold text-muted text-center" style={{ fontSize: '12px' }}>{index + 1}</td>
                   <td>
                     <div className="fw-bold text-primary" style={{ fontSize: '13.5px' }}>{item.name}</div>
-                    <div className="text-muted" style={{ fontSize: '11px' }}>{item.code}</div>
+                    <div className="text-muted" style={{ fontSize: '11px' }}>{item.code || 'Đơn vị trực thuộc'}</div>
                   </td>
                   <td>
                     <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '11px' }}>
@@ -3416,32 +3525,45 @@ export function ReportsView({
                   <td>
                     <div className="d-flex flex-column gap-0.5">
                       <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
-                        {item.attendedCount} / {item.totalAssigned} HĐ
+                        {item.totalAssigned > 0 ? `${item.attendedCount} / ${item.totalAssigned} HĐ` : '0 / 0 HĐ'}
                       </span>
-                      <div className="d-flex align-items-center gap-1.5" style={{ fontSize: '11px' }}>
-                        <span className="text-success fw-semibold">✓ {item.attendedCount} tham gia</span>
-                        {item.absentCount > 0 && (
-                          <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '11px' }}>
+                        {item.totalAssigned === 0 ? (
+                          <span className="text-muted">Chưa có HĐ</span>
+                        ) : (
+                          <>
+                            <span className="text-success fw-semibold">✓ {item.attendedCount} có mặt</span>
+                            {item.absentCount > 0 && (
+                              <span className="text-danger fw-semibold">• ✕ {item.absentCount} vắng</span>
+                            )}
+                            {item.unrespondedCount > 0 && (
+                              <span className="text-muted">• ⏳ {item.unrespondedCount} chưa điểm danh</span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                   </td>
                   <td>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
-                        <div 
-                          className="progress-bar transition" 
-                          role="progressbar" 
-                          style={{ 
-                            width: `${item.percentage}%`,
-                            backgroundColor: item.rating?.color || '#0066FF'
-                          }}
-                        ></div>
+                    {item.percentage === null ? (
+                      <span className="text-muted fw-semibold" style={{ fontSize: '12px' }}>— Chưa phát sinh</span>
+                    ) : (
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="progress flex-grow-1" style={{ height: '8px', borderRadius: '4px' }}>
+                          <div 
+                            className="progress-bar transition" 
+                            role="progressbar" 
+                            style={{ 
+                              width: `${item.percentage}%`,
+                              backgroundColor: item.rating?.color || '#0066FF'
+                            }}
+                          ></div>
+                        </div>
+                        <span className="fw-bold" style={{ fontSize: '12px', color: item.rating?.color || '#0066FF', minWidth: '38px' }}>
+                          {item.percentage}%
+                        </span>
                       </div>
-                      <span className="fw-bold" style={{ fontSize: '12px', color: item.rating?.color || '#0066FF', minWidth: '38px' }}>
-                        {item.percentage}%
-                      </span>
-                    </div>
+                    )}
                   </td>
                   <td>
                     <span className={`badge ${item.rating?.badgeClass || 'bg-light text-dark'} border px-2.5 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '11.5px', fontWeight: 600 }}>
@@ -3452,13 +3574,13 @@ export function ReportsView({
                   <td className="text-end">
                     <button 
                       type="button"
-                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3"
+                      className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 hover-scale"
                       style={{ fontSize: '11.5px' }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedBranchDetail(item);
                       }}
-                      title="Xem chi tiết từng hoạt động tham gia / vắng kèm lý do"
+                      title="Xem chi tiết từng hoạt động tham gia, hình thức quét QR / nhập code, thời gian và tọa độ GPS"
                     >
                       <FileText size={13} />
                       <span>Xem chi tiết</span>
@@ -3471,7 +3593,7 @@ export function ReportsView({
         </table>
       </div>
 
-      {/* Modal Chi Tiết Thống Kê Hoạt Động & Lý Do Vắng Mặt Của Chi Đoàn */}
+      {/* Modal Chi Tiết Thống Kê Điểm Danh & Hoạt Động Của Chi Đoàn */}
       {activeBranchDetail && (
         <div 
           className="modal d-block bg-dark bg-opacity-50" 
@@ -3507,7 +3629,7 @@ export function ReportsView({
                   </div>
                   <div className="col-6 col-md-3">
                     <div className="p-2.5 bg-success-subtle bg-opacity-30 border border-success-subtle rounded-3 text-center">
-                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>ĐÃ XÁC NHẬN THAM GIA</div>
+                      <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>ĐÃ ĐIỂM DANH CÓ MẶT</div>
                       <div className="fw-extrabold text-success" style={{ fontSize: '20px' }}>{activeBranchDetail.attendedCount} HĐ</div>
                     </div>
                   </div>
@@ -3520,8 +3642,8 @@ export function ReportsView({
                   <div className="col-6 col-md-3">
                     <div className="p-2.5 bg-light border rounded-3 text-center">
                       <div className="text-muted" style={{ fontSize: '11px', fontWeight: 600 }}>TỶ LỆ % THAM GIA</div>
-                      <div className="fw-extrabold" style={{ fontSize: '20px', color: activeBranchDetail.rating.color }}>
-                        {activeBranchDetail.percentage}%
+                      <div className="fw-extrabold" style={{ fontSize: '20px', color: activeBranchDetail.rating?.color || '#0066FF' }}>
+                        {activeBranchDetail.percentage !== null ? `${activeBranchDetail.percentage}%` : '—'}
                       </div>
                     </div>
                   </div>
@@ -3532,15 +3654,15 @@ export function ReportsView({
                   <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>
                     📊 Kết quả Đánh giá Thi đua:
                   </span>
-                  <span className={`badge ${activeBranchDetail.rating.badgeClass} border px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '12.5px', fontWeight: 700 }}>
-                    <span>{activeBranchDetail.rating.icon}</span>
-                    <span>{activeBranchDetail.rating.label}</span>
+                  <span className={`badge ${activeBranchDetail.rating?.badgeClass} border px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5`} style={{ fontSize: '12.5px', fontWeight: 700 }}>
+                    <span>{activeBranchDetail.rating?.icon}</span>
+                    <span>{activeBranchDetail.rating?.label}</span>
                   </span>
                 </div>
 
                 {/* Detailed Activities List */}
                 <h6 className="fw-bold text-dark mb-2.5 d-flex align-items-center justify-content-between" style={{ fontSize: '13.5px' }}>
-                  <span>📋 Danh sách từng Hoạt động do Quản trị viên ban hành:</span>
+                  <span>📋 Danh sách từng Hoạt động & Lịch sử Điểm danh:</span>
                   <span className="badge bg-secondary text-white" style={{ fontSize: '11px' }}>
                     {activeBranchDetail.activityDetailsList.length} Hoạt động
                   </span>
@@ -3566,18 +3688,25 @@ export function ReportsView({
                         <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-1.5">
                           <div>
                             <div className="fw-bold text-dark" style={{ fontSize: '14px' }}>📌 {act.title}</div>
-                            <div className="text-secondary d-flex align-items-center gap-3 mt-1" style={{ fontSize: '11.5px' }}>
+                            <div className="text-secondary d-flex align-items-center gap-3 mt-1 flex-wrap" style={{ fontSize: '11.5px' }}>
                               <span>⏰ {act.timeStr} ({act.day}/{act.month}/{act.year})</span>
                               <span>📍 {act.location}</span>
                             </div>
                           </div>
 
-                          <div>
+                          <div className="d-flex flex-column align-items-end gap-1">
                             {act.status === 'ATTENDED' ? (
-                              <span className="badge bg-success text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
-                                <CheckCircle2 size={13} />
-                                <span>Đã tham gia ({act.time})</span>
-                              </span>
+                              <>
+                                <span className="badge bg-success text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
+                                  <CheckCircle2 size={13} />
+                                  <span>Đã có mặt ({act.time})</span>
+                                </span>
+                                {act.checkinMethod && (
+                                  <span className="badge bg-light text-dark border px-2 py-0.5" style={{ fontSize: '10.5px' }}>
+                                    {act.checkinMethod}
+                                  </span>
+                                )}
+                              </>
                             ) : act.status === 'ABSENT' ? (
                               <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
                                 <XCircle size={13} />
@@ -3586,11 +3715,19 @@ export function ReportsView({
                             ) : (
                               <span className="badge bg-secondary text-white d-inline-flex align-items-center gap-1 px-2.5 py-1" style={{ fontSize: '11.5px' }}>
                                 <Clock size={13} />
-                                <span>Chưa phản hồi</span>
+                                <span>Chưa điểm danh</span>
                               </span>
                             )}
                           </div>
                         </div>
+
+                        {/* GPS and Checkin details if available */}
+                        {act.gpsCoords && (
+                          <div className="mt-1.5 pt-1.5 border-top d-flex align-items-center gap-2 text-muted" style={{ fontSize: '11.5px' }}>
+                            <span>📍 Tọa độ GPS xác thực: <strong className="text-primary font-monospace">{act.gpsCoords}</strong></span>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle py-0 px-1.5">✓ Hợp lệ</span>
+                          </div>
+                        )}
 
                         {/* Reason Box if ABSENT */}
                         {act.status === 'ABSENT' && (
@@ -3601,29 +3738,33 @@ export function ReportsView({
 
                         {/* Admin Action Toggle */}
                         {isDoanXa && onRespondAttendance && (
-                          <div className="mt-2.5 pt-2 border-top d-flex align-items-center justify-content-end gap-2">
-                            <span className="text-muted me-auto" style={{ fontSize: '11px' }}>Thao tác Điểm danh Admin:</span>
-                            <button 
-                              type="button" 
-                              className={`btn btn-xs ${act.status === 'ATTENDED' ? 'btn-success text-white' : 'btn-outline-success'} fw-semibold px-2 py-1`}
-                              style={{ fontSize: '11px' }}
-                              onClick={() => onRespondAttendance(act.id, activeBranchDetail.name, true, '', act.title)}
-                            >
-                              ✓ Điểm danh Tham gia
-                            </button>
-                            <button 
-                              type="button" 
-                              className={`btn btn-xs ${act.status === 'ABSENT' ? 'btn-danger text-white' : 'btn-outline-danger'} fw-semibold px-2 py-1`}
-                              style={{ fontSize: '11px' }}
-                              onClick={() => {
-                                const reason = prompt('Nhập lý do vắng mặt cho Chi đoàn:', act.reason || 'Vắng có lý do');
-                                if (reason !== null) {
-                                  onRespondAttendance(act.id, activeBranchDetail.name, false, reason || 'Báo vắng', act.title);
-                                }
-                              }}
-                            >
-                              ✕ Điểm danh Báo vắng
-                            </button>
+                          <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-end gap-2">
+                            <span className="text-muted small">Cập nhật nhanh:</span>
+                            {act.status !== 'ATTENDED' && (
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-success px-2 py-0.5 rounded-2"
+                                style={{ fontSize: '11px' }}
+                                onClick={() => onRespondAttendance(act.id, activeBranchDetail.name, true, '', act.title)}
+                              >
+                                ✓ Đánh dấu có mặt
+                              </button>
+                            )}
+                            {act.status !== 'ABSENT' && (
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline-danger px-2 py-0.5 rounded-2"
+                                style={{ fontSize: '11px' }}
+                                onClick={() => {
+                                  const reason = prompt('Nhập lý do vắng mặt của Chi đoàn:', 'Bận công tác đột xuất');
+                                  if (reason !== null) {
+                                    onRespondAttendance(act.id, activeBranchDetail.name, false, reason, act.title);
+                                  }
+                                }}
+                              >
+                                ✕ Đánh dấu vắng
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -3632,9 +3773,9 @@ export function ReportsView({
                 )}
               </div>
 
-              <div className="modal-footer border-top pt-2">
-                <button type="button" className="btn btn-secondary px-4 fw-semibold" onClick={() => setSelectedBranchDetail(null)}>
-                  Đóng cửa sổ
+              <div className="modal-footer border-top py-2 px-3">
+                <button type="button" className="btn btn-sm btn-secondary" onClick={() => setSelectedBranchDetail(null)}>
+                  Đóng
                 </button>
               </div>
             </div>
@@ -3645,7 +3786,7 @@ export function ReportsView({
   );
 }
 
-// 7. Full Storage Archive View
+
 export function StorageArchiveView({ documents = [], submissions = [], onDeleteDocument, onDeleteSubmission, isDoanXa }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');

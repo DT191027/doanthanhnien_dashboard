@@ -1907,7 +1907,17 @@ export function getBranchClusterName(branchName) {
   return cluster ? cluster.name : 'Chưa phân cụm';
 }
 
-export function calculateBranchRating(percentage) {
+export function calculateBranchRating(percentage, totalAssigned = 1) {
+  if (totalAssigned === 0 || percentage === null || percentage === undefined) {
+    return {
+      label: 'Chưa có hoạt động',
+      badgeClass: 'bg-secondary text-white',
+      borderClass: 'border-secondary',
+      bgSubtle: 'bg-secondary-subtle text-secondary',
+      icon: '⏳',
+      color: '#6B7280'
+    };
+  }
   if (percentage >= 90) {
     return {
       label: 'Hoàn thành xuất sắc nhiệm vụ',

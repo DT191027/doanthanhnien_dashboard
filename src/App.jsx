@@ -1089,6 +1089,7 @@ export default function App() {
           ) : activeTab === 'reports' ? (
             /* REPORTS & ANALYTICS VIEW */
             <ReportsView 
+              setActiveTab={setActiveTab}
               activitiesCount={activitiesList.length}
               docsCount={userDocuments.length}
               submissionsCount={submissionsList.length}

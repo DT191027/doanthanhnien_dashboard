@@ -163,7 +163,11 @@ export default function App() {
       if (strId.startsWith('act-seed-')) return false;
       if (a.title && a.title.includes('Hội nghị Học tập & Quán triệt')) return false;
       return true;
-    });
+    }).map(a => ({
+      ...a,
+      confirmedBy: getUniqueConfirmedBranches(a.confirmedBy),
+      absentBy: getUniqueConfirmedBranches(a.absentBy)
+    }));
     setActivitiesList(deduplicateActivities(cleanedActs));
 
     const cleanedDocs = (docs || []).filter(d => {
@@ -562,22 +566,14 @@ export default function App() {
   };
 
   const handleConfirmReceipt = async (type, item) => {
-    const branchName = currentUser?.full_name || currentUser?.branch_name || 'Chi đoàn Ấp';
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
-
-    const existingConfirmed = item.confirmedBy || [];
-    if (existingConfirmed.some(c => c.branch === branchName)) {
+    const rawBranch = currentUser?.branch_name || currentUser?.full_name || 'Chi đoàn';
+    const branchName = normalizeBranchName(rawBranch);
+    const existingConfirmed = getUniqueConfirmedBranches(item.confirmedBy || []);
+    if (existingConfirmed.some(c => normalizeBranchName(c.branch) === branchName)) {
       triggerToast('Đơn vị đã xác nhận tiếp nhận trước đó!');
       return;
     }
-
-    const updatedConfirmedBy = [...existingConfirmed, { branch: branchName, time: timeStr }];
+    const updatedConfirmedBy = [...existingConfirmed.filter(c => normalizeBranchName(c.branch) !== branchName), { branch: branchName, time: timeStr }];
 
     if (type === 'notification') {
       const updatedNoti = {
@@ -771,7 +767,8 @@ export default function App() {
     triggerToast('Đã lưu kết quả điểm danh & đánh giá tham gia hoạt động!');
   };
 
-  const handleRespondAttendance = async (activityId, branchName, attended, reason, activityTitle = '') => {
+  const handleRespondAttendance = async (activityId, rawBranchName, attended, reason, activityTitle = '') => {
+    const branchName = normalizeBranchName(rawBranchName);
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');

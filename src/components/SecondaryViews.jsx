@@ -68,16 +68,17 @@ export function ReceiptConfirmationBox({
   // 1. Process attendanceRecords map
   if (typeof activityAttendance === 'object' && activityAttendance !== null) {
     Object.entries(activityAttendance).forEach(([branch, record]) => {
+      const cleanBranch = normalizeBranchName(branch);
       if (typeof record === 'boolean') {
-        if (record) {
-          const matchConf = confirmedBy.find(c => (typeof c === 'string' ? c : c?.branch) === branch);
-          participatingBranches.push({ branch, time: (typeof matchConf === 'object' ? matchConf?.time : null) || 'Đã xác nhận' });
+        if (record && !participatingBranches.some(p => normalizeBranchName(p.branch) === cleanBranch)) {
+          const matchConf = confirmedBy.find(c => normalizeBranchName(c) === cleanBranch);
+          participatingBranches.push({ branch: cleanBranch, time: (typeof matchConf === 'object' ? matchConf?.time : null) || 'Đã xác nhận' });
         }
       } else if (typeof record === 'object' && record !== null) {
-        if (record.attended) {
-          participatingBranches.push({ branch, time: record.time || 'Đã xác nhận' });
-        } else {
-          absentBranches.push({ branch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
+        if (record.attended && !participatingBranches.some(p => normalizeBranchName(p.branch) === cleanBranch)) {
+          participatingBranches.push({ branch: cleanBranch, time: record.time || 'Đã xác nhận' });
+        } else if (!record.attended && !absentBranches.some(p => normalizeBranchName(p.branch) === cleanBranch)) {
+          absentBranches.push({ branch: cleanBranch, reason: record.reason || 'Báo vắng', time: record.time || 'Vừa xong' });
         }
       }
     });
@@ -86,10 +87,10 @@ export function ReceiptConfirmationBox({
   // 2. Add from confirmedBy list if not present
   confirmedBy.forEach(c => {
     if (!c) return;
-    const bName = typeof c === 'string' ? c : (c.branch || c.name || '');
+    const cleanBranch = normalizeBranchName(c);
     const bTime = typeof c === 'object' ? (c.time || 'Đã xác nhận') : 'Đã xác nhận';
-    if (bName && !participatingBranches.some(p => p.branch === bName)) {
-      participatingBranches.push({ branch: bName, time: bTime });
+    if (cleanBranch && !participatingBranches.some(p => normalizeBranchName(p.branch) === cleanBranch)) {
+      participatingBranches.push({ branch: cleanBranch, time: bTime });
     }
   });
 
@@ -4398,14 +4399,14 @@ export function BranchAttendanceWorkspaceView({
             currentRole={currentRole}
             isDoanXa={false}
             onAttendanceSuccess={(actId, branchName, log) => {
-              onRespondAttendance && onRespondAttendance(actId, branchName, true, {
+              const stdBranch = normalizeBranchName(branchName);
+              onRespondAttendance && onRespondAttendance(actId, stdBranch, true, {
                 time: log?.time_str || 'Đã xác nhận có mặt',
                 method: log?.verified_by || 'CAMERA_QR',
                 latitude: log?.latitude,
                 longitude: log?.longitude,
                 photo_url: log?.photo_url || null
               });
-              onConfirmReceipt && onConfirmReceipt('activity', currentBranchAct);
             }}
           />
         </div>
@@ -4530,35 +4531,13 @@ export function BranchAttendanceWorkspaceView({
 
   // Sync tasksList for Tab "Phân Công" when current item changes
   useEffect(() => {
-    if (currentActivity?.subTasks && Array.isArray(currentActivity.subTasks) && currentActivity.subTasks.length > 0) {
+    if (currentActivity?.subTasks && Array.isArray(currentActivity.subTasks)) {
       setTasksList(currentActivity.subTasks);
-    } else if (currentItem) {
-      const actDate = currentItem.date || currentItem.dueDate || 'Hôm nay';
-      setTasksList([
-        {
-          id: 'task-1',
-          task: 'Chuẩn bị hội trường, âm thanh & đón tiếp đại biểu',
-          branch: 'Chi đoàn Cơ quan Đoàn xã',
-          officer: 'Đ/c Phó Bí thư Đoàn xã',
-          deadline: `Trước 07:30 ngày ${actDate}`,
-          status: 'Đang tiến hành',
-          notes: 'Kiểm tra máy chiếu, micro, cờ Tổ quốc và cờ Đoàn đầy đủ.'
-        },
-        {
-          id: 'task-2',
-          task: 'Phụ trách bàn điểm danh mã QR & xác thực vị trí',
-          branch: 'Chi đoàn Ban Chỉ huy Quân sự xã',
-          officer: 'Đ/c Bí thư Chi đoàn',
-          deadline: `07:30 - 08:30 ngày ${actDate}`,
-          status: 'Chờ thực hiện',
-          notes: 'Hướng dẫn các Chi đoàn quét mã QR điểm danh.'
-        }
-      ]);
     } else {
       setTasksList([]);
     }
     setIsEditingTasks(false);
-  }, [selectedItemId]);
+  }, [selectedItemId, currentActivity]);
 
   // Open edit for item info
   const handleOpenEdit = () => {
@@ -5209,7 +5188,7 @@ export function BranchAttendanceWorkspaceView({
                           <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
                             {isSelectedTask 
                               ? (currentTask.status === 'completed' ? '✅ Đã hoàn thành' : currentTask.status === 'inProgress' ? '🔄 Đang tiến hành' : '⏳ Cần làm')
-                              : (currentActivity?.status || 'Đang diễn ra')}
+                              : (timeStatus?.statusText || currentActivity?.status || 'Đang diễn ra')}
                           </span>
                         </div>
 
@@ -5296,8 +5275,8 @@ export function BranchAttendanceWorkspaceView({
                         </div>
                         <div className="fw-semibold text-success" style={{ fontSize: '13px' }}>
                           {(() => {
-                            const confList = Array.isArray(currentItem.confirmedBy) ? currentItem.confirmedBy : [];
-                            const compList = Array.isArray(currentItem.completedBy) ? currentItem.completedBy : [];
+                            const confList = getUniqueConfirmedBranches(currentItem.confirmedBy);
+                            const compList = getUniqueConfirmedBranches(currentItem.completedBy);
                             if (compList.length > 0) {
                               return `${compList.length} Chi đoàn đã làm xong`;
                             }

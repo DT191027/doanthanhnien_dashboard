@@ -1,3 +1,24 @@
+export function normalizeBranchName(name) {
+  if (!name) return '';
+  const raw = typeof name === 'object' ? (name.branch || name.name || '') : String(name);
+  return raw.replace(/^Bí thư\s+/i, '').trim();
+}
+
+export function getUniqueConfirmedBranches(confirmedBy) {
+  if (!Array.isArray(confirmedBy)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of confirmedBy) {
+    if (!item) continue;
+    const cleanName = normalizeBranchName(item);
+    if (cleanName && !seen.has(cleanName)) {
+      seen.add(cleanName);
+      result.push(typeof item === 'object' ? { ...item, branch: cleanName } : { branch: cleanName, time: 'Đã xác nhận' });
+    }
+  }
+  return result;
+}
+
 import { createClient } from '@supabase/supabase-js';
 
 // Official Supabase credentials for project ofroeyoghgenboavoaiu
@@ -385,7 +406,11 @@ export function deduplicateActivities(activities) {
     if (act.id) seenIds.add(act.id);
     seenKeys.add(comboKey);
     return true;
-  });
+  }).map(act => ({
+    ...act,
+    confirmedBy: getUniqueConfirmedBranches(act.confirmedBy),
+    absentBy: getUniqueConfirmedBranches(act.absentBy)
+  }));
 }
 
 // Universal Date Formatter to dd/mm/yyyy
@@ -706,7 +731,7 @@ export function getActivityTimeStatus(act) {
   if (!day) day = currentDay;
 
   let startHour = 8, startMin = 0;
-  let endHour = 11, endMin = 30;
+  let endHour = 23, endMin = 59;
 
   if (act.time && typeof act.time === 'string' && act.time.includes('-')) {
     const timeParts = act.time.split('-').map(s => s.trim());
@@ -1948,27 +1973,8 @@ export function isActivityExpired(activity) {
   if (activity.status === 'Đã hoàn thành' || activity.status === 'Đã kết thúc') return true;
   if (activity.is_closed === true) return true;
 
-  const now = new Date();
-  let year = parseInt(activity.year, 10);
-  let month = parseInt(activity.month, 10);
-  let day = parseInt(activity.day, 10);
-
-  if (activity.dateIso && (!year || !month || !day)) {
-    const parts = String(activity.dateIso).split('T')[0].split('-');
-    if (parts.length === 3) {
-      year = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10);
-      day = parseInt(parts[2], 10);
-    }
-  }
-
-  // Hoạt động chỉ tự động hết hiệu lực khi ngày diễn ra đã kết thúc trong quá khứ (trước hôm nay)
-  if (year && month && day) {
-    const actEndOfDay = new Date(year, month - 1, day, 23, 59, 59);
-    if (now > actEndOfDay) {
-      return true;
-    }
-  }
+  const timeStatus = getActivityTimeStatus(activity);
+  if (timeStatus && timeStatus.code === 'FINISHED') return true;
 
   return false;
 }

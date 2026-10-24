@@ -448,7 +448,7 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
             Quản lý Lịch hoạt động & Phong trào
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Theo dõi và điều hành tất cả lịch hoạt động thanh niên xã Xuân Thới Sơn và 30 Chi đoàn Ấp
+            Theo dõi và điều hành tất cả lịch hoạt động thanh niên xã Xuân Thới Sơn và 56 Chi đoàn
           </div>
         </div>
 
@@ -853,7 +853,7 @@ export function DocumentsView({
         rawTask: t,
         item_type: 'required_task',
         doc_number: t.doc_number || `TD-${String(t.id).slice(-6)}`,
-        source_branch: t.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+        source_branch: t.assigned_to || 'Tất cả 56 Chi đoàn',
         display_title: t.title || 'Công việc TODO cần nộp văn bản',
         display_summary: t.description || t.content || `Nhiệm vụ do Quản trị viên giao. Hạn nộp: ${formatDateDDMMYYYY(t.dueDate || t.due_date || 'Hôm nay')}`,
         display_date: formatDateDDMMYYYY(t.dueDate || t.due_date || 'Hôm nay'),
@@ -1245,7 +1245,7 @@ export function DocumentsView({
   };
 
   const titleMap = {
-    incoming_docs: 'Quản lý Văn bản đến (Tiếp nhận báo cáo & văn bản từ 30 Chi đoàn)',
+    incoming_docs: 'Quản lý Văn bản đến (Tiếp nhận báo cáo & văn bản từ 56 Chi đoàn)',
     outgoing_docs: 'Quản lý Văn bản đi (Ban hành hoạt động & lưu trữ văn bản)',
     doan_xa_docs: 'Văn bản từ Đoàn xã',
     required_docs: 'Văn bản cần nộp (Công việc TODO do Quản trị viên giao)'
@@ -1262,7 +1262,7 @@ export function DocumentsView({
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
             {tabType === 'incoming_docs' 
-              ? 'Tiếp nhận, kiểm tra, xác nhận và tải tệp văn bản/báo cáo từ 30 Chi đoàn Ấp' 
+              ? 'Tiếp nhận, kiểm tra, xác nhận và tải tệp văn bản/báo cáo từ 56 Chi đoàn' 
               : tabType === 'required_docs'
               ? 'Nộp văn bản và tệp báo cáo cho các công việc TODO do Quản trị viên giao'
               : 'Ban hành, phân loại và lưu trữ tự động văn bản triển khai hoạt động'}
@@ -1311,7 +1311,7 @@ export function DocumentsView({
           </h5>
           <p className="text-secondary mb-3" style={{ fontSize: '13px' }}>
             {tabType === 'incoming_docs' 
-              ? 'Tất cả văn bản/báo cáo do 30 Chi đoàn nộp sẽ tự động hiển thị tại đây.'
+              ? 'Tất cả văn bản/báo cáo do 56 Chi đoàn nộp sẽ tự động hiển thị tại đây.'
               : tabType === 'required_docs'
               ? 'Mục này chỉ hiển thị khi Quản trị viên giao công việc TODO cho Chi đoàn. Khi đó, Chi đoàn sẽ tải tệp lên và gửi về cho Quản trị viên tại đây.'
               : 'Tất cả văn bản ban hành từ Quản lý hoạt động sẽ tự động đưa lên đây và Lưu trữ văn bản.'}
@@ -2427,7 +2427,7 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc, onDeleteSub
             Lịch sử Nộp Báo cáo & Văn bản
           </h3>
           <div className="text-secondary" style={{ fontSize: '13px' }}>
-            Theo dõi tình hình nộp báo cáo định kỳ của 30 Chi đoàn Ấp trực thuộc Đoàn xã
+            Theo dõi tình hình nộp báo cáo định kỳ của 56 Chi đoàn trực thuộc Đoàn xã
           </div>
         </div>
 
@@ -2715,7 +2715,7 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
             const notesVal = n.activity_details?.notes || n.notes || (
               n.target_scope 
                 ? (n.target_scope.includes('30') || n.target_scope.includes('Dân cư') 
-                    ? 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.' 
+                    ? 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định.' 
                     : `Đề nghị ${n.target_scope} triển khai thực hiện đầy đủ và đúng thời gian quy định.`)
                 : 'Đề nghị các đơn vị triển khai thực hiện đầy đủ và đúng thời gian quy định.'
             );
@@ -4305,7 +4305,7 @@ export function BranchAttendanceWorkspaceView({
       year: new Date().getFullYear(),
       location: quickLocation.trim(),
       description: 'Hoạt động điểm danh do Đoàn Xã tạo để theo dõi tiến độ tham gia của các Chi đoàn.',
-      assigned_to: 'Tất cả 30 Chi đoàn Ấp',
+      assigned_to: 'Tất cả 56 Chi đoàn',
       priority: 'Bình thường',
       status: 'Đang diễn ra',
       confirmedBy: [],
@@ -4390,7 +4390,7 @@ export function BranchAttendanceWorkspaceView({
       date: itemDate,
       location: currentItem.location || 'Hội trường UBND xã Xuân Thới Sơn',
       description: currentItem.description || '',
-      assigned_to: currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+      assigned_to: currentItem.assigned_to || 'Tất cả 56 Chi đoàn',
       priority: currentItem.priority || 'Bình thường'
     });
     setIsEditingInfo(true);
@@ -4953,7 +4953,7 @@ export function BranchAttendanceWorkspaceView({
                         style={{ fontSize: '13px' }}
                         value={editForm.assigned_to}
                         onChange={(e) => setEditForm({ ...editForm, assigned_to: e.target.value })}
-                        placeholder="Ví dụ: Tất cả 30 Chi đoàn Ấp"
+                        placeholder="Ví dụ: Tất cả 56 Chi đoàn"
                       />
                     </div>
 
@@ -5098,8 +5098,8 @@ export function BranchAttendanceWorkspaceView({
                           <Building size={13} className="text-primary" />
                           <span>Đơn vị phụ trách:</span>
                         </div>
-                        <div className="fw-semibold text-dark text-truncate" style={{ fontSize: '13px' }} title={currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}>
-                          {currentItem.assigned_to || 'Tất cả 30 Chi đoàn Ấp'}
+                        <div className="fw-semibold text-dark text-truncate" style={{ fontSize: '13px' }} title={currentItem.assigned_to || 'Tất cả 56 Chi đoàn'}>
+                          {currentItem.assigned_to || 'Tất cả 56 Chi đoàn'}
                         </div>
                       </div>
                     </div>

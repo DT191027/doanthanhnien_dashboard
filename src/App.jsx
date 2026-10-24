@@ -304,8 +304,8 @@ export default function App() {
 
   const handleAddActivity = async (newAct) => {
     const assignedText = Array.isArray(newAct.assigned_to) 
-      ? (newAct.assigned_to.length === 0 || newAct.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newAct.assigned_to.join(', '))
-      : (newAct.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
+      ? (newAct.assigned_to.length === 0 || newAct.assigned_to.includes('Tất cả 56 Chi đoàn') ? 'Tất cả 56 Chi đoàn' : newAct.assigned_to.join(', '))
+      : (newAct.assigned_to || 'Tất cả 56 Chi đoàn');
 
     const dayVal = String(newAct.day || new Date().getDate()).padStart(2, '0');
     const monthVal = String(newAct.month || (new Date().getMonth() + 1)).padStart(2, '0');
@@ -378,7 +378,7 @@ export default function App() {
         day: activityItem.day,
         month: activityItem.month,
         location: activityItem.location,
-        notes: newAct.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
+        notes: newAct.notes || 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định.'
       },
       time_ago: 'Vừa xong'
     };
@@ -432,7 +432,7 @@ export default function App() {
     // Xác định ghi chú chỉ đạo rõ ràng theo đúng khối được chọn
     let dynamicNotes = `Đề nghị ${targetText} triển khai thực hiện đầy đủ và đúng thời gian quy định.`;
     if (targetText.includes('Khối Dân cư') || targetText.includes('30 Ấp') || targetText.includes('30 Chi đoàn')) {
-      dynamicNotes = 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+      dynamicNotes = 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định.';
     } else if (targetText.includes('Khối Trường học') || targetText.includes('Trường học') || targetText.includes('Cấp 3') || targetText.includes('Mầm non')) {
       dynamicNotes = 'Đề nghị các trường Cấp 3, Cấp 2, Tiểu học, Mầm non và Đoàn trường triển khai thực hiện đầy đủ và đúng tiến độ.';
     } else if (targetText.includes('Khối Ngoài nhà nước') || targetText.includes('Công ty') || targetText.includes('Doanh nghiệp')) {
@@ -463,7 +463,7 @@ export default function App() {
 
   const handleDeleteDocument = async (docId, docTitle = '') => {
     setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle)));
-    triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 30 Chi đoàn!');
+    triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 56 Chi đoàn!');
 
     const updated = await syncDeleteDocument(docId, docTitle);
     const filtered = (updated || []).filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
@@ -518,7 +518,7 @@ export default function App() {
         id: notiData.id || `noti-${Date.now()}`,
         title: notiData.title,
         content: notiData.content,
-        target_scope: notiData.target_scope || 'Tất cả 30 Chi đoàn Ấp',
+        target_scope: notiData.target_scope || 'Tất cả 56 Chi đoàn',
         priority: notiData.priority || 'Bình thường',
         time: notiData.time || '08:00 - 11:30',
         date: notiData.date || '',
@@ -527,7 +527,7 @@ export default function App() {
           time: notiData.time || '08:00 - 11:30',
           date: notiData.date || '',
           location: notiData.location || '',
-          notes: 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.'
+          notes: 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định.'
         },
         time_ago: 'Vừa xong',
         createdAt: Date.now()
@@ -630,7 +630,7 @@ export default function App() {
 
   const handleAddTask = async (newTask) => {
     const assignedStr = Array.isArray(newTask.assigned_to)
-      ? (newTask.assigned_to.length === 1 ? newTask.assigned_to[0] : (newTask.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : newTask.assigned_to.join(', ')))
+      ? (newTask.assigned_to.length === 1 ? newTask.assigned_to[0] : (newTask.assigned_to.includes('Tất cả 56 Chi đoàn') ? 'Tất cả 56 Chi đoàn' : newTask.assigned_to.join(', ')))
       : (newTask.assigned_to || 'Đoàn xã Xuân Thới Sơn');
 
     const taskItem = {
@@ -644,20 +644,20 @@ export default function App() {
     const updated = await syncSaveTask(taskItem);
     setTasksList(updated);
 
-    // Gửi thông báo tự động khi giao nhiệm vụ cho 30 Chi đoàn hoặc Các Cụm thi đua
+    // Gửi thông báo tự động khi giao nhiệm vụ cho 56 Chi đoàn hoặc Các Cụm thi đua
     const formattedDeadline = formatDeadlineDisplay(taskItem.dueDate);
 
-    if (newTask.assigned_to === 'Tất cả 30 Chi đoàn Ấp' || newTask.assigned_to.includes('30 Chi đoàn')) {
+    if (newTask.assigned_to === 'Tất cả 56 Chi đoàn' || newTask.assigned_to.includes('30 Chi đoàn')) {
       const autoNoti = {
         id: `noti-${Date.now()}`,
         title: `📋 Nhiệm vụ mới: ${newTask.title}`,
-        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${formattedDeadline}) tới Tất cả 30 Chi đoàn Ấp. Đề nghị các Chi đoàn khẩn trương thực hiện.`,
-        target_scope: 'Tất cả 30 Chi đoàn Ấp',
+        content: `Ban Thường vụ Đoàn xã Xuân Thới Sơn vừa giao nhiệm vụ "${newTask.title}" (Hạn hoàn thành: ${formattedDeadline}) tới Tất cả 56 Chi đoàn. Đề nghị các Chi đoàn khẩn trương thực hiện.`,
+        target_scope: 'Tất cả 56 Chi đoàn',
         time_ago: 'Vừa xong'
       };
       const updatedNotis = await syncSaveNotification(autoNoti);
       setNotificationsList(updatedNotis);
-      triggerToast(`Đã giao nhiệm vụ "${newTask.title}" và phát thông báo tới toàn bộ 30 Chi đoàn Ấp!`);
+      triggerToast(`Đã giao nhiệm vụ "${newTask.title}" và phát thông báo tới toàn bộ 56 Chi đoàn!`);
     } else if (newTask.assigned_to && newTask.assigned_to.startsWith('Cụm thi đua')) {
       const cluster = COMPETITION_CLUSTERS.find(c => c.name === newTask.assigned_to);
       const branchInfo = cluster ? ` (${cluster.branches.map(b => b.replace('Chi đoàn Ấp ', '')).join(', ')})` : '';

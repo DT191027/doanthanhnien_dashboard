@@ -347,7 +347,7 @@ export const INITIAL_DOCUMENTS = [
     title: 'Kế hoạch Tổ chức Chiến dịch Thanh niên Tình nguyện Mùa Hè Xanh năm 2026',
     summary: 'Ban hành ngày 10/08/2026 - Kế hoạch triển khai công trình thanh niên tại 30 Chi đoàn Ấp',
     sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    recipient_scope: 'Tất cả 56 Chi đoàn',
     status: 'Đã đọc',
     type: 'outgoing',
     date: '10/08/2026',
@@ -361,7 +361,7 @@ export const INITIAL_DOCUMENTS = [
     title: 'Thông báo Triệu tập Đại biểu tham dự Hội nghị Học tập & Quán triệt Nghị quyết Đoàn xã',
     summary: 'Ban hành ngày 01/09/2026 - Triệu tập Bí thư, Phó Bí thư và Đoàn viên ưu tú 30 Ấp',
     sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    recipient_scope: 'Tất cả 56 Chi đoàn',
     status: 'Chưa đọc',
     type: 'incoming',
     date: '01/09/2026',
@@ -375,7 +375,7 @@ export const INITIAL_DOCUMENTS = [
     title: 'Quyết định Phê duyệt Kế hoạch Ra quân Đồng loạt "Ngày Chủ nhật Xanh" Quý III/2026',
     summary: 'Ban hành ngày 05/09/2026 - Quy định nội dung và chỉ tiêu triển khai cho 6 Cụm thi đua',
     sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    recipient_scope: 'Tất cả 56 Chi đoàn',
     status: 'Chưa đọc',
     type: 'incoming',
     date: '05/09/2026',
@@ -389,7 +389,7 @@ export const INITIAL_DOCUMENTS = [
     title: 'Hướng dẫn Công tác Quản lý Đoàn viên và Thu nộp Đoàn phí năm 2026',
     summary: 'Ban hành ngày 15/05/2026 - Quy trình cập nhật sổ đoàn viên và báo cáo đoàn phí 30 Ấp',
     sender: 'Đoàn xã Xuân Thới Sơn',
-    recipient_scope: 'Tất cả 30 Chi đoàn Ấp',
+    recipient_scope: 'Tất cả 56 Chi đoàn',
     status: 'Đã đọc',
     type: 'outgoing',
     date: '15/05/2026',
@@ -444,14 +444,14 @@ export const INITIAL_REQUIRED_SUBMISSIONS = [
     title: 'Nộp Báo cáo Kết quả Ra quân "Ngày Chủ nhật Xanh" và Hình ảnh Tư liệu 30 Ấp',
     deadline: '22/09/2026',
     status: 'Chưa nộp',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp'
+    assigned_to: 'Tất cả 56 Chi đoàn'
   },
   {
     id: 'req-seed-2',
     title: 'Nộp Danh sách Rà soát Cập nhật Số lượng Đoàn viên Tháng 9/2026',
     deadline: '15/09/2026',
     status: 'Chưa nộp',
-    assigned_to: 'Tất cả 30 Chi đoàn Ấp'
+    assigned_to: 'Tất cả 56 Chi đoàn'
   }
 ];
 
@@ -461,7 +461,7 @@ export const INITIAL_NOTIFICATIONS = [
     title: '🚨 KHẨN: Triệu tập Bán Thường vụ & Bí thư 30 Chi đoàn Ấp họp đột xuất sáng mai',
     content: 'Ban Thường vụ Đoàn xã triệu tập đồng chí Bí thư (hoặc Phó Bí thư) 30 Chi đoàn Ấp tham dự buổi họp rà soát công tác chuẩn bị Ngày Chủ nhật Xanh vào lúc 08h00 ngày 10/09/2026 tại Phòng họp số 2 UBND Xã.',
     priority: 'Khẩn cấp',
-    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    target_scope: 'Tất cả 56 Chi đoàn',
     created_at: '2026-09-08 16:00',
     date: '08/09/2026',
     sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
@@ -471,7 +471,7 @@ export const INITIAL_NOTIFICATIONS = [
     title: '📢 V/v Nhắc nhở nộp Báo cáo Kết quả Hoạt động Tháng 8/2026 đúng thời hạn',
     content: 'Yêu cầu các Chi đoàn Ấp chưa nộp báo cáo hoạt động tháng 8 khẩn trương hoàn thiện văn bản và nộp trên Hệ thống Quản lý trước 17h00 ngày 12/09/2026.',
     priority: 'Quan trọng',
-    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    target_scope: 'Tất cả 56 Chi đoàn',
     created_at: '2026-09-07 09:30',
     date: '07/09/2026',
     sender: 'Văn phòng Đoàn xã Xuân Thới Sơn'
@@ -481,7 +481,7 @@ export const INITIAL_NOTIFICATIONS = [
     title: '🌟 Thông báo Khen thưởng Tập thể & Cá nhân xuất sắc trong Chiến dịch Mùa Hè Xanh',
     content: 'Chúc mừng 6 Chi đoàn Ấp thuộc Cụm thi đua số 1 đã hoàn thành xuất sắc chỉ tiêu công trình thanh niên Mùa Hè Xanh năm 2026.',
     priority: 'Bình thường',
-    target_scope: 'Tất cả 30 Chi đoàn Ấp',
+    target_scope: 'Tất cả 56 Chi đoàn',
     created_at: '2026-09-05 14:15',
     date: '05/09/2026',
     sender: 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
@@ -967,7 +967,7 @@ export async function syncFetchActivities() {
             id: item.id,
             title: item.title,
             priority: item.priority === 'urgent' ? 'Khẩn cấp' : item.priority === 'important' ? 'Quan trọng' : (item.priority || 'Bình thường'),
-            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 56 Chi đoàn',
             day,
             month,
             year,
@@ -1645,7 +1645,7 @@ export async function syncFetchNotifications() {
             id: item.id,
             title: item.title,
             content: item.content || matchedLocal.content || '',
-            target_scope: item.target_scope || matchedLocal.target_scope || 'Tất cả 30 Chi đoàn Ấp',
+            target_scope: item.target_scope || matchedLocal.target_scope || 'Tất cả 56 Chi đoàn',
             priority: item.priority || matchedLocal.priority || item.type || 'Bình thường',
             type: item.type || matchedLocal.type || 'general',
             time_ago: item.time_ago || matchedLocal.time_ago || 'Vừa xong',
@@ -1700,7 +1700,7 @@ export async function syncSaveNotification(notiItem) {
         type: newItem.type || 'general',
         time_ago: newItem.time_ago || 'Vừa xong',
         priority: newItem.priority || 'Bình thường',
-        target_scope: newItem.target_scope || 'Tất cả 30 Chi đoàn Ấp'
+        target_scope: newItem.target_scope || 'Tất cả 56 Chi đoàn'
       }]).select();
 
       if (error) {
@@ -1730,7 +1730,7 @@ export async function syncUpdateNotification(updatedNoti) {
         title: updatedNoti.title,
         content: updatedNoti.content || '',
         priority: updatedNoti.priority || 'Bình thường',
-        target_scope: updatedNoti.target_scope || 'Tất cả 30 Chi đoàn Ấp'
+        target_scope: updatedNoti.target_scope || 'Tất cả 56 Chi đoàn'
       }).eq('id', updatedNoti.id);
     } catch (e) {
       console.error('Supabase update notification exception:', e);
@@ -1799,7 +1799,7 @@ export async function syncFetchTasks() {
             status: item.status === 'in_progress' ? 'inProgress' : item.status || 'todo',
             priority: item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : (item.priority || 'Bình thường'),
             dueDate: item.due_date || matchedLocal.dueDate || 'Hôm nay',
-            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 30 Chi đoàn Ấp',
+            assigned_to: item.assigned_to || matchedLocal.assigned_to || 'Tất cả 56 Chi đoàn',
             description: item.description || matchedLocal.description || '',
             confirmedBy: Array.isArray(matchedLocal.confirmedBy) ? matchedLocal.confirmedBy : [],
             completedBy: Array.isArray(matchedLocal.completedBy) ? matchedLocal.completedBy : []

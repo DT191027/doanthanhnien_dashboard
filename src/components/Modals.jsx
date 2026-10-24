@@ -24,7 +24,7 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     if (s === 'ALL' || s === 'Tất cả 56 Chi đoàn / Đơn vị' || s === 'Tất cả 56 Chi đoàn') {
       return ['Tất cả 56 Chi đoàn / Đơn vị'];
     }
-    if (s === 'Tất cả 30 Chi đoàn Ấp' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
+    if (s === 'Tất cả 56 Chi đoàn' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
       const resBlock = TARGET_BLOCKS ? TARGET_BLOCKS.find(b => b.id === 'BLOCK_RESIDENTIAL') : null;
       return resBlock ? getBranchesForBlock(resBlock.id) : ['Khối Địa bàn Dân cư (30 Chi đoàn Ấp)'];
     }
@@ -88,7 +88,7 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     const blockBranches = typeof getBranchesForBlock === 'function' ? getBranchesForBlock(block.id) : [];
     let current = isAllSelected 
       ? ALL_BRANCHES.map(b => b.name) 
-      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 56 Chi đoàn');
 
     const hasAll = blockBranches.length > 0 && blockBranches.every(b => current.includes(b));
     let updated;
@@ -119,7 +119,7 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
     const clusterBranchNames = cluster.branches || [];
     let current = isAllSelected 
       ? ALL_BRANCHES.map(b => b.name) 
-      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 56 Chi đoàn');
 
     const hasAllCluster = clusterBranchNames.length > 0 && clusterBranchNames.every(b => current.includes(b));
     let updated;
@@ -139,7 +139,7 @@ export function MultiUnitSelect({ selected = [], onChange, label = 'Phân công 
   const handleToggleBranch = (branchName) => {
     let current = isAllSelected 
       ? ALL_BRANCHES.map(b => b.name) 
-      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 30 Chi đoàn Ấp');
+      : selectedList.filter(s => s !== 'Tất cả 56 Chi đoàn / Đơn vị' && s !== 'ALL' && s !== 'Tất cả 56 Chi đoàn');
 
     if (current.includes(branchName)) {
       current = current.filter(b => b !== branchName);
@@ -420,7 +420,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     location: '',
     description: '',
     notes: '',
-    assigned_to: ['Tất cả 30 Chi đoàn Ấp'],
+    assigned_to: ['Tất cả 56 Chi đoàn'],
     file_name: '',
     file_url: ''
   });
@@ -462,9 +462,9 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       month: prev.month || String(today.getMonth() + 1).padStart(2, '0'),
       year: prev.year || today.getFullYear(),
       location: prev.location || OFFICIAL_ADDRESS,
-      notes: prev.notes || 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định. Trang phục áo màu xanh Thanh niên Việt Nam.',
+      notes: prev.notes || 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định. Trang phục áo màu xanh Thanh niên Việt Nam.',
       description: prev.description || `Kế hoạch chi tiết chương trình theo văn bản triển khai đính kèm: ${file.name}`,
-      assigned_to: prev.assigned_to || ['Tất cả 30 Chi đoàn Ấp'],
+      assigned_to: prev.assigned_to || ['Tất cả 56 Chi đoàn'],
       file_name: uploaded.fileName || file.name,
       file_url: uploaded.url || '#'
     }));
@@ -503,8 +503,8 @@ export function CreateActivityModal({ show, onClose, onSave }) {
     confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
 
     const assignedStr = Array.isArray(formData.assigned_to) 
-      ? (formData.assigned_to.length === 0 || formData.assigned_to.includes('Tất cả 30 Chi đoàn Ấp') ? 'Tất cả 30 Chi đoàn Ấp' : formData.assigned_to.join(', '))
-      : (formData.assigned_to || 'Tất cả 30 Chi đoàn Ấp');
+      ? (formData.assigned_to.length === 0 || formData.assigned_to.includes('Tất cả 56 Chi đoàn') ? 'Tất cả 56 Chi đoàn' : formData.assigned_to.join(', '))
+      : (formData.assigned_to || 'Tất cả 56 Chi đoàn');
 
     const formattedTime = startTime && endTime ? `${startTime} - ${endTime}` : (formData.time || '08:00 - 11:30');
 
@@ -529,7 +529,7 @@ export function CreateActivityModal({ show, onClose, onSave }) {
       location: '',
       description: '',
       notes: '',
-      assigned_to: ['Tất cả 30 Chi đoàn Ấp'],
+      assigned_to: ['Tất cả 56 Chi đoàn'],
       file_name: '',
       file_url: ''
     });
@@ -1496,7 +1496,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       setTitle(editData.title || '');
       setContent(editData.content || '');
       const initScope = editData.target_scope;
-      if (initScope === 'Tất cả 30 Chi đoàn Ấp' || (typeof initScope === 'string' && (initScope.includes('30 Ấp') || initScope.includes('Khối Địa bàn Dân cư')))) {
+      if (initScope === 'Tất cả 56 Chi đoàn' || (typeof initScope === 'string' && (initScope.includes('30 Ấp') || initScope.includes('Khối Địa bàn Dân cư')))) {
         setTargetScope('Khối Địa bàn Dân cư (30 Chi đoàn Ấp)');
       } else if (initScope === 'ALL' || !initScope) {
         setTargetScope('Tất cả 56 Chi đoàn / Đơn vị');
@@ -1561,7 +1561,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
       const s = String(targetScope || '').trim();
       if (s === 'ALL' || s === 'Tất cả 56 Chi đoàn / Đơn vị' || !s) {
         scopeText = 'Tất cả 56 Chi đoàn / Đơn vị';
-      } else if (s === 'Tất cả 30 Chi đoàn Ấp' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
+      } else if (s === 'Tất cả 56 Chi đoàn' || s.includes('Khối Địa bàn Dân cư') || s.includes('Địa bàn Dân cư')) {
         scopeText = 'Khối Địa bàn Dân cư (30 Chi đoàn Ấp)';
       } else {
         scopeText = s;
@@ -1574,7 +1574,7 @@ export function SendMessageModal({ show, onClose, onSave, currentRole, editData 
 
     let dynamicNotes = 'Đề nghị các đơn vị triển khai thực hiện đầy đủ và đúng thời gian quy định.';
     if (scopeText.includes('Dân cư') || scopeText.includes('30') || scopeText.includes('Ấp')) {
-      dynamicNotes = 'Đề nghị 30 Chi đoàn Ấp triển khai tham gia đầy đủ và đúng thời gian quy định.';
+      dynamicNotes = 'Đề nghị 56 Chi đoàn triển khai tham gia đầy đủ và đúng thời gian quy định.';
     } else if (scopeText.includes('Trường học') || scopeText.includes('Cấp 3') || scopeText.includes('Cấp 2') || scopeText.includes('Mầm non')) {
       dynamicNotes = 'Đề nghị các trường Cấp 3, Cấp 2, Tiểu học, Mầm non và Đoàn trường triển khai thực hiện đầy đủ.';
     } else if (scopeText.includes('Ngoài nhà nước') || scopeText.includes('Công ty') || scopeText.includes('Doanh nghiệp')) {

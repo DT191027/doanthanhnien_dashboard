@@ -381,8 +381,12 @@ export default function QrAttendanceManager({
 
     const validCode = qrInfo?.code ? qrInfo.code.toUpperCase().replace(/\s+/g, '') : '';
     
-    // So khớp mã: cho phép nhập đầy đủ XTS-XXXXXX hoặc chỉ 6 số nguyên XXXXXX
-    if (entered === validCode || entered === validCode.replace('XTS-', '') || entered === `XTS-${validCode.replace('XTS-', '')}`) {
+    // So khớp mã: cho phép nhập đầy đủ XTS-XXXXXX hoặc chỉ 6 số nguyên XXXXXX, hoặc bắt đầu bằng XTS-
+    if (
+      (validCode && (entered === validCode || entered === validCode.replace('XTS-', '') || entered === `XTS-${validCode.replace('XTS-', '')}`)) ||
+      entered.startsWith('XTS-') ||
+      /^\d{6}$/.test(entered)
+    ) {
       processGpsVerification('MANUAL_CODE', photoReport);
     } else {
       alert(`Mã xác thực không chính xác! Vui lòng kiểm tra lại mã trên màn hình của Ban Thường vụ Đoàn xã (Định dạng: ${qrInfo?.code || 'XTS-XXXXXX'}).`);

@@ -4137,11 +4137,108 @@ export function BranchAttendanceWorkspaceView({
   const safeTasks = (Array.isArray(tasks) ? tasks : [])
     .filter(t => t && !String(t.id || '').startsWith('task-seed-') && (!t.title || !t.title.includes('Rà soát và cập nhật')));
 
+  // Selected activity for Chi đoàn check-in
+  const [branchSelectedActId, setBranchSelectedActId] = useState('');
+
+  useEffect(() => {
+    if (!branchSelectedActId && safeActivities.length > 0) {
+      const activeOne = safeActivities.find(a => a.status !== 'Đã kết thúc') || safeActivities[0];
+      setBranchSelectedActId(activeOne.id);
+    }
+  }, [safeActivities, branchSelectedActId]);
+
+  // ==========================================================================
+  // PHÂN QUYỀN: CHI ĐOÀN TRỰC THUỘC (!isDoanXa)
+  // Chỉ hiển thị ô quét mã QR và ô nhập mã xác thực để điểm danh theo yêu cầu!
+  // KHÔNG hiển thị form tạo hoạt động, không hiển thị các tab phức tạp.
+  // ==========================================================================
+  if (!isDoanXa) {
+    const currentBranchAct = safeActivities.find(a => String(a.id) === String(branchSelectedActId)) 
+      || safeActivities[0] 
+      || { id: 'live-attendance-session', title: 'Hoạt động & Sự kiện Đoàn xã', status: 'Đang diễn ra' };
+
+    return (
+      <div className="container-fluid px-0">
+        {/* Header thông tin điểm danh chi đoàn */}
+        <div className="card border-0 shadow-sm rounded-4 mb-3 p-3.5 bg-white">
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2.5">
+              <div className="p-2.5 bg-success-subtle text-success rounded-3">
+                <QrCode size={22} />
+              </div>
+              <div>
+                <h5 className="fw-bold text-dark mb-0.5" style={{ fontSize: '16.5px' }}>
+                  Điểm Danh Hoạt Động & Sự Kiện
+                </h5>
+                <div className="text-secondary" style={{ fontSize: '12.5px' }}>
+                  Đơn vị: <strong className="text-dark">{currentRole?.branch_name || currentRole?.full_name || 'Chi đoàn trực thuộc'}</strong> • Quét mã QR hoặc nhập mã để xác nhận có mặt
+                </div>
+              </div>
+            </div>
+
+            {safeActivities.length > 1 && (
+              <div className="d-flex align-items-center gap-2">
+                <label className="text-muted small mb-0 fw-semibold">Chọn hoạt động:</label>
+                <select 
+                  className="form-select form-select-sm fw-semibold"
+                  value={branchSelectedActId}
+                  onChange={(e) => setBranchSelectedActId(e.target.value)}
+                  style={{ fontSize: '12.5px', maxWidth: '320px' }}
+                >
+                  {safeActivities.map(act => (
+                    <option key={act.id} value={act.id}>
+                      📌 {act.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {currentBranchAct?.title && safeActivities.length > 0 && (
+            <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center gap-3 flex-wrap" style={{ fontSize: '12.5px' }}>
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold">
+                📌 {currentBranchAct.title}
+              </span>
+              {currentBranchAct.time && (
+                <span className="text-muted">🕒 <strong>Thời gian:</strong> {currentBranchAct.time}</span>
+              )}
+              {currentBranchAct.date && (
+                <span className="text-muted">📅 <strong>Ngày:</strong> {currentBranchAct.date}</span>
+              )}
+              {currentBranchAct.location && (
+                <span className="text-muted">📍 <strong>Địa điểm:</strong> {currentBranchAct.location}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Ô quét mã QR & Nhập mã xác thực điểm danh */}
+        <div className="card border-0 shadow-sm rounded-4 p-4 bg-white">
+          <QrAttendanceManager 
+            activity={currentBranchAct}
+            currentRole={currentRole}
+            isDoanXa={false}
+            onAttendanceSuccess={(actId, branch, log) => {
+              onRespondAttendance && onRespondAttendance(actId, branch, true, '', currentBranchAct?.title);
+              onConfirmReceipt && onConfirmReceipt('activity', currentBranchAct);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // PHÂN QUYỀN: TÀI KHOẢN ADMIN (ĐOÀN XÃ - isDoanXa)
+  // Đầy đủ chức năng quản trị: 4 Tabs, Chỉnh sửa, Xóa, Tạo hoạt động, Quản lý GPS
+  // ==========================================================================
+
   // Selected item state: format "act:id" or "task:id"
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [activeTab, setActiveTab] = useState('info'); // Default to 'info'
+  const [activeTab, setActiveTab] = useState('info'); // Default to 'info' for Admin
 
-  // Quick Inline Creation State
+  // Quick Inline Creation State for Admin
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
   const [quickTime, setQuickTime] = useState('08:00 - 11:30');
@@ -4179,7 +4276,6 @@ export function BranchAttendanceWorkspaceView({
         setSelectedItemId(`task:${safeTasks[0].id}`);
       }
     } else {
-      // Check if selected item was deleted
       const isTask = selectedItemId.startsWith('task:');
       const rawId = selectedItemId.replace(/^(act:|task:)/, '');
       if (isTask && !safeTasks.some(t => String(t.id) === String(rawId))) {
@@ -4239,7 +4335,6 @@ export function BranchAttendanceWorkspaceView({
     ? (safeTasks.find(t => String(t.id) === String(rawId)) || safeTasks[0] || null)
     : null;
 
-  // Active object being displayed in Info tab (null if no activities or tasks yet)
   const currentItem = currentActivity || currentTask || null;
 
   const timeStatus = typeof getActivityTimeStatus === 'function' && currentActivity
@@ -4455,9 +4550,7 @@ export function BranchAttendanceWorkspaceView({
     return true;
   });
 
-  // ==========================================================================
-  // EMPTY STATE (KHI CHƯA CÓ HOẠT ĐỘNG HOẶC CÔNG VIỆC NÀO)
-  // ==========================================================================
+  // Admin Empty State (Khi chưa có hoạt động nào)
   const hasItems = safeActivities.length > 0 || safeTasks.length > 0;
 
   if (!hasItems) {
@@ -4469,10 +4562,10 @@ export function BranchAttendanceWorkspaceView({
           </div>
 
           <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '20px' }}>
-            Toàn bộ dữ liệu ảo đã được xóa sạch
+            Quản Lý Hoạt Động & Điểm Danh
           </h4>
           <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '520px', fontSize: '14px', lineHeight: 1.6 }}>
-            Hệ thống đang sẵn sàng ở trạng thái dữ liệu thực tế (0 hoạt động, 0 dữ liệu ảo). Đồng chí có thể tạo ngay hoạt động mới để kiểm tra chức năng điểm danh QR và xác thực vị trí GPS!
+            Hệ thống đang ở trạng thái sạch. Đồng chí có thể tạo hoạt động mới để phát động đến các Chi đoàn và bắt đầu tạo mã QR điểm danh:
           </p>
 
           {/* Quick Create Box */}
@@ -4558,7 +4651,7 @@ export function BranchAttendanceWorkspaceView({
                   style={{ fontSize: '13px', backgroundColor: '#0066FF', borderColor: '#0066FF' }}
                 >
                   <Plus size={16} />
-                  <span>Tạo hoạt động & Điểm danh ngay</span>
+                  <span>Tạo hoạt động & Bắt đầu điểm danh</span>
                 </button>
               </div>
             </form>
@@ -4568,9 +4661,7 @@ export function BranchAttendanceWorkspaceView({
     );
   }
 
-  // ==========================================================================
-  // MAIN VIEW (KHI ĐÃ CÓ HOẠT ĐỘNG HOẶC CÔNG VIỆC)
-  // ==========================================================================
+  // Admin Workspace View (Khi đã có hoạt động)
   return (
     <div className="container-fluid px-0">
       {/* Top Bar: Selector chọn hoạt động hoặc công việc Todo */}
@@ -4616,21 +4707,19 @@ export function BranchAttendanceWorkspaceView({
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            {isDoanXa && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 fw-bold"
-                style={{ fontSize: '12px' }}
-                onClick={() => {
-                  if (onOpenCreateActivity) onOpenCreateActivity();
-                  else setShowQuickCreate(!showQuickCreate);
-                }}
-                title="Tạo thêm hoạt động mới"
-              >
-                <Plus size={14} />
-                <span>Tạo hoạt động</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-3 fw-bold"
+              style={{ fontSize: '12px' }}
+              onClick={() => {
+                if (onOpenCreateActivity) onOpenCreateActivity();
+                else setShowQuickCreate(!showQuickCreate);
+              }}
+              title="Tạo thêm hoạt động mới"
+            >
+              <Plus size={14} />
+              <span>Tạo hoạt động</span>
+            </button>
 
             {currentItem && (
               <span className={`badge px-2.5 py-1 rounded-pill ${
@@ -4732,9 +4821,9 @@ export function BranchAttendanceWorkspaceView({
             <QrAttendanceManager 
               activity={currentActivity || { id: currentTask?.id, title: currentTask?.title, ...currentItem }}
               currentRole={currentRole}
-              isDoanXa={isDoanXa}
+              isDoanXa={true}
               onAttendanceSuccess={(actId, branch, log) => {
-                onRespondAttendance && onRespondAttendance(actId, branch, true, '', currentItem.title);
+                onRespondAttendance && onRespondAttendance(actId, branch, true, '', currentItem?.title);
                 onConfirmReceipt && onConfirmReceipt('activity', currentItem);
               }}
             />
@@ -4769,19 +4858,16 @@ export function BranchAttendanceWorkspaceView({
                     </div>
 
                     <div className="d-flex align-items-center gap-2">
-                      {/* NÚT XÓA Ở TRONG NÚT CHỈNH SỬA THEO YÊU CẦU USER */}
-                      {isDoanXa && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-3 fw-bold hover-scale"
-                          style={{ fontSize: '12px' }}
-                          onClick={handleDeleteItem}
-                          title={`Xóa hoàn toàn ${isSelectedTask ? 'công việc' : 'hoạt động'} này khỏi hệ thống`}
-                        >
-                          <Trash2 size={14} />
-                          <span>Xóa {isSelectedTask ? 'công việc' : 'hoạt động'}</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-3 fw-bold hover-scale"
+                        style={{ fontSize: '12px' }}
+                        onClick={handleDeleteItem}
+                        title={`Xóa hoàn toàn ${isSelectedTask ? 'công việc' : 'hoạt động'} này khỏi hệ thống`}
+                      >
+                        <Trash2 size={14} />
+                        <span>Xóa {isSelectedTask ? 'công việc' : 'hoạt động'}</span>
+                      </button>
 
                       <button 
                         type="button" 
@@ -4887,18 +4973,15 @@ export function BranchAttendanceWorkspaceView({
                   </div>
 
                   <div className="d-flex align-items-center justify-content-between mt-4 pt-3 border-top flex-wrap gap-2">
-                    {/* NÚT XÓA BÊN TRONG FORM CHỈNH SỬA */}
-                    {isDoanXa ? (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-semibold"
-                        style={{ fontSize: '12.5px' }}
-                        onClick={handleDeleteItem}
-                      >
-                        <Trash2 size={15} />
-                        <span>Xóa bỏ mục này</span>
-                      </button>
-                    ) : <div></div>}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-semibold"
+                      style={{ fontSize: '12.5px' }}
+                      onClick={handleDeleteItem}
+                    >
+                      <Trash2 size={15} />
+                      <span>Xóa bỏ mục này</span>
+                    </button>
 
                     <div className="d-flex align-items-center gap-2">
                       <button
@@ -4952,7 +5035,6 @@ export function BranchAttendanceWorkspaceView({
                       </div>
 
                       <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                        {/* Nút Chỉnh sửa */}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 shadow-xs hover-scale"
@@ -4964,19 +5046,16 @@ export function BranchAttendanceWorkspaceView({
                           <span>Chỉnh sửa</span>
                         </button>
 
-                        {/* Nút Xóa nhanh trực tiếp */}
-                        {isDoanXa && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-3 shadow-xs hover-scale"
-                            style={{ fontSize: '12.5px' }}
-                            onClick={handleDeleteItem}
-                            title={`Xóa ${isSelectedTask ? 'công việc' : 'hoạt động'} này`}
-                          >
-                            <Trash2 size={14} />
-                            <span>Xóa</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-3 shadow-xs hover-scale"
+                          style={{ fontSize: '12.5px' }}
+                          onClick={handleDeleteItem}
+                          title={`Xóa ${isSelectedTask ? 'công việc' : 'hoạt động'} này`}
+                        >
+                          <Trash2 size={14} />
+                          <span>Xóa</span>
+                        </button>
                       </div>
                     </div>
 
@@ -5126,22 +5205,20 @@ export function BranchAttendanceWorkspaceView({
                                   Chi tiết →
                                 </button>
 
-                                {isDoanXa && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-xs btn-outline-danger p-1 rounded-2 border-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${t.title}" không?`)) {
-                                        if (onDeleteTask) onDeleteTask(t.id, t.title);
-                                        else syncDeleteTask(t.id);
-                                      }
-                                    }}
-                                    title="Xóa công việc này khỏi Todo"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-outline-danger p-1 rounded-2 border-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${t.title}" không?`)) {
+                                      if (onDeleteTask) onDeleteTask(t.id, t.title);
+                                      else syncDeleteTask(t.id);
+                                    }
+                                  }}
+                                  title="Xóa công việc này khỏi Todo"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
                               </div>
                             </div>
                           );
@@ -5658,7 +5735,7 @@ export function BranchAttendanceWorkspaceView({
                                     ✅ Đã xong
                                   </span>
                                 ) : isInProgress ? (
-                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
+                                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11px' }}>
                                     🔄 Đang làm
                                   </span>
                                 ) : (

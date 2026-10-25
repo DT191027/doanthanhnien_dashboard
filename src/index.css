@@ -613,3 +613,19 @@ body {
 .spin-animation {
   animation: spinFast 0.8s linear infinite;
 }
+
+
+@keyframes pulse-sync {
+  0% { transform: scale(0.95); opacity: 0.6; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); opacity: 0.6; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.realtime-indicator-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #10B981;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse-sync 1.8s infinite;
+}

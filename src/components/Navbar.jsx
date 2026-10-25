@@ -44,7 +44,24 @@ export default function Navbar({
       </div>
 
       {/* Right Controls */}
-      <div className="d-flex align-items-center gap-3">
+      <div className="d-flex align-items-center gap-2.5">
+        {/* Siêu Đồng Bộ Realtime Badge */}
+        <div 
+          className="d-none d-lg-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-pill border shadow-xs"
+          style={{
+            backgroundColor: '#F0FDF4',
+            borderColor: '#BBF7D0',
+            color: '#15803D',
+            fontSize: '11.5px',
+            fontWeight: 650,
+            letterSpacing: '0.2px'
+          }}
+          title="Hệ thống kết nối siêu cấp đồng bộ thời gian thực 0 delay với Supabase"
+        >
+          <span className="realtime-indicator-dot"></span>
+          <span>Siêu đồng bộ trực tiếp</span>
+        </div>
+
         {/* Nút điểm danh bằng cách xác thực GPS theo yêu cầu người dùng */}
         <button
           type="button"

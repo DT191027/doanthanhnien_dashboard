@@ -71,7 +71,8 @@ import {
   isItemTargetedToUser,
   deduplicateActivities,
   generateUuid,
-  isValidUuid
+  isValidUuid,
+  playNotificationSound
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -152,129 +153,143 @@ export default function App() {
   };
 
   const loadAllData = async () => {
-    const [acts, docs, subs, notis, tsks, atts, mbrs] = await Promise.all([
-      syncFetchActivities(),
-      syncFetchDocuments(),
-      syncFetchSubmissions(),
-      syncFetchNotifications(),
-      syncFetchTasks(),
-      syncFetchAttendance(),
-      syncFetchMembers()
-    ]);
-    // Xóa sạch 100% dữ liệu hoạt động ảo & công việc ảo theo yêu cầu
-    const cleanedActs = (acts || []).filter(a => {
-      if (!a) return false;
-      const strId = String(a.id || '');
-      if (strId.startsWith('act-seed-')) return false;
-      if (a.title && a.title.includes('Hội nghị Học tập & Quán triệt')) return false;
-      return true;
-    }).map(a => ({
-      ...a,
-      confirmedBy: getUniqueConfirmedBranches(a.confirmedBy),
-      absentBy: getUniqueConfirmedBranches(a.absentBy)
-    }));
-    setActivitiesList(deduplicateActivities(cleanedActs));
+    try {
+      const results = await Promise.allSettled([
+        syncFetchActivities(),
+        syncFetchDocuments(),
+        syncFetchSubmissions(),
+        syncFetchNotifications(),
+        syncFetchTasks(),
+        syncFetchAttendance(),
+        syncFetchMembers()
+      ]);
 
-    const cleanedDocs = (docs || []).filter(d => {
-      if (!d) return false;
-      const strId = String(d.id || '');
-      if (strId.startsWith('doc-seed-') || (d.file_url && d.file_url.includes('w3.org/WAI')) || (d.summary && d.summary.includes('30 Chi đoàn Ấp'))) return false;
-      return true;
-    });
-    setDocumentsList(cleanedDocs);
+      const acts = results[0].status === 'fulfilled' ? results[0].value : [];
+      const docs = results[1].status === 'fulfilled' ? results[1].value : [];
+      const subs = results[2].status === 'fulfilled' ? results[2].value : [];
+      const notis = results[3].status === 'fulfilled' ? results[3].value : [];
+      const tsks = results[4].status === 'fulfilled' ? results[4].value : [];
+      const atts = results[5].status === 'fulfilled' ? results[5].value : {};
+      const mbrs = results[6].status === 'fulfilled' ? results[6].value : [];
 
-    const cleanedSubs = (subs || []).filter(s => {
-      if (!s) return false;
-      const strId = String(s.id || '');
-      if (strId.startsWith('sub-seed-') || (s.file_url && s.file_url.includes('w3.org/WAI'))) return false;
-      return true;
-    });
-    setSubmissionsList(cleanedSubs);
+      // Xóa sạch 100% dữ liệu hoạt động ảo & công việc ảo theo yêu cầu
+      const cleanedActs = (acts || []).filter(a => {
+        if (!a) return false;
+        const strId = String(a.id || '');
+        if (strId.startsWith('act-seed-')) return false;
+        if (a.title && a.title.includes('Hội nghị Học tập & Quán triệt')) return false;
+        return true;
+      }).map(a => ({
+        ...a,
+        confirmedBy: getUniqueConfirmedBranches(a.confirmedBy),
+        absentBy: getUniqueConfirmedBranches(a.absentBy)
+      }));
+      setActivitiesList(deduplicateActivities(cleanedActs));
 
-    const cleanedNotis = (notis || []).filter(n => {
-      if (!n) return false;
-      const strId = String(n.id || '');
-      if (strId.startsWith('noti-seed-') || (n.title && n.title.includes('30 Chi đoàn Ấp'))) return false;
-      return true;
-    });
-    setNotificationsList(cleanedNotis);
+      const cleanedDocs = (docs || []).filter(d => {
+        if (!d) return false;
+        const strId = String(d.id || '');
+        if (strId.startsWith('doc-seed-') || (d.file_url && d.file_url.includes('w3.org/WAI')) || (d.summary && d.summary.includes('30 Chi đoàn Ấp'))) return false;
+        return true;
+      });
+      setDocumentsList(cleanedDocs);
 
-    const cleanedTasks = (tsks || []).filter(t => {
-      if (!t) return false;
-      const strId = String(t.id || '');
-      if (strId.startsWith('task-seed-')) return false;
-      if (t.title && t.title.includes('Rà soát và cập nhật')) return false;
-      return true;
-    });
-    setTasksList(cleanedTasks);
+      const cleanedSubs = (subs || []).filter(s => {
+        if (!s) return false;
+        const strId = String(s.id || '');
+        if (strId.startsWith('sub-seed-') || (s.file_url && s.file_url.includes('w3.org/WAI'))) return false;
+        return true;
+      });
+      setSubmissionsList(cleanedSubs);
 
-    // Đồng bộ 100% dữ liệu điểm danh từ Supabase (confirmedBy & absentBy) vào attendanceRecords
-    const mergedAttendance = { ...(atts || {}) };
-    if (Array.isArray(cleanedActs)) {
-      cleanedActs.forEach(act => {
-        if (!act || !act.id) return;
-        const actId = String(act.id);
-        if (!mergedAttendance[actId]) {
-          mergedAttendance[actId] = {};
-        }
-        if (Array.isArray(act.confirmedBy)) {
-          act.confirmedBy.forEach(c => {
-            const bName = typeof c === 'string' ? c : c?.branch;
-            if (bName) {
-              const stdBranch = normalizeBranchName(bName);
-              const rec = {
-                attended: true,
-                time: (typeof c === 'object' && c?.time) ? c.time : 'Đã xác nhận',
-                method: (typeof c === 'object' && c?.method) ? c.method : 'Xác thực điểm danh',
-                latitude: typeof c === 'object' ? c?.latitude : undefined,
-                longitude: typeof c === 'object' ? c?.longitude : undefined,
-                photo_url: typeof c === 'object' ? c?.photo_url : undefined
-              };
-              mergedAttendance[actId][stdBranch] = rec;
-              mergedAttendance[actId][bName] = rec;
-            }
-          });
-        }
-        if (Array.isArray(act.absentBy)) {
-          act.absentBy.forEach(a => {
-            const bName = typeof a === 'string' ? a : a?.branch;
-            if (bName) {
-              const stdBranch = normalizeBranchName(bName);
-              if (!mergedAttendance[actId][stdBranch]?.attended) {
+      const cleanedNotis = (notis || []).filter(n => {
+        if (!n) return false;
+        const strId = String(n.id || '');
+        if (strId.startsWith('noti-seed-') || (n.title && n.title.includes('30 Chi đoàn Ấp'))) return false;
+        return true;
+      });
+      setNotificationsList(cleanedNotis);
+
+      const cleanedTasks = (tsks || []).filter(t => {
+        if (!t) return false;
+        const strId = String(t.id || '');
+        if (strId.startsWith('task-seed-')) return false;
+        if (t.title && t.title.includes('Rà soát và cập nhật')) return false;
+        return true;
+      });
+      setTasksList(cleanedTasks);
+
+      // Đồng bộ 100% dữ liệu điểm danh từ Supabase (confirmedBy & absentBy) vào attendanceRecords
+      const mergedAttendance = { ...(atts || {}) };
+      if (Array.isArray(cleanedActs)) {
+        cleanedActs.forEach(act => {
+          if (!act || !act.id) return;
+          const actId = String(act.id);
+          if (!mergedAttendance[actId]) {
+            mergedAttendance[actId] = {};
+          }
+          if (Array.isArray(act.confirmedBy)) {
+            act.confirmedBy.forEach(c => {
+              const bName = typeof c === 'string' ? c : c?.branch;
+              if (bName) {
+                const stdBranch = normalizeBranchName(bName);
                 const rec = {
-                  attended: false,
-                  reason: (typeof a === 'object' && a?.reason) ? a.reason : 'Báo vắng',
-                  time: (typeof a === 'object' && a?.time) ? a.time : 'Đã báo vắng'
+                  attended: true,
+                  time: (typeof c === 'object' && c?.time) ? c.time : 'Đã xác nhận',
+                  method: (typeof c === 'object' && c?.method) ? c.method : 'Xác thực điểm danh',
+                  latitude: typeof c === 'object' ? c?.latitude : undefined,
+                  longitude: typeof c === 'object' ? c?.longitude : undefined,
+                  photo_url: typeof c === 'object' ? c?.photo_url : undefined
                 };
                 mergedAttendance[actId][stdBranch] = rec;
                 mergedAttendance[actId][bName] = rec;
               }
-            }
-          });
-        }
+            });
+          }
+          if (Array.isArray(act.absentBy)) {
+            act.absentBy.forEach(a => {
+              const bName = typeof a === 'string' ? a : a?.branch;
+              if (bName) {
+                const stdBranch = normalizeBranchName(bName);
+                if (!mergedAttendance[actId][stdBranch]?.attended) {
+                  const rec = {
+                    attended: false,
+                    reason: (typeof a === 'object' && a?.reason) ? a.reason : 'Báo vắng',
+                    time: (typeof a === 'object' && a?.time) ? a.time : 'Đã báo vắng'
+                  };
+                  mergedAttendance[actId][stdBranch] = rec;
+                  mergedAttendance[actId][bName] = rec;
+                }
+              }
+            });
+          }
+        });
+      }
+      setAttendanceRecords(mergedAttendance);
+      setPersistedData('attendance_records', mergedAttendance);
+
+      // Làm sạch toàn bộ dữ liệu đoàn viên ảo trong tài khoản Admin và Chi đoàn
+      const DUMMY_MEMBER_NAMES = [
+        'Nguyễn Văn An', 'Trần Thị Bích', 'Lê Hoài Nam', 'Phạm Minh Tâm', 
+        'Ngô Thanh Hương', 'Vũ Quốc Khánh', 'Hoàng Bích Ngọc', 'Đặng Tuấn Anh', 
+        'Nguyễn Thị Thu Hà', 'Bùi Đức Trọng', 'Trịnh Mai Anh', 'Đỗ Hữu Phước', 
+        'Lương Mỹ Duyên', 'Cao Văn Khiêm', 'Phan Bảo Ngọc'
+      ];
+      const cleanMembers = (mbrs || []).filter(item =>
+        item &&
+        !item.id?.match(/^dv-\d+$/) &&
+        !DUMMY_MEMBER_NAMES.includes(item.full_name)
+      );
+      setMembersList(cleanMembers);
+      setPersistedData('members', cleanMembers);
+      setSelectedActivityDetail(prev => {
+        if (!prev) return null;
+        const updated = acts.find(a => a.id === prev.id);
+        return updated || prev;
       });
+    } catch (err) {
+      console.warn('loadAllData background sync warning:', err);
     }
-    setAttendanceRecords(mergedAttendance);
-    setPersistedData('attendance_records', mergedAttendance);
-    // Làm sạch toàn bộ dữ liệu đoàn viên ảo trong tài khoản Admin và Chi đoàn
-    const DUMMY_MEMBER_NAMES = [
-      'Nguyễn Văn An', 'Trần Thị Bích', 'Lê Hoài Nam', 'Phạm Minh Tâm', 
-      'Ngô Thanh Hương', 'Vũ Quốc Khánh', 'Hoàng Bích Ngọc', 'Đặng Tuấn Anh', 
-      'Nguyễn Thị Thu Hà', 'Bùi Đức Trọng', 'Trịnh Mai Anh', 'Đỗ Hữu Phước', 
-      'Lương Mỹ Duyên', 'Cao Văn Khiêm', 'Phan Bảo Ngọc'
-    ];
-    const cleanMembers = (mbrs || []).filter(item =>
-      item &&
-      !item.id?.match(/^dv-\d+$/) &&
-      !DUMMY_MEMBER_NAMES.includes(item.full_name)
-    );
-    setMembersList(cleanMembers);
-    setPersistedData('members', cleanMembers);
-    setSelectedActivityDetail(prev => {
-      if (!prev) return null;
-      const updated = acts.find(a => a.id === prev.id);
-      return updated || prev;
-    });
   };
 
   const handleSaveDocumentItem = async (docItem) => {
@@ -306,6 +321,7 @@ export default function App() {
       loadAllData();
     };
 
+    // 1. Same-device multi-tab BroadcastChannel
     let syncChannel = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       syncChannel = new BroadcastChannel('xts_youth_sync_channel');
@@ -317,6 +333,7 @@ export default function App() {
     window.addEventListener('storage', handleSync);
     window.addEventListener('doanthanhnien_sync', handleSync);
     window.addEventListener('focus', handleSync);
+    window.addEventListener('online', handleSync);
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         handleSync();
@@ -324,19 +341,70 @@ export default function App() {
     };
     window.addEventListener('visibilitychange', handleVisibility);
 
-    // Fail-safe 10-second Heartbeat Sync for multi-device & multi-IP consistency
+    // 2. High-Frequency 3-Second Heartbeat Poll (Fail-safe backup for zero delay)
     const pollInterval = setInterval(() => {
       loadAllData();
-    }, 10000);
+    }, 3000);
 
-    let supabaseChannel = null;
+    // 3. Global Supabase Realtime Broadcast Channel (< 100ms Cross-Device Sync)
+    let globalRealtimeSub = null;
     if (supabase) {
-      supabaseChannel = supabase
-        .channel('public-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+      globalRealtimeSub = supabase
+        .channel('xts-realtime-global', { config: { broadcast: { ack: false } } })
+        .on('broadcast', { event: 'XTS_SYNC_EVENT' }, (msg) => {
+          const { type, payload } = msg.payload || {};
+          console.log('⚡ Siêu cấp Realtime nhận sự kiện:', type, payload);
+
+          if (type === 'SAVE_ACTIVITY' && payload) {
+            setActivitiesList(prev => {
+              const exists = prev.some(a => String(a.id) === String(payload.id));
+              const updated = exists ? prev.map(a => String(a.id) === String(payload.id) ? { ...a, ...payload } : a) : [payload, ...prev];
+              return deduplicateActivities(updated);
+            });
+            if (currentUser && isItemTargetedToUser(payload.assigned_to || 'ALL', currentUser)) {
+              triggerToast(`⚡ Ban Thường vụ Đoàn xã vừa ban hành hoạt động mới: "${payload.title}"!`);
+              playNotificationSound();
+            }
+          } else if (type === 'DELETE_ACTIVITY' && payload) {
+            const { activityId } = payload;
+            if (activityId) {
+              setActivitiesList(prev => prev.filter(a => String(a.id) !== String(activityId)));
+            }
+          } else if (type === 'SAVE_NOTIFICATION' && payload) {
+            setNotificationsList(prev => {
+              const exists = prev.some(n => String(n.id) === String(payload.id));
+              return exists ? prev.map(n => String(n.id) === String(payload.id) ? { ...n, ...payload } : n) : [payload, ...prev];
+            });
+            if (currentUser && isItemTargetedToUser(payload.target_scope || 'ALL', currentUser)) {
+              triggerToast(`🔔 Thông báo mới từ Đoàn xã: "${payload.title}"!`);
+              playNotificationSound();
+            }
+          } else if (type === 'DELETE_NOTIFICATION' && payload) {
+            const { notificationId } = payload;
+            if (notificationId) {
+              setNotificationsList(prev => prev.filter(n => String(n.id) !== String(notificationId)));
+            }
+          } else if (type === 'SAVE_DOCUMENT' && payload) {
+            setDocumentsList(prev => {
+              const exists = prev.some(d => String(d.id) === String(payload.id));
+              return exists ? prev.map(d => String(d.id) === String(payload.id) ? { ...d, ...payload } : d) : [payload, ...prev];
+            });
+          } else if (type === 'DELETE_DOCUMENT' && payload) {
+            const { docId } = payload;
+            if (docId) {
+              setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId)));
+            }
+          } else if (type === 'RESPOND_ATTENDANCE' && payload) {
+            triggerToast(`📍 ${payload.branchName || 'Đơn vị'} vừa xác nhận điểm danh hoạt động!`);
+            playNotificationSound();
+          }
+
+          // Background auto-refresh for full DB consistency
           loadAllData();
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('⚡ High-tech Realtime Global Channel status:', status);
+        });
     }
 
     return () => {
@@ -345,10 +413,11 @@ export default function App() {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('doanthanhnien_sync', handleSync);
       window.removeEventListener('focus', handleSync);
+      window.removeEventListener('online', handleSync);
       window.removeEventListener('visibilitychange', handleVisibility);
-      if (supabaseChannel && supabase) supabase.removeChannel(supabaseChannel);
+      if (globalRealtimeSub && supabase) supabase.removeChannel(globalRealtimeSub);
     };
-  }, []);
+  }, [currentUser]);
 
   if (!currentUser) {
     return <Login onLoginSuccess={handleLoginSuccess} />;

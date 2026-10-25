@@ -4510,6 +4510,7 @@ export function BranchAttendanceWorkspaceView({
   onRespondAttendance,
   onConfirmReceipt,
   isDoanXa,
+  targetActivityId,
   onAddActivity,
   onUpdateActivity,
   onUpdateTask,
@@ -4669,7 +4670,7 @@ export function BranchAttendanceWorkspaceView({
 
   // Selected item state: format "act:id" or "task:id"
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [activeTab, setActiveTab] = useState('info'); // Default to 'info' for Admin
+  const [activeTab, setActiveTab] = useState('attendance'); // Default to 'attendance' for Admin (Mở ngay mã QR & điểm danh)
 
   // Quick Inline Creation State for Admin
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -4733,11 +4734,17 @@ export function BranchAttendanceWorkspaceView({
   const [tasksList, setTasksList] = useState([]);
   const [taskSuccessMsg, setTaskSuccessMsg] = useState('');
 
-  // Determine initial selected item when items exist
+  // Determine initial selected item when items exist, prioritize targetActivityId and newest active activity
   useEffect(() => {
+    if (targetActivityId) {
+      setSelectedItemId(`act:${targetActivityId}`);
+      setActiveTab('attendance');
+      return;
+    }
     if (!selectedItemId) {
       if (safeActivities.length > 0) {
-        setSelectedItemId(`act:${safeActivities[0].id}`);
+        const activeOne = safeActivities.find(a => !isActivityExpired(a)) || safeActivities[0];
+        setSelectedItemId(`act:${activeOne.id}`);
       } else if (safeTasks.length > 0) {
         setSelectedItemId(`task:${safeTasks[0].id}`);
       }
@@ -4750,7 +4757,7 @@ export function BranchAttendanceWorkspaceView({
         setSelectedItemId(safeActivities.length > 0 ? `act:${safeActivities[0].id}` : (safeTasks.length > 0 ? `task:${safeTasks[0].id}` : ''));
       }
     }
-  }, [safeActivities, safeTasks, selectedItemId]);
+  }, [targetActivityId, safeActivities, safeTasks, selectedItemId]);
 
   // Handle Quick Create Activity (Chuẩn dữ liệu, không lỗi, UX hiện đại)
   const handleQuickCreateSubmit = async (e) => {
@@ -5500,11 +5507,14 @@ export function BranchAttendanceWorkspaceView({
               {/* NHÓM 1: TỪ QUẢN LÝ HOẠT ĐỘNG */}
               {safeActivities.length > 0 && (
                 <optgroup label="📌 HOẠT ĐỘNG (Từ Quản lý hoạt động)">
-                  {safeActivities.map(act => (
-                    <option key={act.id} value={`act:${act.id}`}>
-                      📌 {act.title} ({act.date || act.dueDate || (act.day && act.month ? `${act.day}/${act.month}` : 'Hoạt động')})
-                    </option>
-                  ))}
+                  {safeActivities.map(act => {
+                    const tStatus = getActivityTimeStatus(act);
+                    return (
+                      <option key={act.id} value={`act:${act.id}`}>
+                        📌 [{tStatus.statusText}] {act.title} ({act.date || act.dueDate || (act.day && act.month ? `${act.day}/${act.month}` : 'Hoạt động')})
+                      </option>
+                    );
+                  })}
                 </optgroup>
               )}
 

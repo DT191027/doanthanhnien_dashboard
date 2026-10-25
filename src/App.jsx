@@ -113,6 +113,7 @@ export default function App() {
   const [selectedActivityDetail, setSelectedActivityDetail] = useState(null);
   const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
+  const [targetAttendanceActivityId, setTargetAttendanceActivityId] = useState('');
   const [gpsStatus, setGpsStatus] = useState(() => {
     try {
       return localStorage.getItem('xts_gps_status') || 'default';
@@ -537,7 +538,9 @@ export default function App() {
     const updatedNotis = await syncSaveNotification(autoNoti);
     setNotificationsList(updatedNotis);
 
-    triggerToast(`Đã tạo hoạt động "${newAct.title}"${newAct.file_name ? ' & tự động ban hành văn bản đi' : ''}!`);
+    setTargetAttendanceActivityId(activityItem.id);
+    setActiveTab('attendance');
+    triggerToast(`Đã ban hành hoạt động "${newAct.title}" & tự động mở bảng điểm danh QR!`);
     return activityItem;
   };
 
@@ -1223,6 +1226,10 @@ export default function App() {
               onConfirmReceipt={handleConfirmReceipt}
               currentUser={currentUser}
               attendanceRecords={attendanceRecords}
+              onOpenQrAttendance={(act) => {
+                setTargetAttendanceActivityId(act.id);
+                setActiveTab('attendance');
+              }}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */
@@ -1262,6 +1269,7 @@ export default function App() {
               onRespondAttendance={handleRespondAttendance}
               onConfirmReceipt={handleConfirmReceipt}
               isDoanXa={isDoanXa}
+              targetActivityId={targetAttendanceActivityId}
               onUpdateActivity={handleUpdateActivity}
               onUpdateTask={handleUpdateTask}
               onDeleteActivity={handleDeleteActivity}

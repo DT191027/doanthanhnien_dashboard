@@ -12,7 +12,9 @@ import {
   getActivityGpsAuditLogs, 
   saveActivityGpsAttendanceLog,
   isActivityExpired,
-  getActivityTimeStatus
+  getActivityTimeStatus,
+  getActivityAttendanceWindow,
+  extendActivityAttendance
 } from '../lib/supabase';
 
 export default function QrAttendanceManager({ 
@@ -49,9 +51,21 @@ export default function QrAttendanceManager({
   const scanAnimationRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const handleExtendAttendance = async () => {
+    try {
+      await extendActivityAttendance(actId, 10);
+      alert('⚡ Đã mở rộng / gia hạn thêm 10 phút điểm danh cho hoạt động thành công! Toàn bộ 56 Chi đoàn đã được mở khóa xác thực.');
+    } catch (err) {
+      console.error('Lỗi gia hạn điểm danh:', err);
+      alert('Không thể gia hạn: ' + (err.message || 'Lỗi mạng'));
+    }
+  };
+
   const actId = activity?.id || 'default-act';
   const userBranchName = currentRole?.branch_name || currentRole?.full_name || 'Chi đoàn';
-  const isExpired = isActivityExpired(activity);
+  const attendanceWindow = getActivityAttendanceWindow(activity);
+  const isExpired = attendanceWindow.isExpired;
+  const isOpen = attendanceWindow.isOpen;
   const timeStatus = getActivityTimeStatus(activity);
 
   // Định dạng ngày tháng và giờ thực tế
@@ -477,13 +491,17 @@ export default function QrAttendanceManager({
                 </span>
               </div>
               <div className="d-flex align-items-center gap-2">
-                {isExpired ? (
-                  <span className="badge bg-danger text-white fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
-                    ⛔ ĐÃ KẾT THÚC • MÃ HẾT HIỆU LỰC
+                {isOpen ? (
+                  <span className="badge bg-success text-white fw-bold px-2.5 py-1 rounded-pill shadow-xs" style={{ fontSize: '11px' }}>
+                    🟢 ĐANG MỞ ĐIỂM DANH ({attendanceWindow.countdownDisplay})
+                  </span>
+                ) : isExpired ? (
+                  <span className="badge bg-danger text-white fw-bold px-2.5 py-1 rounded-pill shadow-xs" style={{ fontSize: '11px' }}>
+                    ⛔ ĐÃ HẾT GIỜ ĐIỂM DANH • MÃ HẾT HIỆU LỰC
                   </span>
                 ) : (
-                  <span className="badge bg-success text-white fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
-                    🟢 ĐANG DIỄN RA • MÃ CÓ HIỆU LỰC
+                  <span className="badge bg-warning text-dark fw-bold px-2.5 py-1 rounded-pill shadow-xs" style={{ fontSize: '11px' }}>
+                    ⏳ CHƯA ĐẾN GIỜ ĐIỂM DANH
                   </span>
                 )}
                 <span className="badge bg-warning text-dark fw-bold px-2.5 py-1 rounded-pill" style={{ fontSize: '11px' }}>
@@ -496,13 +514,45 @@ export default function QrAttendanceManager({
             </p>
           </div>
 
-          {/* Expiration Banner if Activity is finished */}
-          {isExpired && (
-            <div className="alert alert-danger d-flex align-items-center gap-2.5 rounded-3 mb-3 p-3" style={{ fontSize: '13px' }}>
-              <AlertCircle size={20} className="text-danger flex-shrink-0" />
-              <div>
-                <strong>Hoạt động đã kết thúc ({timeStatus.statusText}):</strong> Mã QR và Mã Code ({qrInfo?.code}) đã tự động hết hiệu lực theo đúng quy định. Hệ thống đã khóa tiếp nhận điểm danh từ các Chi đoàn.
+          {/* Realtime 10-Minute Attendance Window Alerts for Admin */}
+          {isOpen && (
+            <div className="alert alert-success d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3 mb-3 p-2.5 px-3 border-success-subtle shadow-xs" style={{ fontSize: '12.5px', backgroundColor: '#F0FDF4' }}>
+              <div className="d-flex align-items-center gap-2">
+                <Clock size={17} className="text-success flex-shrink-0" />
+                <span>
+                  <strong>Cổng điểm danh 10 phút đang mở:</strong> Thời gian còn lại: <strong className="text-success font-monospace" style={{ fontSize: '14.5px' }}>{attendanceWindow.countdownDisplay}</strong> (Mã QR & Mã Code có hiệu lực).
+                </span>
               </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill bg-white shadow-2xs"
+                style={{ fontSize: '11.5px' }}
+                onClick={handleExtendAttendance}
+                title="Gia hạn thêm 10 phút điểm danh"
+              >
+                <span>+10 phút</span>
+              </button>
+            </div>
+          )}
+
+          {isExpired && (
+            <div className="alert alert-danger d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3 mb-3 p-3 shadow-xs" style={{ fontSize: '13px' }}>
+              <div className="d-flex align-items-center gap-2.5">
+                <AlertCircle size={22} className="text-danger flex-shrink-0" />
+                <div>
+                  <strong>Đã hết thời lượng điểm danh (Quy định 10 phút):</strong> Mã QR và Mã Code ({qrInfo?.code}) đã tự động hết hiệu lực theo đúng quy định để chốt quân số. Các Chi đoàn không thể gửi điểm danh bổ sung.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-danger text-white fw-bold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill shadow-xs"
+                style={{ fontSize: '12px' }}
+                onClick={handleExtendAttendance}
+                title="Mở lại cổng điểm danh và cộng thêm 10 phút"
+              >
+                <Sparkles size={14} />
+                <span>⚡ Mở lại / Gia hạn 10 phút</span>
+              </button>
             </div>
           )}
 
@@ -845,15 +895,36 @@ export default function QrAttendanceManager({
             </div>
           </div>
 
-          {/* Cảnh báo nếu hoạt động đã kết thúc trong quá khứ */}
-          {isExpired && (
+          {/* Cảnh báo trạng thái theo thời gian thực (Thời lượng 10 phút) */}
+          {isExpired ? (
             <div className="alert alert-danger d-flex align-items-center gap-3 rounded-4 p-3.5 mb-3.5 shadow-sm border-danger">
-              <AlertCircle size={24} className="text-danger flex-shrink-0" />
+              <AlertCircle size={26} className="text-danger flex-shrink-0" />
               <div>
-                <h6 className="fw-bold mb-1 text-danger">⚠️ Hoạt động đã kết thúc!</h6>
+                <h6 className="fw-bold mb-1 text-danger">⏰ Đã hết thời gian điểm danh (Mã hết hiệu lực)!</h6>
                 <div style={{ fontSize: '12.5px', lineHeight: 1.5 }}>
-                  Hoạt động này đã hoàn thành. Hệ thống đã khóa tiếp nhận điểm danh bổ sung từ các Chi đoàn.
+                  Theo quy định của Ban Thường vụ Đoàn xã, thời lượng điểm danh được mở trong vòng 10 phút kể từ giờ bắt đầu hoạt động. Hiện đã quá thời gian quy định, mã xác thực đã tự động hết hiệu lực và hệ thống đã khóa tiếp nhận điểm danh bổ sung.
                 </div>
+              </div>
+            </div>
+          ) : isOpen ? (
+            <div className="alert alert-success d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-4 p-3 mb-3.5 shadow-xs border-success" style={{ backgroundColor: '#F0FDF4' }}>
+              <div className="d-flex align-items-center gap-2.5">
+                <Clock size={20} className="text-success flex-shrink-0" />
+                <div>
+                  <div className="fw-bold text-success" style={{ fontSize: '13px' }}>
+                    🟢 CỔNG ĐIỂM DANH ĐANG MỞ • THỜI GIAN CÒN LẠI: <span className="font-monospace fw-bolder text-dark" style={{ fontSize: '15px' }}>{attendanceWindow.countdownDisplay}</span>
+                  </div>
+                  <div className="text-secondary" style={{ fontSize: '11.5px' }}>
+                    Thời lượng điểm danh mở trong vòng 10 phút. Đề nghị đồng chí quét mã QR hoặc nhập mã Code ngay để xác nhận có mặt!
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="alert alert-warning d-flex align-items-center gap-2.5 rounded-4 p-3 mb-3.5 shadow-xs border-warning">
+              <Clock size={20} className="text-warning-emphasis flex-shrink-0" />
+              <div style={{ fontSize: '12.5px' }}>
+                {attendanceWindow.message || 'Chưa đến giờ điểm danh hoạt động.'}
               </div>
             </div>
           )}

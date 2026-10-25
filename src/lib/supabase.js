@@ -730,6 +730,18 @@ export function getDeletedItems(key) {
   }
 }
 
+export function removeDeletedItem(key, id) {
+  try {
+    if (!id) return;
+    const strId = String(id).trim();
+    const current = getDeletedItems(key);
+    const updated = current.filter(item => String(item) !== strId);
+    localStorage.setItem(`xts_deleted_${key}`, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to remove deleted item:', e);
+  }
+}
+
 export function addDeletedItem(key, id, title = '') {
   try {
     if (!id) return;
@@ -745,14 +757,36 @@ export function addDeletedItem(key, id, title = '') {
 
 // ============================================================================
 // Real-time Dynamic Activity Time & Status Calculation Helper
-export function getActivityTimeStatus(act) {
-  if (!act) return { statusText: 'Chưa xác định', badgeClass: 'bg-secondary text-white', code: 'UNKNOWN' };
-
-  if (act.status === 'Đã hoàn thành') {
+/**
+ * Quản lý thời gian điểm danh 10 phút chuẩn hóa theo quy định:
+ * - Dựa vào thời gian thực kết hợp thời gian diễn ra hoạt động được ban hành.
+ * - Thời lượng mở điểm danh trong vòng 10 phút.
+ * - Khi quá 10 phút, mã QR và Mã Code tự động hết hiệu lực (EXPIRED).
+ */
+export function getActivityAttendanceWindow(act) {
+  if (!act) {
     return {
-      statusText: 'Đã kết thúc',
+      isOpen: false,
+      isExpired: false,
+      code: 'UNKNOWN',
+      statusText: 'Chưa xác định',
+      badgeClass: 'bg-secondary text-white',
+      remainingSeconds: 0,
+      countdownDisplay: '00:00',
+      message: 'Không tìm thấy thông tin hoạt động.'
+    };
+  }
+
+  if (act.status === 'Đã hoàn thành' || act.status === 'Đã kết thúc' || act.is_closed === true) {
+    return {
+      isOpen: false,
+      isExpired: true,
+      code: 'FINISHED',
+      statusText: 'Đã hoàn thành',
       badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle',
-      code: 'FINISHED'
+      remainingSeconds: 0,
+      countdownDisplay: '00:00',
+      message: 'Hoạt động đã kết thúc và được hoàn thành theo kế hoạch.'
     };
   }
 
@@ -780,7 +814,7 @@ export function getActivityTimeStatus(act) {
   if (!day) day = currentDay;
 
   let startHour = 8, startMin = 0;
-  let endHour = 23, endMin = 59;
+  let endHour = 11, endMin = 30;
 
   if (act.time && typeof act.time === 'string' && act.time.includes('-')) {
     const timeParts = act.time.split('-').map(s => s.trim());
@@ -799,67 +833,127 @@ export function getActivityTimeStatus(act) {
   const startDate = new Date(year, month - 1, day, startHour, startMin, 0);
   const endDate = new Date(year, month - 1, day, endHour, endMin, 0);
 
-  const tomorrowStart = new Date(currentYear, currentMonth - 1, currentDay + 1, 0, 0, 0);
-  const actDayStart = new Date(year, month - 1, day, 0, 0, 0);
+  const todayStart = new Date(currentYear, currentMonth - 1, currentDay, 0, 0, 0);
+  const actDateStart = new Date(year, month - 1, day, 0, 0, 0);
 
-  // 1. Past date or past time today
-  if (now > endDate) {
+  // 1. Ngày trong quá khứ
+  if (actDateStart < todayStart) {
     return {
-      statusText: 'Đã kết thúc',
+      isOpen: false,
+      isExpired: true,
+      code: 'EXPIRED',
+      statusText: 'Đã hết giờ điểm danh',
       badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle',
-      code: 'FINISHED'
+      remainingSeconds: 0,
+      countdownDisplay: '00:00',
+      message: 'Hoạt động đã diễn ra trong quá khứ. Mã xác thực đã hết hiệu lực.'
     };
   }
 
-  // 2. Currently ongoing
-  if (now >= startDate && now <= endDate) {
-    return {
-      statusText: 'Đang diễn ra',
-      badgeClass: 'bg-success text-white border-success shadow-xs',
-      code: 'ONGOING'
-    };
-  }
-
-  // 3. Tomorrow or future days
-  if (actDayStart >= tomorrowStart) {
+  // 2. Ngày trong tương lai (ngày mai trở đi)
+  const tomorrowStart = new Date(currentYear, currentMonth - 1, currentDay + 1, 0, 0, 0);
+  if (actDateStart >= tomorrowStart) {
     const dayStr = String(day).padStart(2, '0');
     const monthStr = String(month).padStart(2, '0');
     return {
+      isOpen: false,
+      isExpired: false,
+      code: 'FUTURE_DATE',
       statusText: `Ngày ${dayStr}/${monthStr}`,
       badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
-      code: 'FUTURE_DATE'
+      remainingSeconds: 0,
+      countdownDisplay: '--:--',
+      message: `Hoạt động diễn ra vào ngày ${dayStr}/${monthStr}/${year}. Cổng điểm danh sẽ mở lúc ${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}.`
     };
   }
 
-  // 4. Later today (same day, start time in future)
-  if (now < startDate) {
-    const diffMs = startDate.getTime() - now.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const hours = Math.floor(diffMins / 60);
-    const mins = diffMins % 60;
-
-    let timeUntilStr = '';
-    if (hours > 0 && mins > 0) {
-      timeUntilStr = `Sắp diễn ra trong ${hours} tiếng ${mins} phút nữa`;
-    } else if (hours > 0) {
-      timeUntilStr = `Sắp diễn ra trong ${hours} tiếng nữa`;
-    } else if (mins > 0) {
-      timeUntilStr = `Sắp diễn ra trong ${mins} phút nữa`;
-    } else {
-      timeUntilStr = 'Sắp diễn ra';
+  // 3. Hoạt động diễn ra HÔM NAY:
+  // Thời gian bắt đầu tính điểm danh: nếu vừa tạo sau giờ bắt đầu thì tính từ lúc tạo để đảm bảo đủ 10 phút!
+  let attendanceStartTime = startDate.getTime();
+  if (act.created_at) {
+    const createdTime = new Date(act.created_at).getTime();
+    if (!isNaN(createdTime) && createdTime >= startDate.getTime()) {
+      attendanceStartTime = createdTime;
     }
+  }
+
+  // Thời lượng quy định: đúng 10 phút (600,000 ms) hoặc gia hạn thêm
+  let attendanceDeadline = attendanceStartTime + 10 * 60 * 1000;
+  if (act.attendance_extended_until) {
+    const extTime = new Date(act.attendance_extended_until).getTime();
+    if (!isNaN(extTime) && extTime > attendanceDeadline) {
+      attendanceDeadline = extTime;
+    }
+  }
+
+  const nowMs = now.getTime();
+
+  // Chưa tới giờ bắt đầu
+  if (nowMs < attendanceStartTime) {
+    const diffMs = attendanceStartTime - nowMs;
+    const diffMins = Math.floor(diffMs / 60000);
+    const hrs = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    const timeUntilStr = hrs > 0 ? `Sắp diễn ra sau ${hrs}h${mins}p` : `Sắp diễn ra sau ${mins}p`;
 
     return {
+      isOpen: false,
+      isExpired: false,
+      code: 'UPCOMING',
       statusText: timeUntilStr,
       badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
-      code: 'UPCOMING'
+      remainingSeconds: 0,
+      countdownDisplay: 'Chưa mở',
+      message: `Chưa đến giờ điểm danh. Hệ thống sẽ tự động mở điểm danh 10 phút bắt đầu từ ${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}.`
     };
   }
 
+  // Đang trong thời lượng 10 phút mở điểm danh (MÃ CÓ HIỆU LỰC)
+  if (nowMs <= attendanceDeadline) {
+    const remainingMs = attendanceDeadline - nowMs;
+    const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
+    const m = Math.floor(remainingSec / 60);
+    const s = remainingSec % 60;
+    const countdown = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    return {
+      isOpen: true,
+      isExpired: false,
+      code: 'ONGOING',
+      statusText: `Đang mở (${countdown})`,
+      badgeClass: 'bg-success text-white border-success shadow-xs',
+      remainingSeconds: remainingSec,
+      countdownDisplay: countdown,
+      deadlineDate: new Date(attendanceDeadline),
+      message: `Cổng điểm danh đang mở! Thời lượng còn ${countdown} (quy định 10 phút).`
+    };
+  }
+
+  // Quá 10 phút -> MÃ TỰ ĐỘNG HẾT HIỆU LỰC
   return {
-    statusText: 'Sắp diễn ra',
-    badgeClass: 'bg-primary-subtle text-primary border-primary-subtle',
-    code: 'UPCOMING'
+    isOpen: false,
+    isExpired: true,
+    code: 'EXPIRED',
+    statusText: 'Đã hết giờ điểm danh',
+    badgeClass: 'bg-secondary-subtle text-secondary border-secondary-subtle',
+    remainingSeconds: 0,
+    countdownDisplay: '00:00',
+    deadlineDate: new Date(attendanceDeadline),
+    message: 'Thời lượng điểm danh quy định là 10 phút kể từ khi bắt đầu đã kết thúc. Mã QR và Mã Code đã tự động hết hiệu lực.'
+  };
+}
+
+export function getActivityTimeStatus(act) {
+  const windowInfo = getActivityAttendanceWindow(act);
+  return {
+    statusText: windowInfo.statusText,
+    badgeClass: windowInfo.badgeClass,
+    code: windowInfo.code,
+    isOpen: windowInfo.isOpen,
+    isExpired: windowInfo.isExpired,
+    countdownDisplay: windowInfo.countdownDisplay,
+    remainingSeconds: windowInfo.remainingSeconds,
+    message: windowInfo.message
   };
 }
 
@@ -1047,6 +1141,7 @@ export async function syncFetchActivities() {
 
 export async function syncSaveActivity(activityItem) {
   const finalId = isValidUuid(activityItem.id) ? activityItem.id : generateUuid();
+  removeDeletedItem('activities', finalId);
   const normalizedAct = {
     ...activityItem,
     id: finalId,
@@ -2224,13 +2319,35 @@ export function generateRandomXtsCode() {
 // Kiểm tra xem hoạt động đã kết thúc hay chưa để tự động hết hiệu lực mã QR & Code
 export function isActivityExpired(activity) {
   if (!activity) return false;
-  if (activity.status === 'Đã hoàn thành' || activity.status === 'Đã kết thúc') return true;
-  if (activity.is_closed === true) return true;
+  if (activity.status === 'Đã hoàn thành' || activity.status === 'Đã kết thúc' || activity.is_closed === true) return true;
 
-  const timeStatus = getActivityTimeStatus(activity);
-  if (timeStatus && timeStatus.code === 'FINISHED') return true;
+  const windowInfo = getActivityAttendanceWindow(activity);
+  return windowInfo.isExpired;
+}
 
-  return false;
+// Cho phép Admin mở rộng / gia hạn thêm 10 phút điểm danh cho hoạt động
+export async function extendActivityAttendance(activityId, extraMinutes = 10) {
+  const extendedUntil = new Date(Date.now() + extraMinutes * 60 * 1000).toISOString();
+  const current = getPersistedData('activities', []);
+  const updatedLocal = current.map(a => String(a.id) === String(activityId) ? { ...a, attendance_extended_until: extendedUntil } : a);
+  setPersistedData('activities', updatedLocal);
+  notifySyncEvent('SAVE_ACTIVITY', updatedLocal.find(a => String(a.id) === String(activityId)));
+
+  if (supabase && isValidUuid(activityId)) {
+    try {
+      const act = current.find(a => String(a.id) === String(activityId));
+      if (act) {
+        const { description: cleanDesc, meta } = deserializeActivityDescription(act.description || '');
+        meta.attendance_extended_until = extendedUntil;
+        await supabase.from('activities').update({
+          description: serializeActivityDescription(cleanDesc, meta)
+        }).eq('id', activityId);
+      }
+    } catch (e) {
+      console.warn('Extend attendance DB error:', e);
+    }
+  }
+  return updatedLocal;
 }
 
 export function getOrCreateActivityQrCode(activityId) {

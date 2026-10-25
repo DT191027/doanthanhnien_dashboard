@@ -552,13 +552,24 @@ export default function App() {
 
   const handleDeleteActivity = async (activityId, activityTitle = '') => {
     if (!activityId) return;
-    setActivitiesList(prev => prev.filter(a => String(a.id) !== String(activityId)));
+    const strId = String(activityId).trim();
+    setActivitiesList(prev => prev.filter(a => a && String(a.id) !== strId));
     triggerToast('Đã thu hồi & xóa hoạt động thành công!');
 
-    const updated = await syncDeleteActivity(activityId);
-    const cleanUpdated = deduplicateActivities(updated);
-    const filtered = cleanUpdated.filter(a => String(a.id) !== String(activityId));
-    setActivitiesList(filtered);
+    try {
+      const updated = await syncDeleteActivity(strId);
+      if (Array.isArray(updated)) {
+        const cleanUpdated = deduplicateActivities(updated).filter(a => a && String(a.id) !== strId);
+        setActivitiesList(prev => {
+          if (cleanUpdated.length === 0 && prev.length > 0) {
+            return prev.filter(a => a && String(a.id) !== strId);
+          }
+          return cleanUpdated;
+        });
+      }
+    } catch (e) {
+      console.error('Lỗi khi xóa hoạt động:', e);
+    }
   };
 
   const handleIssueDocument = async (newDoc) => {
@@ -620,12 +631,24 @@ export default function App() {
 
   const handleDeleteDocument = async (docId, docTitle = '') => {
     if (!docId) return;
-    setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId)));
+    const strId = String(docId).trim();
+    setDocumentsList(prev => prev.filter(d => d && String(d.id) !== strId));
     triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 56 Chi đoàn!');
 
-    const updated = await syncDeleteDocument(docId);
-    const filtered = (updated || []).filter(d => String(d.id) !== String(docId));
-    setDocumentsList(filtered);
+    try {
+      const updated = await syncDeleteDocument(strId);
+      if (Array.isArray(updated)) {
+        const filtered = updated.filter(d => d && String(d.id) !== strId);
+        setDocumentsList(prev => {
+          if (filtered.length === 0 && prev.length > 0) {
+            return prev.filter(d => d && String(d.id) !== strId);
+          }
+          return filtered;
+        });
+      }
+    } catch (e) {
+      console.error('Lỗi khi xóa văn bản:', e);
+    }
   };
 
   const handleDeleteSubmission = async (subId, subTitle = '') => {
@@ -888,12 +911,24 @@ export default function App() {
 
   const handleDeleteTask = async (taskId, taskTitle = '') => {
     if (!taskId) return;
-    setTasksList(prev => prev.filter(t => String(t.id) !== String(taskId)));
+    const strId = String(taskId).trim();
+    setTasksList(prev => prev.filter(t => t && String(t.id) !== strId));
     triggerToast('Đã thu hồi & xóa công việc khỏi hệ thống thành công!');
 
-    const updated = await syncDeleteTask(taskId);
-    const filtered = (updated || []).filter(t => String(t.id) !== String(taskId));
-    setTasksList(filtered);
+    try {
+      const updated = await syncDeleteTask(strId);
+      if (Array.isArray(updated)) {
+        const filtered = updated.filter(t => t && String(t.id) !== strId);
+        setTasksList(prev => {
+          if (filtered.length === 0 && prev.length > 0) {
+            return prev.filter(t => t && String(t.id) !== strId);
+          }
+          return filtered;
+        });
+      }
+    } catch (e) {
+      console.error('Lỗi khi xóa nhiệm vụ:', e);
+    }
   };
 
   const handleSaveAttendance = async (activityId, recordData) => {
@@ -1230,6 +1265,8 @@ export default function App() {
                 setTargetAttendanceActivityId(act.id);
                 setActiveTab('attendance');
               }}
+              onNavigateToNotifications={() => setActiveTab('notifications')}
+              onNavigateToDocuments={() => setActiveTab('outgoing_docs')}
             />
           ) : activeTab === 'incoming_docs' || activeTab === 'outgoing_docs' || activeTab === 'doan_xa_docs' || activeTab === 'required_docs' ? (
             /* DOCUMENTS MANAGEMENT VIEW */

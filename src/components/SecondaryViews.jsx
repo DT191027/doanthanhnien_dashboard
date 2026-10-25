@@ -448,7 +448,7 @@ export function ReceiptConfirmationBox({
 
 
 // 1. Full Activities Management View
-export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser, attendanceRecords = {} }) {
+export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa, onToggleStatus, onDeleteActivity, onOpenActivityDetail, onConfirmReceipt, currentUser, attendanceRecords = {}, onOpenQrAttendance, onNavigateToNotifications, onNavigateToDocuments }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
@@ -600,14 +600,53 @@ export function ActivitiesView({ activities = [], onOpenCreateActivity, isDoanXa
                   </div>
                 </div>
 
+                {/* Realtime Attendance Progress Counter */}
+                <div className="p-2 px-2.5 bg-primary-subtle bg-opacity-40 rounded-2 border border-primary-subtle d-flex align-items-center justify-content-between mb-2.5" style={{ fontSize: '11.5px' }}>
+                  <span className="d-flex align-items-center gap-1.5 text-primary fw-bold">
+                    <Users size={13} />
+                    <span>Đã điểm danh: {act.confirmedBy?.length || 0}/56 Chi đoàn</span>
+                  </span>
+                  <span className="badge bg-white text-primary border border-primary-subtle">
+                    {timeStatus.statusText}
+                  </span>
+                </div>
+
                 <div className="pt-2.5 border-top d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <button 
-                    className="btn btn-sm btn-outline-primary fw-semibold px-2.5 py-1"
-                    style={{ fontSize: '11px', borderRadius: '6px' }}
-                    onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
-                  >
-                    Chi tiết →
-                  </button>
+                  <div className="d-flex align-items-center gap-1.5">
+                    <button 
+                      className="btn btn-sm btn-outline-primary fw-semibold px-2 py-1"
+                      style={{ fontSize: '11px', borderRadius: '6px' }}
+                      onClick={() => onOpenActivityDetail && onOpenActivityDetail(act)}
+                    >
+                      Chi tiết →
+                    </button>
+
+                    {onOpenQrAttendance && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 shadow-xs"
+                        style={{ fontSize: '11px', borderRadius: '6px', backgroundColor: '#0066FF' }}
+                        onClick={() => onOpenQrAttendance(act)}
+                        title="Mở phiên điểm danh QR của hoạt động này"
+                      >
+                        <QrCode size={12} />
+                        <span>Điểm danh QR</span>
+                      </button>
+                    )}
+
+                    {onNavigateToNotifications && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary fw-semibold px-2 py-1 d-inline-flex align-items-center gap-1"
+                        style={{ fontSize: '11px', borderRadius: '6px' }}
+                        onClick={() => onNavigateToNotifications()}
+                        title="Xem thông báo ban hành gửi tới 56 Chi đoàn"
+                      >
+                        <Bell size={12} />
+                        <span>Thông báo</span>
+                      </button>
+                    )}
+                  </div>
 
                   <div className="d-flex align-items-center gap-1.5 ms-auto flex-wrap">
                     <ReceiptConfirmationBox 
@@ -2600,7 +2639,7 @@ export function SubmissionsView({ submissions = [], onOpenSubmitDoc, onDeleteSub
 }
 
 // 4. Full Notifications Management View
-export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa, onConfirmReceipt, currentUser }) {
+export function NotificationsView({ notifications = [], onOpenSendMessage, onEditNotification, onDeleteNotification, isDoanXa, onConfirmReceipt, currentUser, onOpenAttendance }) {
   const [filterPriority, setFilterPriority] = useState('ALL');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -2828,6 +2867,18 @@ export function NotificationsView({ notifications = [], onOpenSendMessage, onEdi
                   </div>
 
                   <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                    {onOpenAttendance && (n.activity_id || n.title?.toLowerCase().includes('hoạt động') || n.activity_details) && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-success fw-bold px-2.5 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-xs"
+                        style={{ fontSize: '12px' }}
+                        onClick={() => onOpenAttendance(n.activity_id)}
+                        title="Chuyển đến màn hình điểm danh hoạt động này"
+                      >
+                        <QrCode size={14} />
+                        <span>{isDoanXa ? 'Mở QR Điểm danh' : 'Điểm danh ngay'}</span>
+                      </button>
+                    )}
                     <ReceiptConfirmationBox 
                       type="notification" 
                       item={n} 
@@ -4841,32 +4892,35 @@ export function BranchAttendanceWorkspaceView({
   };
 
 
-  // Render Form Tạo Hoạt Động Trực Tiếp (Hiện đại, Sạch sẽ, Chuyên nghiệp)
+  // Render Form Tạo Hoạt Động Trực Tiếp (Hiện đại, Đẹp mắt, Chuẩn hóa công nghệ cao)
   const renderActivityCreateForm = (isInlineExpanded = false) => {
     return (
       <div 
-        className={`card border-0 shadow-sm rounded-4 overflow-hidden bg-white ${
-          isInlineExpanded ? 'mt-3 mb-3 border border-primary-subtle' : 'mx-auto mb-4'
+        className={`card border-0 shadow-lg rounded-4 overflow-hidden bg-white text-start ${
+          isInlineExpanded ? 'mt-3 mb-3 border border-primary' : 'mx-auto mb-4'
         }`} 
-        style={isInlineExpanded ? {} : { maxWidth: '780px' }}
+        style={isInlineExpanded ? { borderRadius: '20px' } : { maxWidth: '820px', borderRadius: '22px', border: '1px solid #e2e8f0', boxShadow: '0 12px 36px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04)' }}
       >
-        {/* Header banner */}
-        <div className="p-3.5 px-4 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div className="d-flex align-items-center gap-2.5">
-            <div className="p-2 bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
-              <Calendar size={20} />
+        {/* Luxury Executive Header Banner */}
+        <div 
+          className="p-3.5 px-4 text-white d-flex align-items-center justify-content-between flex-wrap gap-2 position-relative"
+          style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #0284c7 100%)' }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div className="p-2.5 bg-white bg-opacity-15 text-white rounded-3 d-flex align-items-center justify-content-center shadow-xs" style={{ width: '42px', height: '42px', backdropFilter: 'blur(8px)' }}>
+              <Calendar size={22} className="text-warning" />
             </div>
             <div>
-              <div className="d-flex align-items-center gap-2">
-                <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '15px' }}>
-                  Khởi Tạo Hoạt Động & Phát Động Điểm Danh
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <h6 className="fw-bold text-white mb-0" style={{ fontSize: '16px', letterSpacing: '-0.2px' }}>
+                  Khởi Tạo Hoạt Động & Ban Hành Điểm Danh
                 </h6>
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style={{ fontSize: '10.5px' }}>
-                  Tạo trực tiếp
+                <span className="badge bg-warning text-dark fw-bold rounded-pill" style={{ fontSize: '10.5px' }}>
+                  ⚡ Điều hành số hóa
                 </span>
               </div>
-              <div className="text-secondary" style={{ fontSize: '12px' }}>
-                Điền nhanh thông tin hoặc chọn mẫu có sẵn để tạo mã QR điểm danh tức thì
+              <div className="text-white text-opacity-80" style={{ fontSize: '12px' }}>
+                Tự động đồng bộ 56 Chi đoàn qua Realtime · Tạo Văn bản ban hành · Kích hoạt mã QR 10 phút
               </div>
             </div>
           </div>
@@ -4874,45 +4928,53 @@ export function BranchAttendanceWorkspaceView({
           {isInlineExpanded && (
             <button
               type="button"
-              className="btn-close"
+              className="btn-close btn-close-white"
               onClick={() => setShowQuickCreate(false)}
               title="Đóng bảng tạo nhanh"
-            ></button>
+            />
           )}
         </div>
 
-        <div className="p-4">
-          {/* Error / Success alert */}
+        <div className="p-4 p-md-4">
+          {/* Status Alert */}
           {quickErrorMsg && (
-            <div className="alert alert-danger py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '12.5px' }}>
-              <AlertTriangle size={16} className="text-danger flex-shrink-0" />
-              <span>{quickErrorMsg}</span>
+            <div className="alert alert-danger py-2.5 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
+              <AlertTriangle size={18} className="text-danger flex-shrink-0" />
+              <span className="fw-semibold">{quickErrorMsg}</span>
             </div>
           )}
 
           {quickSuccessMsg && (
-            <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '12.5px' }}>
-              <CheckCircle2 size={16} className="text-success flex-shrink-0" />
-              <span>{quickSuccessMsg}</span>
+            <div className="alert alert-success py-2.5 px-3 rounded-3 d-flex align-items-center gap-2 mb-3 shadow-xs" style={{ fontSize: '13px' }}>
+              <CheckCircle2 size={18} className="text-success flex-shrink-0" />
+              <span className="fw-semibold">{quickSuccessMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleQuickCreateSubmit} className="d-flex flex-column gap-3">
-            {/* MỤC 1: TÊN HOẠT ĐỘNG & GỢI Ý MẪU MỘT CHẠM */}
+          <form onSubmit={handleQuickCreateSubmit} className="d-flex flex-column gap-3.5">
+            {/* MỤC 1: TÊN HOẠT ĐỘNG & MẪU 1 CHẠM */}
             <div>
               <div className="d-flex align-items-center justify-content-between mb-1.5 flex-wrap gap-1">
-                <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '13px' }}>
+                <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13.5px' }}>
+                  <span className="text-primary">📌</span>
                   <span>Tên hoạt động / cuộc họp / phong trào</span>
                   <span className="text-danger">*</span>
                 </label>
-                <span className="text-muted" style={{ fontSize: '11.5px' }}>
-                  (Nhập tên hoặc nhấn gợi ý mẫu bên dưới)
+                <span className="badge bg-light text-secondary border fw-medium" style={{ fontSize: '11px' }}>
+                  Nhập tên hoặc chọn mẫu gợi ý dưới
                 </span>
               </div>
+
               <input
                 type="text"
-                className="form-control form-control-lg fw-semibold"
-                style={{ fontSize: '14.5px', borderRadius: '10px' }}
+                className="form-control form-control-lg fw-bold"
+                style={{ 
+                  fontSize: '15px', 
+                  borderRadius: '12px', 
+                  borderColor: quickTitle ? '#0066FF' : '#cbd5e1',
+                  backgroundColor: quickTitle ? '#f8faff' : '#ffffff',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)' 
+                }}
                 placeholder="Ví dụ: Hội nghị Ban Chấp hành Đoàn xã mở rộng..."
                 value={quickTitle}
                 onChange={(e) => {
@@ -4924,42 +4986,48 @@ export function BranchAttendanceWorkspaceView({
 
               {/* Mẫu gợi ý nhanh 1 chạm */}
               <div className="mt-2.5">
-                <div className="d-flex align-items-center gap-1.5 text-muted mb-1.5" style={{ fontSize: '11.5px' }}>
-                  <span className="fw-bold text-primary">⚡ Mẫu gợi ý nhanh (1-chạm điền ngay):</span>
+                <div className="d-flex align-items-center gap-1.5 text-muted mb-2" style={{ fontSize: '12px' }}>
+                  <span className="fw-bold text-primary">⚡ Mẫu một chạm điền ngay (Chuẩn nội dung Đoàn xã):</span>
                 </div>
                 <div className="d-flex flex-wrap gap-1.5">
-                  {QUICK_TEMPLATES.map((tpl, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="btn btn-sm btn-light border rounded-pill px-2.5 py-1 text-dark d-inline-flex align-items-center gap-1 hover-shadow-xs transition-all"
-                      style={{ 
-                        fontSize: '11.5px', 
-                        backgroundColor: quickTitle === tpl.title ? '#e0f2fe' : '#f8fafc', 
-                        borderColor: quickTitle === tpl.title ? '#0284c7' : '#e2e8f0' 
-                      }}
-                      onClick={() => handleSelectTemplate(tpl)}
-                      title="Nhấn để tự động điền mẫu này"
-                    >
-                      <span>{tpl.icon}</span>
-                      <span className="fw-medium">{tpl.title}</span>
-                    </button>
-                  ))}
+                  {QUICK_TEMPLATES.map((tpl, idx) => {
+                    const isSelected = quickTitle === tpl.title;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={`btn btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-1.5 transition-all ${
+                          isSelected ? 'btn-primary text-white shadow-sm' : 'btn-light border text-dark hover-shadow-xs'
+                        }`}
+                        style={{ 
+                          fontSize: '12px',
+                          fontWeight: isSelected ? 600 : 500,
+                          backgroundColor: isSelected ? '#0066FF' : '#f8fafc',
+                          borderColor: isSelected ? '#0066FF' : '#e2e8f0'
+                        }}
+                        onClick={() => handleSelectTemplate(tpl)}
+                        title="Nhấn để tự động điền mẫu này"
+                      >
+                        <span>{tpl.icon}</span>
+                        <span>{tpl.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* MỤC 2: THỜI GIAN & NGÀY THÁNG */}
-            <div className="p-3 bg-light rounded-3 border">
+            {/* MỤC 2: THỜI GIAN & KHUNG GIỜ */}
+            <div className="p-3.5 bg-light bg-opacity-70 rounded-4 border" style={{ borderColor: '#e2e8f0' }}>
               <div className="row g-3">
-                {/* CỘT NGÀY THÁNG */}
+                {/* CỘT NGÀY */}
                 <div className="col-12 col-md-6">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
-                      <Calendar size={14} className="text-primary" />
+                  <div className="d-flex align-items-center justify-content-between mb-1.5">
+                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <Calendar size={15} className="text-primary" />
                       <span>Ngày tổ chức:</span>
                     </label>
-                    <span className="text-primary fw-semibold" style={{ fontSize: '11.5px' }}>
+                    <span className="badge bg-primary text-white px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11.5px' }}>
                       {(() => {
                         const [y, m, d] = (quickDateIso || getTodayIsoStr()).split('-');
                         return `${d}/${m}/${y}`;
@@ -4967,12 +5035,11 @@ export function BranchAttendanceWorkspaceView({
                     </span>
                   </div>
 
-                  {/* Pills chọn ngày */}
-                  <div className="d-flex gap-1 mb-2">
+                  <div className="d-flex gap-1.5 mb-2">
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'today' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-2 rounded-3 fw-bold transition-all ${quickDatePreset === 'today' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '12px' }}
                       onClick={() => {
                         setQuickDatePreset('today');
                         setQuickDateIso(getTodayIsoStr());
@@ -4982,8 +5049,8 @@ export function BranchAttendanceWorkspaceView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'tomorrow' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-2 rounded-3 fw-bold transition-all ${quickDatePreset === 'tomorrow' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '12px' }}
                       onClick={() => {
                         setQuickDatePreset('tomorrow');
                         setQuickDateIso(getTomorrowIsoStr());
@@ -4993,8 +5060,8 @@ export function BranchAttendanceWorkspaceView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold ${quickDatePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-2 rounded-3 fw-bold transition-all ${quickDatePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '12px' }}
                       onClick={() => setQuickDatePreset('custom')}
                     >
                       Ngày khác
@@ -5003,8 +5070,8 @@ export function BranchAttendanceWorkspaceView({
 
                   <input
                     type="date"
-                    className="form-control form-control-sm bg-white"
-                    style={{ fontSize: '12.5px' }}
+                    className="form-control form-control-sm bg-white fw-semibold"
+                    style={{ fontSize: '12.5px', borderRadius: '8px' }}
                     value={quickDateIso}
                     onChange={(e) => {
                       setQuickDateIso(e.target.value);
@@ -5015,22 +5082,21 @@ export function BranchAttendanceWorkspaceView({
 
                 {/* CỘT KHUNG GIỜ */}
                 <div className="col-12 col-md-6">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
-                      <Clock size={14} className="text-primary" />
-                      <span>Khung giờ:</span>
+                  <div className="d-flex align-items-center justify-content-between mb-1.5">
+                    <label className="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                      <Clock size={15} className="text-primary" />
+                      <span>Khung giờ diễn ra:</span>
                     </label>
-                    <span className="text-primary fw-semibold" style={{ fontSize: '11.5px' }}>
+                    <span className="badge bg-primary text-white px-2.5 py-1 rounded-pill fw-bold" style={{ fontSize: '11.5px' }}>
                       {quickStartTime} - {quickEndTime}
                     </span>
                   </div>
 
-                  {/* Pills chọn buổi */}
                   <div className="d-flex gap-1 mb-2">
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'morning' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-1 rounded-3 fw-bold transition-all ${quickTimePreset === 'morning' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11px' }}
                       onClick={() => {
                         setQuickTimePreset('morning');
                         setQuickStartTime('08:00');
@@ -5041,8 +5107,8 @@ export function BranchAttendanceWorkspaceView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'afternoon' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-1 rounded-3 fw-bold transition-all ${quickTimePreset === 'afternoon' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11px' }}
                       onClick={() => {
                         setQuickTimePreset('afternoon');
                         setQuickStartTime('13:30');
@@ -5053,8 +5119,8 @@ export function BranchAttendanceWorkspaceView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm flex-grow-1 py-1 px-1.5 rounded-2 fw-semibold ${quickTimePreset === 'evening' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm flex-grow-1 py-1.5 px-1 rounded-3 fw-bold transition-all ${quickTimePreset === 'evening' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11px' }}
                       onClick={() => {
                         setQuickTimePreset('evening');
                         setQuickStartTime('18:30');
@@ -5065,31 +5131,30 @@ export function BranchAttendanceWorkspaceView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm py-1 px-2 rounded-2 fw-semibold ${quickTimePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
-                      style={{ fontSize: '11.5px' }}
+                      className={`btn btn-sm py-1.5 px-2 rounded-3 fw-bold transition-all ${quickTimePreset === 'custom' ? 'btn-primary text-white shadow-xs' : 'btn-white border text-dark'}`}
+                      style={{ fontSize: '11px' }}
                       onClick={() => setQuickTimePreset('custom')}
                     >
-                      Tuỳ chỉnh
+                      Tùy chỉnh
                     </button>
                   </div>
 
-                  {/* Custom Time inputs */}
                   <div className="d-flex align-items-center gap-1.5">
                     <input
                       type="time"
-                      className="form-control form-control-sm bg-white"
-                      style={{ fontSize: '12.5px' }}
+                      className="form-control form-control-sm bg-white fw-semibold"
+                      style={{ fontSize: '12.5px', borderRadius: '8px' }}
                       value={quickStartTime}
                       onChange={(e) => {
                         setQuickStartTime(e.target.value);
                         setQuickTimePreset('custom');
                       }}
                     />
-                    <span className="text-muted fw-bold">-</span>
+                    <span className="text-muted fw-bold">➔</span>
                     <input
                       type="time"
-                      className="form-control form-control-sm bg-white"
-                      style={{ fontSize: '12.5px' }}
+                      className="form-control form-control-sm bg-white fw-semibold"
+                      style={{ fontSize: '12.5px', borderRadius: '8px' }}
                       value={quickEndTime}
                       onChange={(e) => {
                         setQuickEndTime(e.target.value);
@@ -5099,24 +5164,35 @@ export function BranchAttendanceWorkspaceView({
                   </div>
                 </div>
               </div>
+
+              {/* Dynamic Attendance Window Indicator */}
+              <div className="mt-2.5 pt-2 border-top d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '11.5px' }}>
+                <span className="d-flex align-items-center gap-1.5 text-success fw-bold">
+                  <CheckCircle2 size={13} />
+                  <span>Thời lượng điểm danh: 10 phút tự động tính từ giờ bắt đầu</span>
+                </span>
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                  ⏱️ Tự động khóa sau 10p
+                </span>
+              </div>
             </div>
 
-            {/* MỤC 3: ĐỊA ĐIỂM & ĐỐI TƯỢNG TRIỆU TẬP */}
+            {/* MỤC 3: ĐỊA ĐIỂM & ĐỐI TƯỢNG */}
             <div className="row g-3">
               <div className="col-12 col-md-7">
-                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
-                  <MapPin size={14} className="text-danger" />
+                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                  <MapPin size={15} className="text-danger" />
                   <span>Địa điểm tổ chức:</span>
                 </label>
                 <input
                   type="text"
-                  className="form-control"
-                  style={{ fontSize: '13px' }}
-                  placeholder="Ví dụ: Hội trường UBND Xã Xuân Thới Sơn"
+                  className="form-control fw-semibold"
+                  style={{ fontSize: '13.5px', borderRadius: '10px' }}
+                  placeholder="Ví dụ: Trụ sở Đảng ủy xã Xuân Thới Sơn"
                   value={quickLocation}
                   onChange={(e) => setQuickLocation(e.target.value)}
                 />
-                <div className="d-flex flex-wrap gap-1 mt-1.5">
+                <div className="d-flex flex-wrap gap-1.5 mt-1.5">
                   {QUICK_VENUE_LIST.slice(0, 4).map((loc, idx) => (
                     <button
                       key={idx}
@@ -5132,20 +5208,20 @@ export function BranchAttendanceWorkspaceView({
               </div>
 
               <div className="col-12 col-md-5">
-                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1" style={{ fontSize: '12.5px' }}>
-                  <Users size={14} className="text-primary" />
+                <label className="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-1.5" style={{ fontSize: '13px' }}>
+                  <Users size={15} className="text-primary" />
                   <span>Phạm vi triệu tập:</span>
                 </label>
                 <select
-                  className="form-select fw-semibold"
-                  style={{ fontSize: '13px' }}
+                  className="form-select fw-bold text-dark"
+                  style={{ fontSize: '13.5px', borderRadius: '10px' }}
                   value={quickAssignedTo}
                   onChange={(e) => setQuickAssignedTo(e.target.value)}
                 >
-                  <option value="Tất cả 56 Chi đoàn">Tất cả 56 Chi đoàn (Toàn xã)</option>
-                  <option value="30 Chi đoàn Ấp">30 Chi đoàn Ấp (Khu dân cư)</option>
-                  <option value="Khối Trường học">Khối Chi đoàn Trường học (16 Chi đoàn)</option>
-                  <option value="Khối Cơ quan - Lực lượng vũ trang">Khối Cơ quan - LLVT (10 Chi đoàn)</option>
+                  <option value="Tất cả 56 Chi đoàn">🇻🇳 Tất cả 56 Chi đoàn (Toàn xã)</option>
+                  <option value="30 Chi đoàn Ấp">🏡 Khối Khu dân cư (30 Chi đoàn Ấp)</option>
+                  <option value="Khối Trường học">🏫 Khối Chi đoàn Trường học (16 Chi đoàn)</option>
+                  <option value="Khối Cơ quan - Lực lượng vũ trang">🛡️ Khối Cơ quan - LLVT (10 Chi đoàn)</option>
                 </select>
               </div>
             </div>
@@ -5153,24 +5229,24 @@ export function BranchAttendanceWorkspaceView({
             {/* MỤC 4: ĐỘ ƯU TIÊN & GHI CHÚ */}
             <div className="row g-3">
               <div className="col-12 col-md-5">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
                   Mức độ ưu tiên:
                 </label>
                 <div className="d-flex gap-1.5">
                   {[
-                    { id: 'Bình thường', label: 'Bình thường', color: 'primary' },
-                    { id: 'Quan trọng', label: 'Quan trọng', color: 'warning' },
-                    { id: 'Khẩn cấp', label: 'Khẩn cấp', color: 'danger' }
+                    { id: 'Bình thường', label: '🟢 Bình thường', color: 'success' },
+                    { id: 'Quan trọng', label: '⚡ Quan trọng', color: 'warning' },
+                    { id: 'Khẩn cấp', label: '🔥 Khẩn cấp', color: 'danger' }
                   ].map(p => {
                     const isSelected = quickPriority === p.id;
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        className={`btn btn-sm flex-grow-1 py-1 px-2 rounded-2 fw-semibold border ${
+                        className={`btn btn-sm flex-grow-1 py-1.5 px-2 rounded-3 fw-bold border transition-all ${
                           isSelected ? `btn-${p.color} text-white shadow-xs` : 'btn-light text-dark'
                         }`}
-                        style={{ fontSize: '11.5px' }}
+                        style={{ fontSize: '12px' }}
                         onClick={() => setQuickPriority(p.id)}
                       >
                         {p.label}
@@ -5181,13 +5257,13 @@ export function BranchAttendanceWorkspaceView({
               </div>
 
               <div className="col-12 col-md-7">
-                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '12.5px' }}>
+                <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
                   Ghi chú / Nhắc nhở trang phục:
                 </label>
                 <input
                   type="text"
                   className="form-control"
-                  style={{ fontSize: '13px' }}
+                  style={{ fontSize: '13px', borderRadius: '10px' }}
                   placeholder="VD: Trang phục áo Thanh niên Việt Nam, có mặt trước 15 phút..."
                   value={quickNotes}
                   onChange={(e) => setQuickNotes(e.target.value)}
@@ -5205,7 +5281,7 @@ export function BranchAttendanceWorkspaceView({
                     style={{ fontSize: '12.5px' }}
                     onClick={onOpenCreateActivity}
                   >
-                    <FileText size={14} />
+                    <FileText size={15} />
                     <span>Mở form đầy đủ (Đính kèm PDF)</span>
                   </button>
                 )}
@@ -5226,33 +5302,42 @@ export function BranchAttendanceWorkspaceView({
                 <button
                   type="submit"
                   disabled={isSubmittingQuick}
-                  className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 rounded-3 fw-bold shadow hover-scale"
+                  className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2.5 rounded-3 fw-bold shadow hover-scale"
                   style={{
-                    fontSize: '13.5px',
-                    backgroundColor: '#0066FF',
-                    borderColor: '#0066FF'
+                    fontSize: '14px',
+                    background: 'linear-gradient(135deg, #0066FF 0%, #004ecc 100%)',
+                    borderColor: '#0066FF',
+                    boxShadow: '0 4px 16px rgba(0, 102, 255, 0.35)'
                   }}
                 >
                   {isSubmittingQuick ? (
                     <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                      <span>Đang khởi tạo...</span>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      <span>Đang ban hành hoạt động...</span>
                     </>
                   ) : (
                     <>
-                      <Plus size={17} />
+                      <Plus size={18} />
                       <span>Tạo hoạt động & Bắt đầu điểm danh</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
+
+            {/* Safety & Sync Trust strip */}
+            <div className="p-2.5 px-3 rounded-3 bg-light border d-flex align-items-center justify-content-between text-muted flex-wrap gap-1" style={{ fontSize: '11px' }}>
+              <span className="d-flex align-items-center gap-1 text-primary fw-semibold">
+                <ShieldCheck size={13} />
+                <span>Đồng bộ Realtime 0ms · Liên kết Quản lý HĐ ⇄ Thông báo ⇄ Điểm danh</span>
+              </span>
+              <span>Bảo vệ xóa độc lập (Không xóa 1 thành xóa hết)</span>
+            </div>
           </form>
         </div>
       </div>
     );
   };
-
 
   // Parse whether selected item is an Activity or a Todo Task
   const isSelectedTask = selectedItemId.startsWith('task:');
@@ -5315,6 +5400,7 @@ export function BranchAttendanceWorkspaceView({
       return;
     }
 
+    const currentId = currentItem?.id;
     if (isSelectedTask) {
       if (onDeleteTask) {
         await onDeleteTask(currentTask.id, currentTask.title);
@@ -5330,7 +5416,16 @@ export function BranchAttendanceWorkspaceView({
     }
 
     setIsEditingInfo(false);
-    setSelectedItemId('');
+    // Smoothly select next remaining item so workspace does not collapse!
+    const remainingActs = safeActivities.filter(a => a && String(a.id) !== String(currentId));
+    const remainingTasks = safeTasks.filter(t => t && String(t.id) !== String(currentId));
+    if (remainingActs.length > 0) {
+      setSelectedItemId(`act:${remainingActs[0].id}`);
+    } else if (remainingTasks.length > 0) {
+      setSelectedItemId(`task:${remainingTasks[0].id}`);
+    } else {
+      setSelectedItemId('');
+    }
   };
 
   // Save changes to item
@@ -5465,16 +5560,24 @@ export function BranchAttendanceWorkspaceView({
   if (!hasItems) {
     return (
       <div className="container-fluid px-0">
-        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center mb-4">
-          <div className="mx-auto mb-3 p-3 bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
-            <Calendar size={36} />
+        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center mb-4 position-relative overflow-hidden" style={{ borderRadius: '24px', border: '1px solid rgba(0, 102, 255, 0.1)' }}>
+          {/* Subtle background glow */}
+          <div className="position-absolute top-0 start-50 translate-middle-x" style={{ width: '450px', height: '220px', background: 'radial-gradient(ellipse at top, rgba(0, 102, 255, 0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+          <div className="mx-auto mb-3 p-3 text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow" style={{ width: '76px', height: '76px', background: 'linear-gradient(135deg, #0066FF 0%, #004ecc 100%)' }}>
+            <Calendar size={38} />
           </div>
 
-          <h4 className="fw-bold text-dark mb-2" style={{ fontSize: '20px' }}>
-            Quản Lý Hoạt Động & Điểm Danh
+          <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-primary-subtle text-primary border border-primary-subtle rounded-pill mb-2 fw-semibold mx-auto" style={{ fontSize: '12px' }}>
+            <span className="spinner-grow spinner-grow-sm text-primary" role="status" style={{ width: '8px', height: '8px' }} />
+            <span>Máy chủ Realtime Supabase kết nối 56 Chi đoàn · Sẵn sàng phát động điểm danh</span>
+          </div>
+
+          <h4 className="fw-bolder text-dark mb-2" style={{ fontSize: '22px', letterSpacing: '-0.3px' }}>
+            Quản Lý Hoạt Động & Phát Động Điểm Danh
           </h4>
-          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '540px', fontSize: '14px', lineHeight: 1.6 }}>
-            Hệ thống đang ở trạng thái sạch. Đồng chí có thể tạo hoạt động trực tiếp bên dưới hoặc chọn mẫu nhanh một chạm để phát động đến các Chi đoàn và bắt đầu tạo mã QR điểm danh:
+          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: '620px', fontSize: '13.5px', lineHeight: 1.6 }}>
+            Hệ thống đang ở trạng thái sạch. Đồng chí có thể khởi tạo hoạt động trực tiếp bên dưới hoặc chọn mẫu một chạm để phát động tức thì đến các Chi đoàn, tự động tạo văn bản và kích hoạt mã QR điểm danh 10 phút:
           </p>
 
           {renderActivityCreateForm(false)}

@@ -724,7 +724,8 @@ export function getDeletedItems(key) {
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     // Only return valid IDs (UUIDs or prefixed IDs like act-, doc-, noti-, task-, sub-, mem-)
-    return parsed.filter(item => typeof item === 'string' && (isValidUuid(item) || /^[a-z]+-[0-9a-zA-Z_-]+$/i.test(item)));
+    // CRITICAL: NEVER treat titles or short strings as deleted IDs!
+    return parsed.filter(item => typeof item === 'string' && item.trim().length >= 6 && (isValidUuid(item.trim()) || /^[a-z0-9]+-[0-9a-zA-Z_-]+$/i.test(item.trim())));
   } catch (e) {
     return [];
   }
@@ -1235,28 +1236,34 @@ export async function syncToggleActivityStatus(activityId, newStatus) {
 
 export async function syncDeleteActivity(activityId, targetTitle = '') {
   if (!activityId) return getPersistedData('activities', []);
-  addDeletedItem('activities', activityId);
-  const deleted = getDeletedItems('activities');
+  const strId = String(activityId).trim();
+  addDeletedItem('activities', strId);
 
   const current = getPersistedData('activities', []);
-  const updatedLocal = current.filter(a => a && String(a.id) !== String(activityId));
+  const updatedLocal = current.filter(a => a && String(a.id) !== strId);
   setPersistedData('activities', updatedLocal);
 
   if (supabase) {
     try {
-      if (isValidUuid(activityId)) {
-        await supabase.from('activities').delete().eq('id', activityId);
+      if (isValidUuid(strId)) {
+        await supabase.from('activities').delete().eq('id', strId);
       }
     } catch (e) {
       console.error('Supabase delete activity error:', e);
     }
   }
 
-  notifySyncEvent('DELETE_ACTIVITY', { activityId });
+  notifySyncEvent('DELETE_ACTIVITY', { activityId: strId });
 
   if (supabase) {
-    const fetched = await syncFetchActivities();
-    return fetched.filter(a => a && String(a.id) !== String(activityId));
+    try {
+      const fetched = await syncFetchActivities();
+      if (Array.isArray(fetched) && (fetched.length > 0 || updatedLocal.length === 0)) {
+        return fetched.filter(a => a && String(a.id) !== strId);
+      }
+    } catch (e) {
+      console.warn('Supabase fetch after delete error, fallback to updatedLocal:', e);
+    }
   }
   return updatedLocal;
 }

@@ -69,7 +69,9 @@ import {
   OFFICIAL_ADDRESS,
   notifySyncEvent,
   isItemTargetedToUser,
-  deduplicateActivities
+  deduplicateActivities,
+  generateUuid,
+  isValidUuid
 } from './lib/supabase';
 import { Search, CheckCircle } from 'lucide-react';
 
@@ -389,8 +391,9 @@ export default function App() {
     const yearVal = newAct.year || new Date().getFullYear();
     const fixedDateIso = newAct.dateIso || `${yearVal}-${monthVal}-${dayVal}`;
 
+    const finalActId = (newAct.id && isValidUuid(newAct.id)) ? newAct.id : generateUuid();
     const activityItem = {
-      id: (newAct.id && !newAct.id.startsWith("act-")) ? newAct.id : `act-${Date.now()}`, // normalized in syncSaveActivity
+      id: finalActId,
       day: dayVal,
       month: monthVal,
       year: yearVal,
@@ -476,12 +479,13 @@ export default function App() {
   };
 
   const handleDeleteActivity = async (activityId, activityTitle = '') => {
-    setActivitiesList(prev => prev.filter(a => String(a.id) !== String(activityId) && (!activityTitle || a.title !== activityTitle)));
+    if (!activityId) return;
+    setActivitiesList(prev => prev.filter(a => String(a.id) !== String(activityId)));
     triggerToast('Đã thu hồi & xóa hoạt động thành công!');
 
-    const updated = await syncDeleteActivity(activityId, activityTitle);
+    const updated = await syncDeleteActivity(activityId);
     const cleanUpdated = deduplicateActivities(updated);
-    const filtered = cleanUpdated.filter(a => String(a.id) !== String(activityId) && (!activityTitle || a.title !== activityTitle));
+    const filtered = cleanUpdated.filter(a => String(a.id) !== String(activityId));
     setActivitiesList(filtered);
   };
 
@@ -543,20 +547,22 @@ export default function App() {
   };
 
   const handleDeleteDocument = async (docId, docTitle = '') => {
-    setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle)));
+    if (!docId) return;
+    setDocumentsList(prev => prev.filter(d => String(d.id) !== String(docId)));
     triggerToast('Đã thu hồi & xóa văn bản tức thì trên toàn bộ 56 Chi đoàn!');
 
-    const updated = await syncDeleteDocument(docId, docTitle);
-    const filtered = (updated || []).filter(d => String(d.id) !== String(docId) && (!docTitle || d.title !== docTitle));
+    const updated = await syncDeleteDocument(docId);
+    const filtered = (updated || []).filter(d => String(d.id) !== String(docId));
     setDocumentsList(filtered);
   };
 
   const handleDeleteSubmission = async (subId, subTitle = '') => {
-    setSubmissionsList(prev => prev.filter(s => String(s.id) !== String(subId) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle))));
+    if (!subId) return;
+    setSubmissionsList(prev => prev.filter(s => String(s.id) !== String(subId)));
     triggerToast('Đã xóa tệp báo cáo / văn bản khỏi kho lưu trữ thành công!');
 
-    const updated = await syncDeleteSubmission(subId, subTitle);
-    const filtered = (updated || []).filter(s => String(s.id) !== String(subId) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
+    const updated = await syncDeleteSubmission(subId);
+    const filtered = (updated || []).filter(s => String(s.id) !== String(subId));
     setSubmissionsList(filtered);
   };
 
@@ -693,11 +699,12 @@ export default function App() {
   };
 
   const handleDeleteNotification = async (notiId, notiTitle = '') => {
-    setNotificationsList(prev => prev.filter(n => String(n.id) !== String(notiId) && (!notiTitle || n.title !== notiTitle)));
+    if (!notiId) return;
+    setNotificationsList(prev => prev.filter(n => String(n.id) !== String(notiId)));
     triggerToast('Đã xóa thông báo khỏi hệ thống!');
 
-    const updated = await syncDeleteNotification(notiId, notiTitle);
-    const filtered = (updated || []).filter(n => String(n.id) !== String(notiId) && (!notiTitle || n.title !== notiTitle));
+    const updated = await syncDeleteNotification(notiId);
+    const filtered = (updated || []).filter(n => String(n.id) !== String(notiId));
     setNotificationsList(filtered);
   };
 
@@ -808,11 +815,12 @@ export default function App() {
   };
 
   const handleDeleteTask = async (taskId, taskTitle = '') => {
-    setTasksList(prev => prev.filter(t => String(t.id) !== String(taskId) && (!taskTitle || t.title !== taskTitle)));
+    if (!taskId) return;
+    setTasksList(prev => prev.filter(t => String(t.id) !== String(taskId)));
     triggerToast('Đã thu hồi & xóa công việc khỏi hệ thống thành công!');
 
-    const updated = await syncDeleteTask(taskId, taskTitle);
-    const filtered = (updated || []).filter(t => String(t.id) !== String(taskId) && (!taskTitle || t.title !== taskTitle));
+    const updated = await syncDeleteTask(taskId);
+    const filtered = (updated || []).filter(t => String(t.id) !== String(taskId));
     setTasksList(filtered);
   };
 

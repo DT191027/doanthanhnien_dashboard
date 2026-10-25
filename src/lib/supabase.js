@@ -390,21 +390,15 @@ export function getLiveVietnameseDate() {
   return `Hôm nay là ${dayName}, ngày ${day} tháng ${month} năm ${year}`;
 }
 
-// Helper to strictly deduplicate activities by ID or Title+Date
+// Helper to strictly deduplicate activities by ID
 export function deduplicateActivities(activities) {
   if (!Array.isArray(activities)) return [];
   const seenIds = new Set();
-  const seenKeys = new Set();
   return activities.filter(act => {
-    if (!act) return false;
-    if (act.id && seenIds.has(act.id)) return false;
-
-    const dateKey = act.dateIso || `${act.year || ''}-${act.month || ''}-${act.day || ''}`;
-    const comboKey = `${(act.title || '').trim().toLowerCase()}_${dateKey}`;
-    if (seenKeys.has(comboKey)) return false;
-
-    if (act.id) seenIds.add(act.id);
-    seenKeys.add(comboKey);
+    if (!act || !act.id) return false;
+    const strId = String(act.id);
+    if (seenIds.has(strId)) return false;
+    seenIds.add(strId);
     return true;
   }).map(act => ({
     ...act,
@@ -678,7 +672,10 @@ export function setPersistedData(key, data) {
 export function getDeletedItems(key) {
   try {
     const raw = localStorage.getItem(`xts_deleted_${key}`);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Only return valid IDs (UUIDs or prefixed IDs like act-, doc-, noti-, task-, sub-, mem-)
+    return parsed.filter(item => typeof item === 'string' && (isValidUuid(item) || /^[a-z]+-[0-9a-zA-Z_-]+$/i.test(item)));
   } catch (e) {
     return [];
   }
@@ -686,8 +683,11 @@ export function getDeletedItems(key) {
 
 export function addDeletedItem(key, id, title = '') {
   try {
+    if (!id) return;
+    const strId = String(id).trim();
+    if (!strId) return;
     const current = getDeletedItems(key);
-    const updated = [...new Set([...current, String(id), ...(title ? [title] : [])])];
+    const updated = [...new Set([...current, strId])];
     localStorage.setItem(`xts_deleted_${key}`, JSON.stringify(updated));
   } catch (e) {
     console.error('Failed to add deleted item:', e);
@@ -884,12 +884,7 @@ export async function syncFetchActivities() {
     if (!a) return false;
     const strId = String(a.id || '');
     if (strId.startsWith('act-seed-')) return false;
-    if (deleted.includes(strId) || (a.title && deleted.includes(a.title))) return false;
-    if (a.title && (
-      a.title.includes('Hội nghị Học tập & Quán triệt') ||
-      a.title.includes('Ngày đồng loạt ra quân') ||
-      a.title.includes('Lễ Thắp nến Tri ân')
-    )) return false;
+    if (deleted.includes(strId)) return false;
     return true;
   });
 
@@ -1095,11 +1090,12 @@ export async function syncToggleActivityStatus(activityId, newStatus) {
 }
 
 export async function syncDeleteActivity(activityId, targetTitle = '') {
-  addDeletedItem('activities', activityId, targetTitle);
+  if (!activityId) return getPersistedData('activities', []);
+  addDeletedItem('activities', activityId);
   const deleted = getDeletedItems('activities');
 
   const current = getPersistedData('activities', []);
-  const updatedLocal = current.filter(a => a && !deleted.includes(String(a.id)) && (!targetTitle || a.title !== targetTitle));
+  const updatedLocal = current.filter(a => a && String(a.id) !== String(activityId));
   setPersistedData('activities', updatedLocal);
 
   if (supabase) {
@@ -1107,19 +1103,16 @@ export async function syncDeleteActivity(activityId, targetTitle = '') {
       if (isValidUuid(activityId)) {
         await supabase.from('activities').delete().eq('id', activityId);
       }
-      if (targetTitle) {
-        await supabase.from('activities').delete().eq('title', targetTitle);
-      }
     } catch (e) {
       console.error('Supabase delete activity error:', e);
     }
   }
 
-  notifySyncEvent('DELETE_ACTIVITY', { activityId, targetTitle });
+  notifySyncEvent('DELETE_ACTIVITY', { activityId });
 
   if (supabase) {
     const fetched = await syncFetchActivities();
-    return fetched.filter(a => a && !deleted.includes(String(a.id)) && (!targetTitle || a.title !== targetTitle));
+    return fetched.filter(a => a && String(a.id) !== String(activityId));
   }
   return updatedLocal;
 }
@@ -1313,10 +1306,10 @@ export async function syncFetchDocuments() {
         });
         const seen = new Set();
         const clean = mapped.filter(d => {
-          if (!d) return false;
-          const key = (d.title && d.title.trim()) ? d.title.trim() : String(d.id);
+          if (!d || !d.id) return false;
+          const key = String(d.id);
           if (seen.has(key)) return false;
-          if (deleted.includes(String(d.id)) || (d.title && deleted.includes(d.title))) return false;
+          if (deleted.includes(key)) return false;
           seen.add(key);
           return true;
         });
@@ -1429,29 +1422,29 @@ export async function syncSaveDocument(docItem) {
 }
 
 export async function syncDeleteDocument(docId, docTitle = '') {
-  addDeletedItem('documents', docId, docTitle);
+  if (!docId) return getPersistedData('documents', []);
+  addDeletedItem('documents', docId);
   const deleted = getDeletedItems('documents');
 
   const current = getPersistedData('documents', []);
-  const updatedLocal = current.filter(d => d && !deleted.includes(String(d.id)) && (!docTitle || d.title !== docTitle));
+  const updatedLocal = current.filter(d => d && String(d.id) !== String(docId));
   setPersistedData('documents', updatedLocal);
 
   if (supabase) {
     try {
-      await supabase.from('documents').delete().eq('id', docId);
-      if (docTitle) {
-        await supabase.from('documents').delete().eq('title', docTitle);
+      if (isValidUuid(docId)) {
+        await supabase.from('documents').delete().eq('id', docId);
       }
     } catch (e) {
       console.error('Supabase delete document error:', e);
     }
   }
 
-  notifySyncEvent('DELETE_DOCUMENT', { docId, docTitle });
+  notifySyncEvent('DELETE_DOCUMENT', { docId });
 
   if (supabase) {
     const fetched = await syncFetchDocuments();
-    return fetched.filter(d => d && !deleted.includes(String(d.id)) && (!docTitle || d.title !== docTitle));
+    return fetched.filter(d => d && String(d.id) !== String(docId));
   }
   return updatedLocal;
 }
@@ -1563,29 +1556,29 @@ export async function syncSaveSubmission(subItem) {
 }
 
 export async function syncDeleteSubmission(subId, subTitle = '') {
-  addDeletedItem('submissions', subId, subTitle);
+  if (!subId) return getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
+  addDeletedItem('submissions', subId);
   const deleted = getDeletedItems('submissions');
 
   const current = getPersistedData('submissions', INITIAL_SUBMISSION_HISTORY);
-  const updatedLocal = current.filter(s => s && !deleted.includes(String(s.id)) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
+  const updatedLocal = current.filter(s => s && String(s.id) !== String(subId));
   setPersistedData('submissions', updatedLocal);
 
   if (supabase) {
     try {
-      await supabase.from('document_submissions').delete().eq('id', subId);
-      if (subTitle) {
-        await supabase.from('document_submissions').delete().eq('doc_title', subTitle);
+      if (isValidUuid(subId)) {
+        await supabase.from('document_submissions').delete().eq('id', subId);
       }
     } catch (e) {
       console.error('Supabase delete submission error:', e);
     }
   }
 
-  notifySyncEvent('DELETE_SUBMISSION', { subId, subTitle });
+  notifySyncEvent('DELETE_SUBMISSION', { subId });
 
   if (supabase) {
     const fetched = await syncFetchSubmissions();
-    return fetched.filter(s => s && !deleted.includes(String(s.id)) && (!subTitle || (s.title !== subTitle && s.doc_title !== subTitle)));
+    return fetched.filter(s => s && String(s.id) !== String(subId));
   }
   return updatedLocal;
 }
@@ -1736,7 +1729,7 @@ export async function syncFetchNotifications() {
             sender: meta.sender || 'Ban Thường vụ Đoàn xã Xuân Thới Sơn'
           };
         });
-        const cleanCombined = mapped.filter(n => n && !deleted.includes(String(n.id)) && (!n.title || !deleted.includes(n.title)));
+        const cleanCombined = mapped.filter(n => n && !deleted.includes(String(n.id)));
         const sorted = sortNotificationsByPriority(cleanCombined);
         setPersistedData('notifications', sorted);
         return sorted;
@@ -1844,21 +1837,19 @@ export async function syncUpdateNotification(updatedNoti) {
 }
 
 export async function syncDeleteNotification(notificationId, notificationTitle = '') {
-  addDeletedItem('notifications', notificationId, notificationTitle);
+  if (!notificationId) return getPersistedData('notifications', []);
+  addDeletedItem('notifications', notificationId);
   const deleted = getDeletedItems('notifications');
 
   const current = getPersistedData('notifications', []);
-  const updatedLocal = current.filter(n => n && !deleted.includes(String(n.id)) && (!notificationTitle || n.title !== notificationTitle));
+  const updatedLocal = current.filter(n => n && String(n.id) !== String(notificationId));
   setPersistedData('notifications', updatedLocal);
-  notifySyncEvent('DELETE_NOTIFICATION', { notificationId, notificationTitle });
+  notifySyncEvent('DELETE_NOTIFICATION', { notificationId });
 
   if (supabase) {
     try {
       if (isValidUuid(notificationId)) {
         await supabase.from('notifications').delete().eq('id', notificationId);
-      }
-      if (notificationTitle) {
-        await supabase.from('notifications').delete().eq('title', notificationTitle);
       }
     } catch (e) {
       console.error('Supabase delete notification error:', e);
